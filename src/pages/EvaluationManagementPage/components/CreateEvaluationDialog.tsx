@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
-import { Forge, useForge } from "@/lib/forge";
+import { Forge, useForge } from "@adexdsamson/forge";
 import * as yup from "yup";
 import { cn } from "@/lib/utils";
 import Step1Form from "./Step1Form";
@@ -533,9 +533,9 @@ const CreateEvaluationDialog = () => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-[#2A4467] hover:bg-[#1e3147] text-white px-6 py-2 rounded-lg flex items-center gap-2">
+        <Button className="bg-[#2A4467] hover:bg-[#1e3147] text-white px-4 sm:px-6 py-2 rounded-lg flex items-center gap-2 shrink-0">
           <Plus className="h-4 w-4" />
-          Create Evaluation
+          <span className="hidden sm:inline">Create Evaluation</span>
         </Button>
       </DialogTrigger>
       <DialogContent
@@ -596,9 +596,18 @@ const CreateEvaluationDialog = () => {
               >
                 Back
               </Button>
+              {/* Always type="button". Letting the type flip to "submit" on the
+                  final step means the browser owns when the form fires, and
+                  arriving at step 4 was enough to create the evaluation. The
+                  submit is now driven explicitly by this click and nothing
+                  else. */}
               <Button
-                type={currentStep === 4 ? "submit" : "button"}
-                onClick={currentStep === 4 ? undefined : handleNextStep}
+                type="button"
+                onClick={
+                  currentStep === 4
+                    ? forge.handleSubmit(onSubmit)
+                    : handleNextStep
+                }
                 disabled={currentStep === 4 && isCreatingEvaluation}
                 className="px-8 py-2 bg-[#2A4467] hover:bg-[#1e3147] text-white rounded-lg"
               >

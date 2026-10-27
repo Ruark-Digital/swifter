@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { FileInput, FileUploader, FileUploaderContent } from "@/components/ui/file-upload";
-import { Forge, Forger, useForge } from "@/lib/forge";
+import { Forge, Forger, useForge } from "@adexdsamson/forge";
 import { postRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -25,6 +25,7 @@ import { format, startOfDay } from "date-fns";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { truncate } from "lodash";
 import { businessDivisionApi } from "@/pages/BusinessDivisionsPage/api/businessDivisionApi";
+import { formatFileSize } from "@/lib/fileUtils";
 
 type UploadedFile = {
   name: string;
@@ -42,7 +43,62 @@ type InitialValues = {
   endDate?: Date;
   allowMultipleContracts?: boolean;
   businessDivision?: string;
+  existingFiles?: UploadedFile[];
 };
+
+function ExistingFileItem({
+  file,
+  onRemove,
+}: {
+  file: UploadedFile;
+  onRemove: () => void;
+}) {
+  const sizeLabel = Number.isFinite(file.size)
+    ? formatFileSize(file.size)
+    : "";
+  return (
+    <div className="flex w-full items-center justify-between rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-50 dark:bg-slate-700">
+          <FileText className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+            {truncate(file.name, { length: 40 })}
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {[file.type || "File", sizeLabel].filter(Boolean).join(" · ")}
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+        onClick={onRemove}
+        aria-label={`Remove ${file.name}`}
+        data-testid={`remove-existing-file-${file.name}`}
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+function UploadElement() {
+  return (
+    <div className="flex flex-col items-center justify-center text-center">
+      <CloudUpload className="h-12 w-12 text-[#2A4467] dark:text-slate-300" />
+      <div className="mt-4 space-y-2">
+        <p className="text-base font-semibold text-[#2A4467] dark:text-slate-100">
+          Drag &amp; Drop or Click to choose files
+        </p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
+        </p>
+      </div>
+    </div>
+  );
+}
 
 type Props = {
   open: boolean;
@@ -60,7 +116,7 @@ type Props = {
     startDate?: string;
     endDate?: string;
     allowMultipleContracts: boolean;
-    files?: UploadedFile[];
+    files: UploadedFile[];
     businessDivision?: string;
   }) => Promise<void> | void;
   isSubmitting: boolean;
@@ -120,6 +176,66 @@ type FileUploadState = {
 
 const getFileKey = (file: File) => `${file.name}-${file.size}-${file.lastModified}`;
 
+function FileListItem({
+  file,
+  uploadState,
+  onRemove,
+}: {
+  file: File;
+  uploadState?: FileUploadState;
+  onRemove: () => void;
+}) {
+  const showProgress =
+    uploadState?.status === "uploading" ||
+    uploadState?.status === "success" ||
+    uploadState?.status === "error";
+
+  return (
+    <div className="flex w-full items-center justify-between rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-50 dark:bg-slate-700">
+          <FileText className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+            {truncate(file.name, { length: 40 })}
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {file.type || "File"}
+          </p>
+          {showProgress ? (
+            <div className="mt-2 space-y-1 w-full">
+              <Progress
+                value={uploadState?.progress ?? 0}
+                variant={
+                  uploadState?.status === "success"
+                    ? "success"
+                    : uploadState?.status === "error"
+                    ? "error"
+                    : "default"
+                }
+              />
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {uploadState?.status === "error"
+                  ? "Upload failed"
+                  : `${uploadState?.progress ?? 0}%`}
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </div>
+      <button
+        type="button"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+        onClick={onRemove}
+        aria-label={`Remove ${file.name}`}
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
 
 const CreateProjectDialog: React.FC<Props> = ({
   open,
@@ -135,6 +251,9 @@ const CreateProjectDialog: React.FC<Props> = ({
   const [fileUploadStateByKey, setFileUploadStateByKey] = React.useState<
     Record<string, FileUploadState>
   >({});
+  const [retainedExistingFiles, setRetainedExistingFiles] = React.useState<
+    UploadedFile[]
+  >([]);
 
   const { mutateAsync: uploadFile, isPending: isUploadingFiles } = useMutation<
     ApiResponse<UploadURLs[]>,
@@ -173,10 +292,15 @@ const CreateProjectDialog: React.FC<Props> = ({
     queryKey: ["businessDivisions", "list", "all"],
     queryFn: async () =>
       await businessDivisionApi.listDivisions({ page: 1, limit: 1000 }),
+    // Fetch once when opened and keep the resolved list cached across
+    // re-opens so `businessDivisionOptions` doesn't churn while the Select
+    // is open (which was collapsing the trigger and letting the pointerdown
+    // reach the Dialog on the second click).
     enabled: open,
+    staleTime: Infinity,
   });
 
-  const { control, watch, setValue } = useForge({
+  const { control, watch, setValue, reset } = useForge({
     resolver: yupResolver(schema),
     defaultValues,
     mode: "onChange",
@@ -223,107 +347,47 @@ const CreateProjectDialog: React.FC<Props> = ({
     }
 
     setValue("files", null);
+    setRetainedExistingFiles(
+      Array.isArray(initialValues.existingFiles)
+        ? initialValues.existingFiles
+        : []
+    );
   }, [initialValues, open, setValue]);
 
-  React.useEffect(() => {
-    if (!open) {
-      setFileUploadStateByKey({});
-      return;
-    }
+  // Reset dialog-local state on close. Replaces an effect that mirrored
+  // `open`/`files` props into state (tripped react-doctor/no-adjust-state-on-prop-change
+  // + caused upload progress to flicker on parent re-renders).
+  const handleOpenChange = React.useCallback(
+    (next: boolean) => {
+      if (!next) {
+        setFileUploadStateByKey({});
+        setRetainedExistingFiles([]);
+      }
+      onOpenChange(next);
+    },
+    [onOpenChange],
+  );
 
-    const nextKeys = new Set((files ?? []).map(getFileKey));
-    setFileUploadStateByKey((prev) => {
-      const next: Record<string, FileUploadState> = { ...prev };
-
-      Object.keys(next).forEach((key) => {
-        if (!nextKeys.has(key)) delete next[key];
+  const removeFile = React.useCallback(
+    (file: File) => {
+      const nextFiles = (files ?? []).filter((f) => f !== file);
+      setValue("files", nextFiles.length > 0 ? nextFiles : null);
+      // Also drop the file's upload-state entry so the map doesn't grow
+      // unboundedly across the dialog's lifetime.
+      setFileUploadStateByKey((prev) => {
+        if (!(getFileKey(file) in prev)) return prev;
+        const nextState = { ...prev };
+        delete nextState[getFileKey(file)];
+        return nextState;
       });
-
-      (files ?? []).forEach((file) => {
-        const key = getFileKey(file);
-        if (!next[key]) {
-          next[key] = { progress: 0, status: "idle" };
-        }
-      });
-
-      return next;
-    });
-  }, [files, open]);
-
-  const FileListItem = ({ file }: { file: File; control: unknown }) => {
-    const uploadState = fileUploadStateByKey[getFileKey(file)];
-    const showProgress =
-      uploadState?.status === "uploading" ||
-      uploadState?.status === "success" ||
-      uploadState?.status === "error";
-
-    return (
-      <div className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-50">
-            <FileText className="h-5 w-5 text-slate-600" />
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-slate-900 ">
-              {truncate(file.name, { length: 40 })}
-            </p>
-            <p className="text-xs text-slate-500">{file.type || "File"}</p>
-            {showProgress ? (
-              <div className="mt-2 space-y-1 w-full">
-                <Progress
-                  value={uploadState?.progress ?? 0}
-                  variant={
-                    uploadState?.status === "success"
-                      ? "success"
-                      : uploadState?.status === "error"
-                      ? "error"
-                      : "default"
-                  }
-                />
-                <p className="text-xs text-slate-500">
-                  {uploadState?.status === "error"
-                    ? "Upload failed"
-                    : `${uploadState?.progress ?? 0}%`}
-                </p>
-              </div>
-            ) : null}
-          </div>
-        </div>
-        <button
-          type="button"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-          onClick={() => {
-            const nextFiles = (files ?? []).filter((f) => f !== file);
-            setValue("files", nextFiles.length > 0 ? nextFiles : null);
-          }}
-          aria-label={`Remove ${file.name}`}
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-    );
-  };
-
-  const UploadElement = () => (
-    <div className="flex flex-col items-center justify-center text-center">
-      <CloudUpload className="h-12 w-12 text-[#2A4467]" />
-      <div className="mt-4 space-y-2">
-        <p className="text-base font-semibold text-[#2A4467]">
-          Drag &amp; Drop or Click to choose files
-        </p>
-        <p className="text-sm text-slate-500">
-          Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
-        </p>
-      </div>
-    </div>
+    },
+    [files, setValue],
   );
 
   const submit = async (data: FormState) => {
-    let uploadedFiles: UploadedFile[] | undefined = undefined;
+    const uploadedFiles: UploadedFile[] = [];
 
     if (Array.isArray(data.files) && data.files.length > 0) {
-      const results: UploadedFile[] = [];
-
       for (const file of data.files) {
         const key = getFileKey(file);
 
@@ -346,7 +410,7 @@ const CreateProjectDialog: React.FC<Props> = ({
           const urls = uploadResponse?.data?.data;
           const url = Array.isArray(urls) ? urls[0]?.url : undefined;
 
-          results.push({
+          uploadedFiles.push({
             name: file.name,
             url: url ?? "",
             type: file.type,
@@ -365,8 +429,6 @@ const CreateProjectDialog: React.FC<Props> = ({
           throw new Error("File upload failed");
         }
       }
-
-      uploadedFiles = results.length > 0 ? results : undefined;
     }
 
     const payload = {
@@ -381,11 +443,9 @@ const CreateProjectDialog: React.FC<Props> = ({
         data.endDate instanceof Date ? format(data.endDate, "yyyy-MM-dd") : undefined,
       budget: typeof data.budget === "number" ? data.budget : undefined,
       allowMultipleContracts: !!data.allowMultipleContracts,
-      files: uploadedFiles,
+      files: [...retainedExistingFiles, ...uploadedFiles],
       businessDivision: data.businessDivision,
     };
-
-    // console.log({ payload })
 
     try {
       if (onSubmit) {
@@ -393,24 +453,27 @@ const CreateProjectDialog: React.FC<Props> = ({
       }
       onOpenChange(false);
       onSuccess();
+      reset(defaultValues);
+      setFileUploadStateByKey({});
+      setRetainedExistingFiles([]);
     } catch (e) {
       // noop: errors handled by caller
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         showCloseButton={false}
         className=" rounded-2xl p-6 gap-6 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-start justify-between">
-          <DialogTitle className="text-[20px] font-semibold leading-[30px] text-[#0F0F0F]">
+          <DialogTitle className="text-[20px] font-semibold leading-[30px] text-[#0F0F0F] dark:text-slate-100">
             {title ?? "Create Project"}
           </DialogTitle>
           <button
             type="button"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-red-500 hover:bg-red-50"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
             onClick={() => onOpenChange(false)}
             aria-label="Close dialog"
             data-testid="close-create-project"
@@ -519,7 +582,9 @@ const CreateProjectDialog: React.FC<Props> = ({
           </div>
 
           <div className="space-y-3">
-            <p className="text-base font-medium text-[#0F0F0F]">Upload Files</p>
+            <p className="text-base font-medium text-[#0F0F0F] dark:text-slate-100">
+              Upload Files
+            </p>
             <FileUploader
               value={files ?? []}
               onValueChange={(nextFiles: File[] | null | undefined) => {
@@ -547,21 +612,39 @@ const CreateProjectDialog: React.FC<Props> = ({
               className="w-full"
               data-testid="project-files-input"
             >
-              <FileInput className="border border-dashed border-[#2A4467] rounded-xl bg-white px-[15px] py-[47px]">
+              <FileInput className="border border-dashed border-[#2A4467] dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 px-[15px] py-[47px]">
                 <div className="flex w-full flex-col items-center justify-center">
                   <UploadElement />
                 </div>
               </FileInput>
               <FileUploaderContent className="mt-4 flex flex-col gap-3 px-0">
+                {retainedExistingFiles.map((file) => (
+                  <ExistingFileItem
+                    key={`existing-${file.url}-${file.name}`}
+                    file={file}
+                    onRemove={() =>
+                      setRetainedExistingFiles((prev) =>
+                        prev.filter((f) => f !== file)
+                      )
+                    }
+                  />
+                ))}
                 {(files ?? []).map((file) => (
-                  <FileListItem key={getFileKey(file)} file={file} control={control} />
+                  <FileListItem
+                    key={getFileKey(file)}
+                    file={file}
+                    uploadState={fileUploadStateByKey[getFileKey(file)]}
+                    onRemove={() => removeFile(file)}
+                  />
                 ))}
               </FileUploaderContent>
             </FileUploader>
           </div>
 
           <div className="space-y-3">
-            <p className="text-sm font-medium text-[#0F0F0F]">Business Division</p>
+            <p className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">
+              Business Division
+            </p>
             <Forger
               name="businessDivision"
               placeholder={isLoadingDivisions ? "Loading..." : "Select Division"}
@@ -572,9 +655,11 @@ const CreateProjectDialog: React.FC<Props> = ({
           </div>
 
           <div className="space-y-3">
-            <p className="text-sm font-medium text-slate-700">Project Control</p>
-            <div className="flex items-center justify-between rounded-2xl bg-[#F9FAFB] p-4">
-              <span className="text-sm font-medium text-[#0F0F0F]">
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              Project Control
+            </p>
+            <div className="flex items-center justify-between rounded-2xl bg-[#F9FAFB] dark:bg-slate-800 p-4">
+              <span className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">
                 Allow Multiple Contracts
               </span>
               <div className="flex items-center gap-3">
@@ -583,7 +668,9 @@ const CreateProjectDialog: React.FC<Props> = ({
                   onCheckedChange={(val) => setValue("allowMultipleContracts", !!val)}
                   data-testid="allow-multiple-contracts-switch"
                 />
-                <span className="text-sm font-medium text-[#344054]">Enabled</span>
+                <span className="text-sm font-medium text-[#344054] dark:text-slate-300">
+                  Enabled
+                </span>
               </div>
             </div>
           </div>
@@ -592,7 +679,7 @@ const CreateProjectDialog: React.FC<Props> = ({
             <Button
               type="button"
               variant="outline"
-              className="flex-1 h-12 rounded-xl bg-[#F3F4F6] border border-[#E5E7EB] text-[#0F0F0F] hover:bg-[#E5E7EB]"
+              className="flex-1 h-12 rounded-xl bg-[#F3F4F6] dark:bg-slate-800 border border-[#E5E7EB] dark:border-slate-700 text-[#0F0F0F] dark:text-slate-100 hover:bg-[#E5E7EB] dark:hover:bg-slate-700"
               onClick={() => onOpenChange(false)}
               data-testid="cancel-create-project"
             >

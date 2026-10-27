@@ -4,10 +4,19 @@ import * as React from "react"
 import { Popover as PopoverPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
+import { getSafeAsChild } from "@/components/ui/safeAsChild"
 
 const Popover = PopoverPrimitive.Root
 
-const PopoverTrigger = PopoverPrimitive.Trigger
+const PopoverTrigger = React.forwardRef<
+  React.ElementRef<typeof PopoverPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Trigger>
+>(({ children, asChild, ...props }, ref) => (
+  <PopoverPrimitive.Trigger ref={ref} asChild={asChild} {...props}>
+    {asChild ? getSafeAsChild(children) : children}
+  </PopoverPrimitive.Trigger>
+))
+PopoverTrigger.displayName = PopoverPrimitive.Trigger.displayName
 
 const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,

@@ -12,6 +12,7 @@ import { DataTable } from "@/components/layouts/DataTable";
 import { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
+import { RenewSubscriptionDialog } from "@/pages/CompaniesPage/components/RenewSubscriptionDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -133,6 +134,8 @@ const SubscriptionsPage = () => {
     endDate?: Date;
   }>({});
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  // Subscription selected for renewal; drives the shared RenewSubscriptionDialog.
+  const [renewSub, setRenewSub] = useState<Subscription | null>(null);
   const [tempDateRange, setTempDateRange] = useState<{
     from?: Date;
     to?: Date;
@@ -303,29 +306,6 @@ const SubscriptionsPage = () => {
 
   // Mutation for changing subscription plan
 
-  // Mutation for renewing subscription
-  const renewMutation = useMutation<
-    ApiResponse<Subscription>,
-    ApiResponseError,
-    { id: string; durationInDays: number }
-  >({
-    mutationFn: async ({ id, durationInDays }) =>
-      await postRequest({
-        url: `/subscriptions/${id}/renew`,
-        payload: { durationInDays },
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
-      toast.success(
-        "Subscription Renewed",
-        "Subscription renewed successfully"
-      );
-    },
-    onError: (error) => {
-      toast.error("Renewal Failed", error);
-    },
-  });
-
   // Mutation for suspending/reactivating subscription (using status update)
   const updateStatusMutation = useMutation<
     ApiResponse<Subscription>,
@@ -375,11 +355,6 @@ const SubscriptionsPage = () => {
 
   const handleReactivateSubscription = (subscriptionId: string) => {
     updateStatusMutation.mutate({ id: subscriptionId, status: "active" });
-  };
-
-  const handleRenewSubscription = (subscriptionId: string) => {
-    // Default to 30 days renewal
-    renewMutation.mutate({ id: subscriptionId, durationInDays: 30 });
   };
 
   const formatDateString = (dateString: string) => {
@@ -513,26 +488,12 @@ const SubscriptionsPage = () => {
               )}
 
               {(isExpired || isSuspended) && (
-                <ConfirmAlert
-                  type="success"
-                  title="Renew Subscription"
-                  text={`Are you sure you want to renew this subscription for 30 days?`}
-                  primaryButtonText="Renew"
-                  secondaryButtonText="Cancel"
-                  showSecondaryButton={true}
-                  isLoading={renewMutation.isPending}
-                  onPrimaryAction={() =>
-                    handleRenewSubscription(subscription.id)
-                  }
-                  trigger={
-                    <DropdownMenuItem
-                      className="p-3 cursor-pointer text-green-600 dark:text-green-400"
-                      onSelect={(e) => e.preventDefault()}
-                    >
-                      Renew
-                    </DropdownMenuItem>
-                  }
-                />
+                <DropdownMenuItem
+                  className="p-3 cursor-pointer text-green-600 dark:text-green-400"
+                  onSelect={() => setRenewSub(subscription)}
+                >
+                  Renew
+                </DropdownMenuItem>
               )}
 
               {isSuspended && (
@@ -726,6 +687,19 @@ const SubscriptionsPage = () => {
           </div>
         )}
       />
+
+      {/* Renew Subscription — same dialog used on the company detail page */}
+      {renewSub && (
+        <RenewSubscriptionDialog
+          subscriptionId={renewSub.id}
+          companyId={renewSub.companyId}
+          currentExpiry={renewSub.expiryDate}
+          open={!!renewSub}
+          onOpenChange={(open) => {
+            if (!open) setRenewSub(null);
+          }}
+        />
+      )}
 
       {/* Date Range Picker Dialog */}
       <Dialog open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>

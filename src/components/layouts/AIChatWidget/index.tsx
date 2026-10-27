@@ -26,14 +26,14 @@ import {
   File,
   Image,
   FileText,
-  MessageCircle,
   Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAIChat, Message } from "@/hooks/useAIChat";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useUser } from "@/store/authSlice";
+import { getNavigationForRole } from "@/lib/navigation";
 import MessageContainer from "./components/MessageContainer";
-import axios from "axios";
-import { useToken } from "@/store/authSlice";
 
 interface FileAttachment {
   id: string;
@@ -44,12 +44,27 @@ interface FileAttachment {
   file: File;
 }
 
+// Outbound attachment payload sent to the chat backend. The bytes travel
+// inline as base64 in the JSON request body (see App.tsx `postChat`).
+export interface ChatAttachment {
+  name: string;
+  type: string;
+  contentBase64: string;
+  size: number;
+}
+
 interface AIChatWidgetProps {
-  onSendMessage?: (message: string) => Promise<string>;
+  onSendMessage?: (
+    message: string,
+    attachments?: ChatAttachment[]
+  ) => Promise<string>;
   onStreamMessage?: (
     message: string,
-    onDelta: (partial: string) => void
+    attachments: ChatAttachment[] | undefined,
+    onDelta: (partial: string) => void,
+    onTool?: (phase: "start" | "end", tool: string) => void
   ) => Promise<void>;
+  onReset?: () => Promise<void>;
   apiEndpoint?: string;
   className?: string;
   maxFileSize?: number;
@@ -62,9 +77,49 @@ interface AIChatWidgetProps {
   welcomeMessage?: string;
 }
 
+// Suggested prompts are scoped to the pages a role can actually reach. Each
+// entry is keyed by the exact nav route it belongs to; a prompt is only shown
+// when that route is present in the user's navigation (see getNavigationForRole,
+// which already applies role + module gating). Insertion order is the display
+// priority — the list is capped so the widget stays tidy for wide roles.
+const PROMPTS_BY_ROUTE: Record<string, string> = {
+  "/dashboard/contract-management": "Summarize my active contracts",
+  "/dashboard/solicitation": "Show my open solicitations",
+  "/dashboard/evaluation": "What's awaiting my evaluation?",
+  "/dashboard/project-management": "Give me a status update on my projects",
+  "/dashboard/vendor": "How many active vendors do we have?",
+  "/dashboard/user-management": "What's our current team role distribution?",
+  "/dashboard/companies": "How many companies are on the platform?",
+  "/dashboard/subscription": "Show subscription distribution across plans",
+};
+
+const MAX_SUGGESTED_PROMPTS = 4;
+
+const createWelcomeMessage = (content: string): Message => ({
+  id: "welcome-message",
+  content,
+  sender: "ai",
+  timestamp: new Date(),
+});
+
+// Read a File into base64 (without the `data:...;base64,` prefix) for the
+// chat backend's inline `attachments` payload.
+const fileToBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const commaIndex = result.indexOf(",");
+      resolve(commaIndex >= 0 ? result.slice(commaIndex + 1) : result);
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+
 const AIChatWidget: React.FC<AIChatWidgetProps> = ({
   onSendMessage,
   onStreamMessage,
+  onReset,
   apiEndpoint,
   className,
   maxFileSize = 10 * 1024 * 1024, // 10MB default
@@ -76,6 +131,25 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
   placeholder = "Type your message...",
   welcomeMessage = "Hello! How can I help you today?",
 }) => {
+  const { userRole } = useUserRole();
+  const user = useUser();
+  const suggestedPrompts = useMemo(() => {
+    // Reuse the sidebar's navigation as the single source of truth for what the
+    // user can reach (role + module gated), then surface only the prompts whose
+    // route is actually in that navigation.
+    const navigation = getNavigationForRole(userRole, "/", user?.module);
+    const reachableRoutes = new Set<string>();
+    navigation.forEach((item) => {
+      reachableRoutes.add(item.to);
+      item.children?.forEach((child) => reachableRoutes.add(child.to));
+    });
+
+    return Object.entries(PROMPTS_BY_ROUTE)
+      .filter(([route]) => reachableRoutes.has(route))
+      .map(([, prompt]) => prompt)
+      .slice(0, MAX_SUGGESTED_PROMPTS);
+  }, [userRole, user?.module]);
+
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -83,6 +157,7 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
   const [attachedFiles, setAttachedFiles] = useState<FileAttachment[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [activeTools, setActiveTools] = useState<string[]>([]);
   // const [uploadProgress, setUploadProgress] = useState<Record<string, number>>(
   //   {}
   // );
@@ -91,7 +166,6 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
-  const token = useToken();
 
   // Use the AI chat hook for state management
   const {
@@ -106,16 +180,22 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
     },
   });
 
-  // Custom state management when using external onSendMessage/onStreamMessage
-  const [customMessages, setCustomMessages] = useState<Message[]>([
-    {
-      id: "1",
-      content: "Hello! I'm your AI assistant. How can I help you today?",
-      sender: "ai",
-      timestamp: new Date(),
-    },
+  // Custom state management when using external onSendMessage/onStreamMessage.
+  // Seed from the caller-provided welcomeMessage so the greeting is correct on
+  // first paint (e.g. role-scoped text) instead of flashing a hardcoded default.
+  const [customMessages, setCustomMessages] = useState<Message[]>(() => [
+    createWelcomeMessage(welcomeMessage),
   ]);
   const [customIsLoading, setCustomIsLoading] = useState(false);
+
+  useEffect(() => {
+    setCustomMessages((prev) => {
+      const hasOnlyAiMessage =
+        prev.length === 1 && prev[0]?.sender === "ai";
+
+      return hasOnlyAiMessage ? [createWelcomeMessage(welcomeMessage)] : prev;
+    });
+  }, [welcomeMessage]);
 
   // Use custom state when streaming or custom handler is provided, otherwise use hook state
   const useCustom = Boolean(onSendMessage || onStreamMessage);
@@ -125,25 +205,16 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
   const clearMessages = useCustom
     ? async () => {
         try {
-          await axios.post("https://dev.swiftpro.tech/reset", undefined, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
-          setCustomMessages([
-            {
-              id: "1",
-              content:
-                "Hello! I'm your AI assistant. How can I help you today?",
-              sender: "ai",
-              timestamp: new Date(),
-            },
-          ]);
+          if (onReset) await onReset();
+          setCustomMessages([createWelcomeMessage(welcomeMessage)]);
+          setActiveTools([]);
         } catch (error) {
           console.error("AI Chat reset failed:", error);
         }
       }
     : hookClearMessages;
+
+  const hasUserMessage = messages.some((m) => m.sender === "user");
 
   // Position classes mapping
   const positionClasses = useMemo(() => {
@@ -193,7 +264,15 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
     }
   }, [isOpen, isMinimized]);
 
-  // Typing indicator simulation
+  // Typing indicator simulation.
+  // Tradeoff: this effect intentionally mirrors `isLoading`/`showTypingIndicator`
+  // into `isTyping` state, which trips react-doctor/no-adjust-state-on-prop-change.
+  // The semantics ("show while loading, auto-hide after 3s even if still loading,
+  // hide when loading stops") need a timer-driven transition that can't be purely
+  // derived during render — every alternative we tried (Pattern A discriminator,
+  // ref+forceRender, child key-reset) ends up calling setState in another effect
+  // and tripping the same rule. Documented FP; revisit if the rule learns the
+  // timer-handoff pattern.
   useEffect(() => {
     if (isLoading && showTypingIndicator) {
       setIsTyping(true);
@@ -285,13 +364,33 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
     [handleFileSelect]
   );
 
-  const handleSendMessage = async () => {
-    if ((!inputValue.trim() && attachedFiles.length === 0) || isLoading) return;
+  const handleSendMessage = async (overrideText?: string) => {
+    const baseText = overrideText ?? inputValue;
+    if ((!baseText.trim() && attachedFiles.length === 0) || isLoading) return;
 
-    const messageContent = inputValue.trim();
-    // const filesToSend = [...attachedFiles];
-    setInputValue("");
+    const messageContent = baseText.trim();
+    const filesToSend = [...attachedFiles];
+    if (overrideText === undefined) setInputValue("");
     setAttachedFiles([]);
+
+    // Lightweight metadata shown on the user's message bubble; the raw bytes
+    // are encoded lazily below, only for the outbound request.
+    const attachmentMeta = filesToSend.map((f) => ({
+      name: f.name,
+      type: f.type,
+      size: f.size,
+    }));
+    const encodeAttachments = async (): Promise<ChatAttachment[] | undefined> =>
+      filesToSend.length
+        ? Promise.all(
+            filesToSend.map(async (f) => ({
+              name: f.name,
+              type: f.type,
+              size: f.size,
+              contentBase64: await fileToBase64(f.file),
+            }))
+          )
+        : undefined;
 
     try {
       if (onStreamMessage) {
@@ -301,6 +400,7 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
           content: messageContent,
           sender: "user" as const,
           timestamp: new Date(),
+          attachments: attachmentMeta.length ? attachmentMeta : undefined,
         };
 
         setCustomMessages((prev) => [...prev, userMessage]);
@@ -319,13 +419,25 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
         ]);
 
         try {
-          await onStreamMessage(messageContent, (partial) => {
-            setCustomMessages((prev) =>
-              prev.map((m) =>
-                m.id === aiMessageId ? { ...m, content: m.content + partial } : m
-              )
-            );
-          });
+          const attachments = await encodeAttachments();
+          await onStreamMessage(
+            messageContent,
+            attachments,
+            (partial) => {
+              setCustomMessages((prev) =>
+                prev.map((m) =>
+                  m.id === aiMessageId ? { ...m, content: m.content + partial } : m
+                )
+              );
+            },
+            (phase, tool) => {
+              setActiveTools((prev) =>
+                phase === "start"
+                  ? [...prev, tool]
+                  : prev.filter((t) => t !== tool)
+              );
+            }
+          );
         } catch (error) {
           console.error("Streaming error:", error);
           // Replace the empty placeholder with a clear error message
@@ -344,6 +456,7 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
           return;
         } finally {
           setCustomIsLoading(false);
+          setActiveTools([]);
         }
       } else if (onSendMessage) {
         // Add user message to custom state
@@ -352,6 +465,7 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
           content: messageContent,
           sender: "user" as const,
           timestamp: new Date(),
+          attachments: attachmentMeta.length ? attachmentMeta : undefined,
         };
 
         setCustomMessages((prev) => [...prev, userMessage]);
@@ -359,7 +473,8 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
 
         try {
           // Get AI response using custom handler
-          const aiResponse = await onSendMessage(messageContent);
+          const attachments = await encodeAttachments();
+          const aiResponse = await onSendMessage(messageContent, attachments);
 
           // Add AI response to custom state
           if (aiResponse) {
@@ -470,6 +585,7 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
         sender={message.sender}
         timestamp={message.timestamp}
         referencedMessage={message.referencedMessage}
+        attachments={message.attachments}
       />
     );
   }, []);
@@ -489,19 +605,23 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
             <TooltipTrigger asChild>
               <button
                 onClick={toggleChat}
-                className="relative group shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-500/20"
-                aria-label="Open AI Chat"
+                className="group relative flex items-center justify-center rounded-2xl focus:outline-none focus-visible:ring-4 focus-visible:ring-[#07004D]/25"
+                aria-label="Open SwiftPro Assistant"
               >
-                <div className="relative w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-700 rounded-full flex items-center justify-center hover:from-blue-700 hover:to-purple-800 transition-all duration-300">
-                  <MessageCircle className="h-8 w-8 text-white" />
-                </div>
+                <span className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-[#07004D] font-quicksand text-2xl font-bold text-white shadow-lg shadow-[#07004D]/30 transition-all duration-300 group-hover:-translate-y-0.5 group-hover:shadow-xl group-hover:shadow-[#07004D]/40">
+                  S
+                  <span className="absolute -right-1 -top-1 flex h-3.5 w-3.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-400 opacity-60"></span>
+                    <span className="relative inline-flex h-3.5 w-3.5 rounded-full bg-violet-500 ring-2 ring-white dark:ring-slate-900"></span>
+                  </span>
+                </span>
               </button>
             </TooltipTrigger>
             <TooltipContent
               side="left"
-              className="bg-gray-900 text-white border-gray-700"
+              className="border-[#07004D] bg-[#07004D] text-white"
             >
-              <p>Chat with AI Assistant</p>
+              <p>Ask the SwiftPro Assistant</p>
             </TooltipContent>
           </Tooltip>
         )}
@@ -524,20 +644,30 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
             onDrop={handleDrop}
           >
             {/* Chat Header */}
-            <CardHeader className="p-4 bg-gradient-to-r from-slate-800 to-slate-900 text-white rounded-t-lg border-b border-slate-700">
+            <CardHeader className="p-4 bg-[#07004D] text-white rounded-t-lg">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                    <Bot className="h-4 w-4 text-white" />
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 font-quicksand text-lg font-bold ring-1 ring-white/15">
+                    S
                   </div>
                   <div>
-                    <CardTitle className="text-base font-semibold">
-                      AI Assistant
+                    <CardTitle className="font-quicksand text-base font-semibold tracking-tight">
+                      SwiftPro Assistant
                     </CardTitle>
-                    {isTyping && (
-                      <p className="text-xs text-slate-300 flex items-center gap-1">
-                        <span className="w-1 h-1 bg-green-400 rounded-full animate-pulse"></span>
-                        Typing...
+                    {activeTools.length > 0 ? (
+                      <p className="flex items-center gap-1.5 text-xs text-violet-200">
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400"></span>
+                        Consulting {activeTools.join(", ")}…
+                      </p>
+                    ) : isTyping ? (
+                      <p className="flex items-center gap-1.5 text-xs text-violet-200">
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400"></span>
+                        Typing…
+                      </p>
+                    ) : (
+                      <p className="flex items-center gap-1.5 text-xs text-white/60">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                        Online
                       </p>
                     )}
                   </div>
@@ -641,24 +771,23 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
                   <ScrollArea className="flex-1 p-4">
                     <div className="space-y-6 h-[10rem]">
                       {messages
-                        .filter(message => !isLoading || message.content.trim() !== '')
+                        .filter(
+                          (message) =>
+                            !isLoading ||
+                            message.content.trim() !== '' ||
+                            (message.attachments?.length ?? 0) > 0
+                        )
                         .map(renderMessage)}
                       {isLoading && (
                         <div className="flex items-start gap-3 animate-in slide-in-from-bottom-2 duration-300">
-                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                            <Bot className="h-4 w-4 text-white" />
+                          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-[#07004D] font-quicksand text-sm font-bold text-white">
+                            S
                           </div>
-                          <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-md px-4 py-3 text-sm shadow-sm dark:bg-gray-800 dark:border-gray-700 relative overflow-hidden">
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-50 to-transparent dark:via-blue-900/20 animate-pulse"></div>
-                            <div className="relative flex items-center gap-2">
-                              <div className="flex space-x-1">
-                                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
-                              </div>
-                              <span className="text-gray-500 text-xs font-medium">
-                                AI is thinking...
-                              </span>
+                          <div className="rounded-2xl rounded-bl-md border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                            <div className="flex items-center gap-1.5">
+                              <span className="h-2 w-2 animate-bounce rounded-full bg-[#07004D]/50 [animation-delay:-0.3s] dark:bg-violet-400"></span>
+                              <span className="h-2 w-2 animate-bounce rounded-full bg-[#07004D]/50 [animation-delay:-0.15s] dark:bg-violet-400"></span>
+                              <span className="h-2 w-2 animate-bounce rounded-full bg-[#07004D]/50 dark:bg-violet-400"></span>
                             </div>
                           </div>
                         </div>
@@ -747,6 +876,30 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
                   </div>
                 )}
 
+                {/* Suggested prompts (before the first question) */}
+                {!hasUserMessage &&
+                  !isLoading &&
+                  attachedFiles.length === 0 &&
+                  suggestedPrompts.length > 0 && (
+                  <div className="px-4 pb-1 pt-3">
+                    <p className="mb-2 px-1 text-[11px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                      Try asking
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {suggestedPrompts.map((prompt) => (
+                        <button
+                          key={prompt}
+                          type="button"
+                          onClick={() => handleSendMessage(prompt)}
+                          className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-[#07004D] transition-colors hover:border-[#07004D]/30 hover:bg-[#07004D]/5 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                        >
+                          {prompt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Input Area */}
                 <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
                   {isDragOver && (
@@ -761,6 +914,25 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
                   )}
 
                   <div className="flex gap-3 items-end">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isLoading}
+                          aria-label="Attach a file"
+                          className="h-11 w-11 shrink-0 rounded-xl border border-slate-300 text-slate-500 hover:border-[#07004D]/40 hover:bg-[#07004D]/5 hover:text-[#07004D] dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-violet-300 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <Paperclip className="h-5 w-5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Attach a file</p>
+                      </TooltipContent>
+                    </Tooltip>
+
                     <div className="flex-1 relative">
                       <textarea
                         ref={inputRef}
@@ -770,7 +942,7 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
                         placeholder={placeholder}
                         disabled={isLoading}
                         rows={1}
-                        className="w-full min-h-[44px] max-h-[120px] resize-none pr-12 py-3 px-4 border border-gray-300 focus:border-blue-500 rounded-xl bg-white dark:bg-gray-800 dark:border-gray-600 dark:focus:border-blue-400 text-sm placeholder:text-gray-500 dark:placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50 overflow-y-auto transition-all duration-200"
+                        className="w-full min-h-[44px] max-h-[120px] resize-none pr-12 py-3 px-4 border border-slate-300 focus:border-[#07004D] rounded-xl bg-white dark:bg-slate-800 dark:border-slate-600 dark:focus:border-violet-400 text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#07004D]/20 dark:focus-visible:ring-violet-400/30 disabled:cursor-not-allowed disabled:opacity-50 overflow-y-auto transition-all duration-200"
                         style={{
                           height: "auto",
                           minHeight: "44px",
@@ -788,14 +960,14 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
-                          onClick={handleSendMessage}
+                          onClick={() => handleSendMessage()}
                           disabled={
                             (!inputValue.trim() &&
                               attachedFiles.length === 0) ||
                             isLoading
                           }
                           size="icon"
-                          className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 rounded-xl h-11 w-11 shadow-lg hover:shadow-xl transition-all duration-200 disabled:shadow-none"
+                          className="bg-[#07004D] hover:bg-[#0a0668] disabled:bg-slate-300 dark:disabled:bg-slate-700 rounded-xl h-11 w-11 shadow-md shadow-[#07004D]/20 hover:shadow-lg transition-all duration-200 disabled:shadow-none"
                         >
                           <Send className="h-5 w-5 text-white" />
                         </Button>
@@ -813,7 +985,11 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
                     type="file"
                     multiple
                     accept={allowedFileTypes.join(",")}
-                    onChange={(e) => handleFileSelect(e.target.files)}
+                    onChange={(e) => {
+                      handleFileSelect(e.target.files);
+                      // Reset so re-selecting the same file still fires onChange.
+                      e.target.value = "";
+                    }}
                     className="hidden"
                   />
                 </div>

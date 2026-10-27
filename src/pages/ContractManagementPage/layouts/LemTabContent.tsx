@@ -6,22 +6,36 @@ import { getRequest } from "@/lib/axiosInstance";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
 import SubmitLemDialog from "../components/SubmitLemDialog";
+import { formatCurrency, resolveCurrency } from "@/lib/utils";
+import { useUser } from "@/store/authSlice";
 
 type Props = {
   contractId: string;
+  currency?: string;
   isActive?: boolean;
+  actionsDisabled?: boolean;
+  /** BE-computed flag: is the logged-in user the contract's owner/manager.
+   *  Gates the manager (CM) approve/reject action on a LEM — a manager who
+   *  doesn't own the contract can view but not act on it. */
+  owner?: boolean;
 };
 
-const LemTabContent: React.FC<Props> = ({ contractId, isActive }) => {
-  const { isApprover, isManager, isVendor, isAdmin, isViewOnly } = useUserRole();
+const LemTabContent: React.FC<Props> = ({ contractId, currency, isActive, actionsDisabled, owner }) => {
+  const currencyCode = resolveCurrency(currency, useUser()?.currency);
+  const { isApprover, isManager, isVendor, isProjectManager, isAdmin, isViewOnly } =
+    useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   const [search, setSearch] = React.useState("");
   const [debounced, setDebounced] = React.useState("");
   
   const getBasePath = () => {
-    if (isVendor) return `/contract/vendor/contracts/${contractId}/lems`;
+    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/lems`;
     if (isApprover) return `/contract/approver/contracts/${contractId}/lems`;
-    if (isManager) return `/contract/manager/contracts/${contractId}/lems`;
-    if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/lems`;
+    // QA #298: company/super admins read via the manager (org-scoped) endpoint,
+    // like the main contract fetch. The /contract/user endpoint is
+    // participant-scoped and returns empty for admins.
+    if (isManager || isAdmin) return `/contract/manager/contracts/${contractId}/lems`;
+    if (isViewOnly) return `/contract/user/contracts/${contractId}/lems`;
     return `/contract/user/contracts/${contractId}/lems`; // Default fallback
   };
 
@@ -37,7 +51,8 @@ const LemTabContent: React.FC<Props> = ({ contractId, isActive }) => {
       "lem-list",
       contractId,
       debounced,
-      basePath
+      basePath,
+      currencyCode,
     ],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -51,14 +66,15 @@ const LemTabContent: React.FC<Props> = ({ contractId, isActive }) => {
       });
       
       const payload = (res as any)?.data?.data || (res as any)?.data;
-      const items = payload?.resp || payload?.lems || [];
+      const raw = payload?.resp ?? payload?.lems ?? [];
+      const items = Array.isArray(raw) ? raw : [];
       
       const rows: LemRow[] = items.map((it: any) => ({
         id: it?.lemId || it?._id || "",
         title: it?.title || "",
         amount:
           typeof it?.amount === "number"
-            ? `$${it.amount.toLocaleString()}`
+            ? formatCurrency(it.amount, "en-US", currencyCode)
             : it?.amount || "",
         submissionDate: it?.createdAt || it?.submissionDate || "",
         status: it?.status 
@@ -73,14 +89,15 @@ const LemTabContent: React.FC<Props> = ({ contractId, isActive }) => {
   return (
     <TabsContent value="lem" className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-slate-900">
+        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
           Labor, Equipment & Material Reports
         </h3>
-        {isVendor ? (
+        {isProjectManager ? (
           <SubmitLemDialog
             contractId={contractId}
+            currency={currencyCode}
             trigger={
-              <Button className="h-10 rounded-xl px-4">
+              <Button className="h-10 rounded-xl px-4" disabled={!!actionsDisabled}>
                 Submit LEM
               </Button>
             }
@@ -95,6 +112,8 @@ const LemTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         searchValue={search}
         onSearchChange={(v) => setSearch(v)}
         basePath={basePath}
+        currency={currencyCode}
+        owner={owner}
       />
     </TabsContent>
   );

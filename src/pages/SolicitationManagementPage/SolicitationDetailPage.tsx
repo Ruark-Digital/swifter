@@ -26,6 +26,7 @@ import {
   Share2,
 } from "lucide-react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { useGoBack } from "@/hooks/useGoBack";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getRequest, putRequest, deleteRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
@@ -45,7 +46,12 @@ import {
   getStatusLabel,
   getStatusColorClass,
 } from "@/lib/solicitationStatusUtils";
-import { formatDateTZ } from "@/lib/utils";
+import {
+  formatDateTZ,
+  formatQuestionDeadline,
+  formatWallClockWithZone,
+} from "@/lib/utils";
+import { formatEventType } from "@/lib/solicitationEventUtils";
 
 // Vendor proposal type definition
 type VendorProposal = {
@@ -119,11 +125,14 @@ type Category = {
   name: string;
 };
 
+// Matches the shape the BE returns (and the Edit dialog reads back), not the
+// form-state shape. Events are created in the "Create Event" wizard step.
 type SolicitationEvent = {
   _id: string;
-  name: string;
-  date: string;
-  description?: string;
+  eventType: string;
+  eventLocation?: string;
+  eventDate: string;
+  eventDescription?: string;
 };
 
 type SolicitationFile = {
@@ -141,6 +150,11 @@ export interface SolicitationVendor {
   _id: string;
   uploads: number;
   email: string;
+  /** BE receipt flag (QA #136): true once the vendor has received/opened the
+   *  invitation. Absent on older payloads — then we fall back to `status`. */
+  indicator?: boolean;
+  invitedAt?: string;
+  assignedAt?: string;
 }
 
 export interface ID {
@@ -184,6 +198,7 @@ export type Solicitation = {
   contact: string;
   vendorConfirmed: number;
   vendorDeclined: number;
+  datePublished?: string;
   createdAt: string;
   updatedAt: string;
   companyId: string;
@@ -465,9 +480,27 @@ export const SolicitationDetailPage = () => {
   const proposalStatusCounts =
     solicitationData?.data?.data?.proposalStatusCounts;
 
-  // Group-level data for evaluators (use API groups directly)
+  // Group-level data for evaluators. The API's group objects don't actually
+  // include `completedEvaluators`/`groupCompletionRate` (confirmed against a
+  // live response) — those render as `undefined` (React drops it silently),
+  // producing a misleading "N evaluators • completed" label with no count
+  // and no completion %. Derive both client-side from each evaluator's
+  // progress, using the same "progress === 100 = Completed" convention
+  // already used for the per-evaluator "Submitted" column below.
   const evaluatorGroups = useMemo(() => {
-    return evaluatorsData?.data?.data?.groups || [];
+    const groups = evaluatorsData?.data?.data?.groups || [];
+    return groups.map((group) => {
+      const evaluators = group.evaluators || [];
+      const completedEvaluators = evaluators.filter(
+        (e) => e.progress === 100,
+      ).length;
+      const totalEvaluators = group.totalEvaluators ?? evaluators.length;
+      const groupCompletionRate =
+        totalEvaluators > 0
+          ? (completedEvaluators / totalEvaluators) * 100
+          : 0;
+      return { ...group, completedEvaluators, groupCompletionRate };
+    });
   }, [evaluatorsData]);
 
   // Filter vendor proposals based on search query
@@ -497,9 +530,7 @@ export const SolicitationDetailPage = () => {
     });
   }, [evaluatorGroups, evaluatorSearchQuery]);
 
-  const handleBack = () => {
-    navigate(-1);
-  };
+  const handleBack = useGoBack("/dashboard/solicitation");
 
   // Show loading state
   if (isLoading) {
@@ -529,14 +560,38 @@ export const SolicitationDetailPage = () => {
     {
       accessorKey: "id.name",
       header: "Vendor",
-      cell: ({ row }) => (
-        <div className="flex flex-col">
-          <span className="font-medium">
-            {row.original.id?.name || row.original?.id?.invite?.email}
-          </span>
-          <span className="text-sm text-blue-500">{row.original.email}</span>
-        </div>
-      ),
+      cell: ({ row }) => {
+        // QA #136: receipt indicator. Prefer the BE `indicator` boolean (true
+        // once the vendor has received/opened the invitation). Fall back to the
+        // status heuristic on older payloads that don't include `indicator`:
+        // `invited`/`pending` = awaiting, anything else = engaged. Gray =
+        // awaiting, green = received.
+        const vendorStatus = String(row.original.status || "").toLowerCase();
+        const received =
+          typeof row.original.indicator === "boolean"
+            ? row.original.indicator
+            : vendorStatus !== "" &&
+              vendorStatus !== "invited" &&
+              vendorStatus !== "pending";
+        return (
+          <div className="flex items-center gap-2">
+            <span
+              data-testid="vendor-receipt-indicator"
+              aria-label={received ? "Invitation received" : "Awaiting receipt"}
+              title={received ? "Invitation received" : "Awaiting receipt"}
+              className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                received ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"
+              }`}
+            />
+            <div className="flex flex-col">
+              <span className="font-medium">
+                {row.original.id?.name || row.original?.id?.invite?.email}
+              </span>
+              <span className="text-sm text-blue-500">{row.original.email}</span>
+            </div>
+          </div>
+        );
+      },
     },
     {
       accessorKey: "status",
@@ -572,13 +627,13 @@ export const SolicitationDetailPage = () => {
     },
     {
       id: "actions",
-      header: "Actions",
+      header: () => <div className="text-left">Actions</div>,
       cell: ({ row }) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-start gap-2">
           {row.original.status !== "invited" && (
             <Button
               variant="link"
-              className="text-green-700"
+              className="text-green-700 px-0"
               onClick={() =>
                 navigate(
                   `/dashboard/solicitations/${id}/proposal-details/${row.original.id._id}`,
@@ -597,7 +652,7 @@ export const SolicitationDetailPage = () => {
               isCompanyAdmin) && (
               <Button
                 variant="link"
-                className=""
+                className="px-0"
                 onClick={() => setExtendOpen(true)}
                 disabled={
                   remindEvaluatorMutation.isPending ||
@@ -1164,6 +1219,69 @@ export const SolicitationDetailPage = () => {
               </div>
             </div>
 
+            {/* Events (e.g. Pre-bid Meeting) — shown to both PL and vendors so
+                everyone can see scheduled events like a compulsory site visit
+                (QA #22). */}
+            {Array.isArray(solicitation.events) &&
+              solicitation.events.length > 0 && (
+                <>
+                  <h5 className="text-lg font-semibold text-gray-900 dark:text-gray-200">
+                    Events
+                  </h5>
+                  <div className="space-y-4">
+                    {solicitation.events.map((event) => (
+                      <div
+                        key={event._id}
+                        className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3"
+                      >
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-medium text-gray-500 mb-1 block">
+                              Event
+                            </label>
+                            <p className="text-gray-900 dark:text-gray-200 font-medium">
+                              {formatEventType(event.eventType)}
+                            </p>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-500 mb-1 block">
+                              Location
+                            </label>
+                            <p className="text-gray-900 dark:text-gray-200 font-medium">
+                              {event.eventLocation || "N/A"}
+                            </p>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-500 mb-1 block">
+                              Date & Time
+                            </label>
+                            <p className="text-gray-900 dark:text-gray-200 font-medium">
+                              {event.eventDate
+                                ? formatWallClockWithZone(
+                                    event.eventDate,
+                                    "MMMM dd, yyyy hh:mm a",
+                                    solicitation.timezone,
+                                  )
+                                : "N/A"}
+                            </p>
+                          </div>
+                        </div>
+                        {event.eventDescription && (
+                          <div>
+                            <label className="text-sm font-medium text-gray-500 mb-1 block">
+                              Note
+                            </label>
+                            <p className="text-gray-700 dark:text-gray-200 leading-relaxed">
+                              {event.eventDescription}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
             {/* Timeline & Bid Details */}
             {!isVendor && (
               <>
@@ -1174,12 +1292,27 @@ export const SolicitationDetailPage = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="text-sm font-medium text-gray-500 mb-1 block">
+                        Published Date
+                      </label>
+                      <p className="text-gray-900 dark:text-gray-200 font-medium">
+                        {formatWallClockWithZone(
+                          // Show the actual publish date; fall back to
+                          // createdAt only when the solicitation has not been
+                          // published yet (no datePublished from the BE).
+                          solicitation.datePublished ?? solicitation.createdAt,
+                          "MMMM dd, yyyy hh:mm a",
+                          solicitation.timezone
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500 mb-1 block">
                         Submission Deadline
                       </label>
                       <p className="text-gray-900 dark:text-gray-200 font-medium">
-                        {formatDateTZ(
+                        {formatWallClockWithZone(
                           solicitation.submissionDeadline,
-                          "MMMM dd, yyyy KK:mm a",
+                          "MMMM dd, yyyy hh:mm a",
                           solicitation.timezone
                         )}
                       </p>
@@ -1192,28 +1325,14 @@ export const SolicitationDetailPage = () => {
                             Old Submission Deadline
                           </label>
                           <p className="text-gray-900 dark:text-gray-200 font-medium">
-                            {formatDateTZ(
+                            {formatWallClockWithZone(
                               solicitation.deadlineUpdate[0].submissionDeadline,
-                              "MMMM dd, yyyy KK:mm a",
+                              "MMMM dd, yyyy hh:mm a",
                               solicitation.timezone
                             )}
                           </p>
                         </div>
                       )}
-                    {solicitation.questionDeadline && (
-                      <div>
-                        <label className="text-sm font-medium text-gray-500 mb-1 block">
-                          Question Acceptance Deadline
-                        </label>
-                        <p className="text-gray-900 dark:text-gray-200 font-medium">
-                          {formatDateTZ(
-                            solicitation.questionDeadline,
-                            "MMMM dd, yyyy KK:mm a",
-                            solicitation.timezone
-                          )}
-                        </p>
-                      </div>
-                    )}
                     <div>
                       <label className="text-sm font-medium text-gray-500 mb-1 block">
                         Timezone
@@ -1222,6 +1341,20 @@ export const SolicitationDetailPage = () => {
                         {solicitation.timezone}
                       </p>
                     </div>
+                    {solicitation.questionDeadline && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500 mb-1 block">
+                          Question Acceptance Deadline
+                        </label>
+                        <p className="text-gray-900 dark:text-gray-200 font-medium">
+                          {formatWallClockWithZone(
+                            solicitation.questionDeadline,
+                            "MMMM dd, yyyy hh:mm a",
+                            solicitation.timezone
+                          )}
+                        </p>
+                      </div>
+                    )}
                     <div>
                       <label className="text-sm font-medium text-gray-500 mb-1 block">
                         Bid Intent
@@ -1238,9 +1371,9 @@ export const SolicitationDetailPage = () => {
                           Bid Intent Deadline
                         </label>
                         <p className="text-gray-900 dark:text-gray-200 font-medium">
-                          {formatDateTZ(
+                          {formatWallClockWithZone(
                             solicitation.bidIntentDeadline,
-                            "MMMM dd, yyyy KK:mm a",
+                            "MMMM dd, yyyy hh:mm a",
                             solicitation.timezone
                           )}
                         </p>
@@ -1408,7 +1541,7 @@ export const SolicitationDetailPage = () => {
                     Submission Deadline
                   </label>
                   <p className="text-gray-900 dark:text-gray-200 font-medium">
-                    {formatDateTZ(
+                    {formatWallClockWithZone(
                       solicitation.submissionDeadline,
                       "yyyy-MM-dd HH:mm",
                       solicitation.timezone
@@ -1424,7 +1557,7 @@ export const SolicitationDetailPage = () => {
                         Old Submission Deadline
                       </label>
                       <p className="text-gray-900 dark:text-gray-200 font-medium">
-                        {formatDateTZ(
+                        {formatWallClockWithZone(
                           solicitation.deadlineUpdate[0].submissionDeadline,
                           "yyyy-MM-dd HH:mm",
                           solicitation.timezone
@@ -1439,9 +1572,8 @@ export const SolicitationDetailPage = () => {
                       Questions Acceptance Deadline
                     </label>
                     <p className="text-gray-900 dark:text-gray-200 font-medium">
-                      {formatDateTZ(
+                      {formatQuestionDeadline(
                         solicitation.questionDeadline,
-                        "MMM d, yyyy hh:mm aaa",
                         solicitation.timezone
                       )}
                     </p>
@@ -1595,7 +1727,12 @@ export const SolicitationDetailPage = () => {
         )}
 
         <TabsContent value="questions">
-          <QuestionsTab solicitationStatus={solicitation?.status} />
+          <QuestionsTab
+            solicitationStatus={solicitation?.status}
+            isOwner={isOwner}
+            questionDeadline={solicitation?.questionDeadline}
+            timezone={solicitation?.timezone}
+          />
         </TabsContent>
 
         <TabsContent value="addendums">

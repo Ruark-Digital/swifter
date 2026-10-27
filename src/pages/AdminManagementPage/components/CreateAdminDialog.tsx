@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/layouts/FormInputs/TextInput";
 import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
 import { yupResolver } from "@hookform/resolvers/yup";
-import { useForge, Forger, Forge } from "@/lib/forge";
+import { useForge, Forger, Forge } from "@adexdsamson/forge";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
@@ -139,7 +139,6 @@ const CreateAdminDialog = () => {
           </DialogDescription>
         </DialogHeader>
         <Forge
-          // debug
           control={control}
           onSubmit={handleSubmit}
           className="space-y-4"

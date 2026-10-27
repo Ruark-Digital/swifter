@@ -1,5 +1,5 @@
 import React from 'react';
-import { Forge, Forger, useForge } from '@/lib/forge';
+import { Forge, Forger, useForge } from '@adexdsamson/forge';
 import { TextInput } from '@/components/layouts/FormInputs/TextInput';
 import { Button } from '@/components/ui/button';
 import { useMutation } from '@tanstack/react-query';

@@ -16,7 +16,7 @@ import { useMutation } from "@tanstack/react-query";
 import { putRequest, postRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
-import { useForge, Forge, Forger, useForgeValues } from "@/lib/forge";
+import { useForge, Forge, Forger } from "@adexdsamson/forge";
 import { useWatch } from "react-hook-form";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -48,6 +48,22 @@ const amendSubmissionSchema = yup.object({
 
 type AmendSubmissionFormData = yup.InferType<typeof amendSubmissionSchema>;
 
+function FileUploadElement() {
+  return (
+    <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+      <Upload className="h-6 w-6 text-blue-500 dark:text-blue-400 mb-4" />
+      <div className="text-center">
+        <p className="text-md font-medium text-gray-900 dark:text-gray-100 mb-2">
+          Drag & Drop or Click to choose file
+        </p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Supported formats: DOC, PDF, XLS, XLSX, ZIP, PNG, JPEG
+        </p>
+      </div>
+    </div>
+  );
+}
+
 const AmendSubmissionDialog: React.FC<AmendSubmissionDialogProps> = ({
   open,
   fileId,
@@ -60,7 +76,7 @@ const AmendSubmissionDialog: React.FC<AmendSubmissionDialogProps> = ({
   const toast = useToastHandler();
   
   // Initialize form with forge
-  const { control, reset, formState: { errors, isSubmitting } } = useForge<AmendSubmissionFormData>({
+  const forge = useForge<AmendSubmissionFormData>({
     resolver: yupResolver(amendSubmissionSchema),
     defaultValues: {
       action: "amend",
@@ -68,9 +84,7 @@ const AmendSubmissionDialog: React.FC<AmendSubmissionDialogProps> = ({
       files: [],
     },
   });
-  
-  // Get setValue function from useForgeValues
-  const { setValue } = useForgeValues({ control });
+  const { control, reset, setValue, formState: { errors, isSubmitting } } = forge;
   
   // Watch form values
   const selectedFiles = useWatch({ control, name: "files" });
@@ -191,20 +205,6 @@ const AmendSubmissionDialog: React.FC<AmendSubmissionDialogProps> = ({
   };
   
 
-
-  const FileUploadElement = () => (
-    <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-      <Upload className="h-6 w-6 text-blue-500 dark:text-blue-400 mb-4" />
-      <div className="text-center">
-        <p className="text-md font-medium text-gray-900 dark:text-gray-100 mb-2">
-          Drag & Drop or Click to choose file
-        </p>
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          Supported formats: DOC, PDF, XLS, XLSX, ZIP, PNG, JPEG
-        </p>
-      </div>
-    </div>
-  );
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>

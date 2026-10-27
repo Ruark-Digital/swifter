@@ -1,4 +1,5 @@
 import React from "react";
+import { resolveEnvFileUrl } from "@/config";
 import {
   Sheet,
   SheetTrigger,
@@ -11,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Share2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -20,17 +20,28 @@ import {
 } from "@/components/ui/dropdown-menu";
 import MessageComposer from "@/pages/SolicitationManagementPage/components/MessageComposer";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useToastHandler } from "@/hooks/useToaster";
 import { DocumentItem, type DocType } from "./DocumentItem";
 import { formatFileSize, getFileIcon, getSimpleFileExtension } from "@/lib/fileUtils";
 import { formatDate } from "date-fns";
+import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { approverApi } from "../api/approverApi";
 import type { ApprovalActionDTO } from "../api/approverApi";
+import { formatCompactCurrency, resolveCurrency } from "@/lib/utils";
+import { useUser } from "@/store/authSlice";
 
 type Props = {
   trigger: React.ReactNode;
   contractId: string;
   changeId: string;
+  /** Role + contract prefixed entity path ending in `/changes`, e.g.
+   *  `/contract/approver/msa-contracts/{id}/changes`. When provided (MSA
+   *  surface) URLs are built off it; otherwise we fall back to approverApi
+   *  which targets the standalone-contract endpoints. */
+  basePath?: string;
+  /** Contract-level currency; falls back to USD when the API omits it. */
+  currency?: string;
 };
 
 const LabelRow = ({
@@ -43,10 +54,12 @@ const LabelRow = ({
   highlight?: boolean;
 }) => (
   <div className="space-y-2 py-3">
-    <span className="text-sm text-slate-500 block">{label}</span>
+    <span className="text-sm text-slate-500 dark:text-slate-400 block">{label}</span>
     <span
       className={`text-sm block ${
-        highlight ? "font-semibold text-slate-900" : "text-slate-800"
+        highlight
+          ? "font-semibold text-slate-900 dark:text-slate-100"
+          : "text-slate-800 dark:text-slate-200"
       }`}
     >
       {value}
@@ -58,19 +71,38 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
   trigger,
   contractId,
   changeId,
+  basePath,
+  currency,
 }) => {
+  const currencyCode = resolveCurrency(currency, useUser()?.currency);
   const toast = useToastHandler();
   const qc = useQueryClient();
   const [open, setOpen] = React.useState(false);
 
-  const changeDetailQueryKey = React.useMemo(
-    () => ["approver-change-detail", contractId, changeId],
-    [contractId, changeId],
-  );
+  // basePath already ends in `/changes` and is role + contract prefixed.
+  const urls = React.useMemo(() => {
+    if (!basePath) return null;
+    return {
+      detail: `${basePath}/${changeId}`,
+      comment: `${basePath}/${changeId}/comment`,
+      approve: `${basePath}/${changeId}/approve`,
+    };
+  }, [basePath, changeId]);
+
+  const changeDetailQueryKey = useUserQueryKey([
+    "approver-change-detail",
+    basePath ?? "contract",
+    contractId,
+    changeId,
+  ]);
 
   const { data: detailRes, isLoading: isDetailLoading } = useQuery({
     queryKey: changeDetailQueryKey,
     queryFn: async () => {
+      if (urls) {
+        const res = await getRequest({ url: urls.detail });
+        return res.data as { message?: string; data?: any };
+      }
       const res = await approverApi.getChangeDetail(contractId, changeId);
       return res;
     },
@@ -116,27 +148,33 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
   }, [files]);
 
   const handlePreview = React.useCallback((d: DocType) => {
-    window.open(d.url || "#", "_blank");
+    window.open(d.url ? resolveEnvFileUrl(d.url) : "#", "_blank");
   }, []);
 
   const handleDownload = React.useCallback((d: DocType) => {
     if (!d.url) return;
     const link = document.createElement("a");
-    link.href = d.url;
+    link.href = resolveEnvFileUrl(d.url);
     link.download = d.name;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   }, []);
 
-  const commentsQueryKey = React.useMemo(
-    () => ["approver-change-comments", contractId, changeId],
-    [contractId, changeId],
-  );
+  const commentsQueryKey = useUserQueryKey([
+    "approver-change-comments",
+    basePath ?? "contract",
+    contractId,
+    changeId,
+  ]);
 
   const { data: commentsRes, isLoading: isCommentsLoading } = useQuery({
     queryKey: commentsQueryKey,
     queryFn: async () => {
+      if (urls) {
+        const res = await getRequest({ url: urls.comment });
+        return res.data as { message?: string; data?: any };
+      }
       const res = await approverApi.listChangeComments(contractId, changeId);
       return res;
     },
@@ -151,6 +189,10 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
     mutationKey: ["approver-add-change-comment", contractId, changeId],
     mutationFn: async (content: string) => {
       if (!content.trim()) return;
+      if (urls) {
+        await postRequest({ url: urls.comment, payload: { content } });
+        return;
+      }
       await approverApi.addChangeComment(contractId, changeId, { content });
     },
     onSuccess: () => {
@@ -165,6 +207,10 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
     mutationKey: ["approver-approve-change", contractId, changeId],
     mutationFn: async (action: "approved" | "rejected") => {
       const payload: ApprovalActionDTO = { action, comment: "" };
+      if (urls) {
+        const res = await postRequest({ url: urls.approve, payload });
+        return res.data as { message?: string; data?: any };
+      }
       const res = await approverApi.approveChange(contractId, changeId, payload);
       return res;
     },
@@ -186,7 +232,7 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
 
   const isPending = approverStatus === "pending";
   const formattedValue =
-    value != null ? `$${(Number(value) / 1000000).toFixed(2)}M` : null;
+    value != null ? formatCompactCurrency(Number(value), currencyCode) : null;
   const showTimeFields =
     impactType === "time" || impactType === "time & cost" || impactType === "time_and_cost";
   const showCostField =
@@ -201,15 +247,10 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
       >
         <div className="space-y-6" data-testid="approver-change-details-sheet">
           <SheetHeader>
-            <div className="flex items-center justify-between">
-              <SheetTitle>Amendment Details</SheetTitle>
-              <Button variant="outline" size="sm">
-                <Share2 className="mr-2 h-4 w-4" /> Export
-              </Button>
-            </div>
+            <SheetTitle>Change Details</SheetTitle>
           </SheetHeader>
 
-          <h3 className="text-lg font-semibold text-slate-900">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
             {isDetailLoading ? "" : title}
           </h3>
 
@@ -232,8 +273,8 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
             <TabsContent value="overview" className="space-y-4">
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <LabelRow label="Amendment Name" value={isDetailLoading ? "" : title} />
-                  <LabelRow label="Amendment ID" value={isDetailLoading ? "" : (detail?.changeId ?? "-")} />
+                  <LabelRow label="Change Name" value={isDetailLoading ? "" : title} />
+                  <LabelRow label="Change ID" value={isDetailLoading ? "" : (detail?.changeId ?? "-")} />
                 </div>
                 <div>
                   <LabelRow label="Impact Type" value={isDetailLoading ? "" : (changeTypeRaw ? changeTypeRaw.charAt(0).toUpperCase() + changeTypeRaw.slice(1) : "-")} />
@@ -280,10 +321,10 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
                       <Badge
                         className={
                           status === "approved"
-                            ? "bg-green-100 text-green-800"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
                             : status === "rejected"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-yellow-100 text-yellow-800"
+                              ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                              : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
                         }
                       >
                         {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -296,14 +337,14 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
               </div>
 
               <div className="space-y-2">
-                <span className="text-sm text-slate-500">Description</span>
-                <p className="text-sm text-slate-800 font-medium leading-7">
+                <span className="text-sm text-slate-500 dark:text-slate-400">Description</span>
+                <p className="text-sm text-slate-800 dark:text-slate-200 font-medium leading-7">
                   {isDetailLoading ? "" : description || "—"}
                 </p>
               </div>
 
               <div className="space-y-5">
-                <span className="text-sm font-semibold text-slate-900">
+                <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                   Attached Documents
                 </span>
                 <div className="grid grid-cols-1 gap-3">
@@ -317,7 +358,7 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
                       />
                     ))
                   ) : (
-                    <p className="text-sm text-slate-500">No documents attached.</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">No documents attached.</p>
                   )}
                 </div>
               </div>
@@ -341,25 +382,25 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
 
               <Separator />
 
-              <div className="rounded-xl border border-slate-200 p-4">
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4">
                 {isCommentsLoading ? (
-                  <p className="text-sm text-slate-700">Loading comments...</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-300">Loading comments...</p>
                 ) : Array.isArray(comments) && comments.length > 0 ? (
                   <div className="space-y-4">
                     {comments.map((c: any) => (
                       <div key={c?._id} className="space-y-1">
-                        <div className="text-xs text-slate-500">
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
                           {(c?.user?.name || c?.user?.email || "").toString()}
                         </div>
                         <div
-                          className="text-sm text-slate-700 prose prose-sm max-w-none"
+                          className="text-sm text-slate-700 dark:text-slate-200 prose prose-sm dark:prose-invert max-w-none"
                           dangerouslySetInnerHTML={{ __html: c?.content || "" }}
                         />
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-700">No comments yet.</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-300">No comments yet.</p>
                 )}
               </div>
 
@@ -368,11 +409,10 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
                   mutateAddComment(content);
                 }}
                 isLoading={isAddingComment}
-                replyToUser={{ name: "Zenith Solution" }}
-                currentUser={{ name: "You" }}
-                sendType="reply"
+                sendType={null}
                 isNewChat={false}
                 onSendTypeChange={() => {}}
+                sendLabel="Send"
               />
             </TabsContent>
           </Tabs>

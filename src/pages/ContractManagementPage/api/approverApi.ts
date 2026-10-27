@@ -159,7 +159,7 @@ export const createApproverApi = (
   },
   getChangeStats: async (contractId: string) => {
     const res = await client.get({
-      url: `/contract/approver/contracts/${contractId}/change/stats`,
+      url: `/contract/approver/contracts/${contractId}/changes/stats`,
     });
     return res.data as { message?: string; data?: ContractChangeStatsDTO };
   },
@@ -168,7 +168,7 @@ export const createApproverApi = (
     query?: { title?: string; type?: string; page?: number; limit?: number },
   ) => {
     const res = await client.get({
-      url: `/contract/approver/contracts/${contractId}/change`,
+      url: `/contract/approver/contracts/${contractId}/changes`,
       config: query ? { params: query } : undefined,
     });
     return res as ApiResponse<{
@@ -178,13 +178,13 @@ export const createApproverApi = (
   },
   getChangeDetail: async (contractId: string, changeId: string) => {
     const res = await client.get({
-      url: `/contract/approver/contracts/${contractId}/change/${changeId}`,
+      url: `/contract/approver/contracts/${contractId}/changes/${changeId}`,
     });
     return res.data as { message?: string; data?: ContractChangeDTO };
   },
   listChangeComments: async (contractId: string, changeId: string) => {
     const res = await client.get({
-      url: `/contract/approver/contracts/${contractId}/change/${changeId}/comment`,
+      url: `/contract/approver/contracts/${contractId}/changes/${changeId}/comment`,
     });
     return res.data as {
       message?: string;
@@ -197,7 +197,7 @@ export const createApproverApi = (
     payload: ContractChangeCommentDTO,
   ) => {
     const res = await client.post({
-      url: `/contract/approver/contracts/${contractId}/change/${changeId}/comment`,
+      url: `/contract/approver/contracts/${contractId}/changes/${changeId}/comment`,
       payload,
     });
     return res.data as { message?: string; data?: ContractCommentDTO };
@@ -208,14 +208,14 @@ export const createApproverApi = (
     payload: ContractChangeReplyDTO,
   ) => {
     const res = await client.post({
-      url: `/contract/approver/contracts/change/${changeId}/comment/${commentId}/reply`,
+      url: `/contract/approver/contracts/changes/${changeId}/comment/${commentId}/reply`,
       payload,
     });
     return res.data as { message?: string; data?: ContractCommentDTO };
   },
   getChangeApproveStatus: async (contractId: string, changeId: string) => {
     const res = await client.get({
-      url: `/contract/approver/contracts/${contractId}/change/${changeId}/approve/status`,
+      url: `/contract/approver/contracts/${contractId}/changes/${changeId}/approve/status`,
     });
     return res.data as { message?: string; data?: { status?: boolean } };
   },
@@ -225,7 +225,7 @@ export const createApproverApi = (
     payload: ApprovalActionDTO,
   ) => {
     const res = await client.post({
-      url: `/contract/approver/contracts/${contractId}/change/${changeId}/approve`,
+      url: `/contract/approver/contracts/${contractId}/changes/${changeId}/approve`,
       payload,
     });
     return res.data as { message?: string; data?: ContractChangeDTO };
@@ -352,12 +352,13 @@ export const createApproverApi = (
     return res.data as { message?: string; data?: ContractCommentDTO };
   },
   replyRfiComment: async (
+    contractId: string,
     rfiId: string,
     commentId: string,
     payload: ContractChangeReplyDTO,
   ) => {
     const res = await client.post({
-      url: `/contract/approver/contracts/rfi/${rfiId}/comment/${commentId}/reply`,
+      url: `/contract/approver/contracts/${contractId}/rfis/${rfiId}/comment/${commentId}/reply`,
       payload,
     });
     return res.data as { message?: string; data?: ContractCommentDTO };
@@ -414,7 +415,7 @@ export const createApproverApi = (
   },
   listClaims: async (contractId: string, query?: ManagerListClaimsQuery) => {
     const res = await client.get({
-      url: `/contract/approver/contracts/${contractId}/claim`,
+      url: `/contract/approver/contracts/${contractId}/claims`,
       config: query ? { params: query } : undefined,
     });
     return res.data as {
@@ -444,6 +445,41 @@ export const createApproverApi = (
       payload,
     });
     return res.data as { message?: string; data?: ContractClaimDTO };
+  },
+
+  listClaimComments: async (contractId: string, claimId: string) => {
+    const res = await client.get({
+      url: `/contract/approver/contracts/${contractId}/claims/${claimId}/comments`,
+    });
+    return res.data as {
+      message?: string;
+      data?: { data?: ContractCommentDTO[]; page?: number; limit?: number };
+    };
+  },
+
+  addClaimComment: async (
+    contractId: string,
+    claimId: string,
+    payload: ContractChangeCommentDTO,
+  ) => {
+    const res = await client.post({
+      url: `/contract/approver/contracts/${contractId}/claims/${claimId}/comments`,
+      payload,
+    });
+    return res.data as { message?: string; data?: ContractCommentDTO };
+  },
+
+  replyClaimComment: async (
+    contractId: string,
+    claimId: string,
+    commentId: string,
+    payload: ContractChangeReplyDTO,
+  ) => {
+    const res = await client.post({
+      url: `/contract/approver/contracts/${contractId}/claims/${claimId}/comments/${commentId}/reply`,
+      payload,
+    });
+    return res.data as { message?: string; data?: ContractCommentDTO };
   },
 
   getAmendmentStats: async (contractId: string) => {

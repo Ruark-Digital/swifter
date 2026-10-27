@@ -1,47 +1,74 @@
+import { Timer } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { AnalyticsEmptyState } from "./AnalyticsEmptyState";
 
 type Props = {
   values?: { draft: number; review: number; approval: number; execution: number };
   bottleneck?: { stage: string; days: number; reason: string };
+  selectedRange?: string;
+  onRangeChange?: (value: string) => void;
 };
 
-export const CycleTimeCard: React.FC<Props> = ({ values, bottleneck }) => {
-  const v = values || { draft: 5, review: 8, approval: 12, execution: 6 };
-  const max = Math.max(...Object.values(v), 12);
-  const pct = (x: number) => Math.round((x / max) * 100);
-
-  const Row = ({ label, days }: { label: string; days: number }) => (
+function Row({
+  label,
+  days,
+  max,
+}: {
+  label: string;
+  days: number;
+  max: number;
+}) {
+  const widthPct = Math.round((days / max) * 100);
+  return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-[#030712]">{label}</p>
-        <p className="text-sm font-semibold text-[#030712]">{days} days</p>
+        <p className="text-sm font-semibold text-[#030712] dark:text-slate-100">{label}</p>
+        <p className="text-sm font-semibold text-[#030712] dark:text-slate-100">{days} days</p>
       </div>
-      <div className="w-full h-3 bg-gray-200 rounded-full">
+      <div className="w-full h-3 bg-gray-200 dark:bg-slate-800 rounded-full">
         <div
           className="h-3 bg-blue-600 rounded-full"
-          style={{ width: `${pct(days)}%` }}
+          style={{ width: `${widthPct}%` }}
         />
       </div>
     </div>
   );
+}
+
+export const CycleTimeCard: React.FC<Props> = ({
+  values,
+  bottleneck,
+  selectedRange = "ytd",
+  onRangeChange,
+}) => {
+  const v = values || { draft: 0, review: 0, approval: 0, execution: 0 };
+  // Every stage at zero means the API returned nothing to chart.
+  const hasData = Object.values(v).some((days) => days > 0);
+  const max = Math.max(...Object.values(v), 1);
 
   return (
-    <Card className="rounded-2xl border border-[#E5E7EB]">
+    <Card className="rounded-2xl border border-[#E5E7EB] dark:border-slate-800">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-[16px] font-semibold text-[#0F0F0F]">
+          <CardTitle className="text-[16px] font-semibold text-[#0F0F0F] dark:text-slate-100">
             Average Cycle Time per Stage
           </CardTitle>
         </div>
-        <Tabs value="ytd" className="w-full">
-          <TabsList className="bg-transparent p-0 gap-2">
+        <Tabs
+          value={selectedRange}
+          onValueChange={(value) => onRangeChange?.(value)}
+          className="w-full"
+        >
+          {/* Horizontal scroll on overflow; `!flex-none shrink-0` defeats
+              shadcn TabsTrigger's baked-in `flex-1` so pills don't stretch. */}
+          <TabsList className="bg-transparent p-0 gap-2 flex overflow-x-auto h-auto w-full justify-start">
             <TabsTrigger
               value="ytd"
               className={cn(
-                "rounded-md px-3 py-2 text-sm font-semibold",
-                "bg-[#F0F0F0] text-[#2A4467]"
+                "!flex-none shrink-0 rounded-md px-3 py-2 text-sm font-semibold",
+                "text-[#667085] dark:text-slate-400 data-[state=active]:bg-[#F0F0F0] data-[state=active]:text-[#2A4467] data-[state=active]:dark:bg-slate-800 data-[state=active]:dark:text-slate-100"
               )}
             >
               YTD
@@ -50,7 +77,7 @@ export const CycleTimeCard: React.FC<Props> = ({ values, bottleneck }) => {
               <TabsTrigger
                 key={t}
                 value={t.replace(/\s+/g, "")}
-                className="rounded-md px-3 py-2 text-sm font-semibold text-[#667085]"
+                className="!flex-none shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-[#667085] dark:text-slate-400 data-[state=active]:bg-[#F0F0F0] data-[state=active]:text-[#2A4467] data-[state=active]:dark:bg-slate-800 data-[state=active]:dark:text-slate-100"
               >
                 {t}
               </TabsTrigger>
@@ -59,14 +86,24 @@ export const CycleTimeCard: React.FC<Props> = ({ values, bottleneck }) => {
         </Tabs>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Row label="Draft" days={v.draft} />
-        <Row label="Review" days={v.review} />
-        <Row label="Approval" days={v.approval} />
-        <Row label="Execution" days={v.execution} />
+        {!hasData ? (
+          <AnalyticsEmptyState
+            icon={Timer}
+            title="No cycle time data yet"
+            description="Average time per contract stage will appear here once contracts move through the workflow."
+          />
+        ) : (
+          <>
+            <Row label="Draft" days={v.draft} max={max} />
+            <Row label="Review" days={v.review} max={max} />
+            <Row label="Approval" days={v.approval} max={max} />
+            <Row label="Execution" days={v.execution} max={max} />
+          </>
+        )}
 
         {(bottleneck?.stage || bottleneck?.reason) && (
-          <div className="rounded-md bg-[#FEFCE8] border border-[#FDE68A] p-3">
-            <p className="text-[#854D0E] text-sm">
+          <div className="rounded-md bg-[#FEFCE8] dark:bg-yellow-900/30 border border-[#FDE68A] dark:border-yellow-900/50 p-3">
+            <p className="text-[#854D0E] dark:text-yellow-200 text-sm">
               <span className="font-bold">Bottleneck Alert:</span>{" "}
               {bottleneck?.stage ? `${bottleneck.stage} stage` : "Stage"}{" "}
               {typeof bottleneck?.days === "number"

@@ -6,10 +6,9 @@ import {
   endOfDay,
   subDays,
   differenceInDays,
-  toDate,
 } from "date-fns";
 import { useState, useMemo, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import CreateEvaluationDialog from "./components/CreateEvaluationDialog";
 import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -53,7 +52,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDateTZ } from "@/lib/utils";
+import { formatDateTZ, daysUntilCalendar } from "@/lib/utils";
 import { useUser } from "@/store/authSlice";
 
 // Evaluation type definition
@@ -106,16 +105,12 @@ const safeFormatDate = (
   return v;
 };
 
-// Helper function to calculate days left (negative values indicate overdue)
-const calculateDaysLeft = (deadline: string): number => {
-  if (!deadline) return 0;
-
-  const deadlineDate = toDate(deadline);
-  if (isNaN(deadlineDate.getTime())) return 0;
-
-  const today = new Date();
-  return differenceInDays(deadlineDate, today);
-};
+// Helper function to calculate days left (negative values indicate overdue).
+// Uses calendar days, not full-24h periods: a deadline on the 30th while today
+// is the 28th is 2 days left, not 1 (differenceInDays truncates the partial
+// day). QA #120/#30/#39.
+const calculateDaysLeft = (deadline: string): number =>
+  daysUntilCalendar(deadline) ?? 0;
 
 // Transform API data to component format
 const transformEvaluationData = (
@@ -531,7 +526,13 @@ export const EvaluationManagementPage = () => {
       header: "Solicitation Name",
       cell: ({ row }) => (
         <div className="flex flex-col">
-          <span className="font-medium">{row.original.name}</span>
+          <Link
+            to={`/dashboard/evaluation/${row.original.id}`}
+            title={row.original.name}
+            className="font-medium underline-offset-2 hover:underline"
+          >
+            {row.original.name}
+          </Link>
           <span className="text-sm text-gray-500 dark:text-gray-400">
             {row.original.solId} • {row.original.type}
           </span>
@@ -671,9 +672,15 @@ export const EvaluationManagementPage = () => {
       header: "Solicitation Name",
       cell: ({ row }) => (
         <div className="flex flex-col">
-          <span className="font-medium">{row.original.name}</span>
+          <Link
+            to={`/dashboard/evaluation/${row.original.id}`}
+            title={row.original.name}
+            className="font-medium underline-offset-2 hover:underline"
+          >
+            {row.original.name}
+          </Link>
           <span className="text-sm text-gray-500 dark:text-gray-400">
-            {row.original.solicitationId} • {row.original.type}
+            {row.original.solId} • {row.original.type}
           </span>
         </div>
       ),
@@ -844,21 +851,21 @@ export const EvaluationManagementPage = () => {
   ];
 
   return (
-    <div className="p-6 min-h-full">
+    <div className="p-4 sm:p-6 min-h-full overflow-x-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
+      <div className="flex items-center justify-between gap-3 mb-6 sm:mb-8">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold dark:text-gray-100 text-gray-800 mb-1">
             Evaluations
           </h1>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3">
           {isProcurement && <CreateEvaluationDialog />}
         </div>
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
         <StatCard
           title="All Evaluations"
           value={evaluationStats.allEvaluations ?? 0}
@@ -902,7 +909,7 @@ export const EvaluationManagementPage = () => {
         onValueChange={handleTabChange}
         className="w-full bg-transparent"
       >
-        <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 !bg-transparent p-0 w-full justify-start">
+        <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 !bg-transparent p-0 w-full justify-start overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {(isProcurement || isCompanyAdmin) && (
             <TabsTrigger
               value="all_evaluations"
@@ -960,6 +967,7 @@ export const EvaluationManagementPage = () => {
                 columns={columns}
                 options={{
                   disableSelection: true,
+                  mobileCards: true,
                   isLoading: isEvaluationsLoading,
                   totalCounts: evaluationsResponse?.data?.total || 0,
                   manualPagination: true,
@@ -1000,6 +1008,7 @@ export const EvaluationManagementPage = () => {
               columns={myEvaluationColumns as any}
               options={{
                 disableSelection: true,
+                mobileCards: true,
                 isLoading: isMyEvaluationsLoading,
                 totalCounts: myEvaluationsResponse?.data?.total || 0,
                 manualPagination: true,
@@ -1040,6 +1049,7 @@ export const EvaluationManagementPage = () => {
               columns={assignedEvaluationColumns}
               options={{
                 disableSelection: true,
+                mobileCards: true,
                 isLoading: isAssignedEvaluationsLoading,
                 totalCounts: 0,
                 manualPagination: true,
@@ -1171,8 +1181,8 @@ const Header = ({
 }: HeaderProps) => {
   return (
     <div className="flex items-center w-full justify-between border-b border-[#E9E9EB] dark:border-slate-600 p-3 pt-0">
-      <div className="flex items-center justify-between w-full">
-        <div className="flex items-center gap-6">
+      <div className="flex flex-col gap-3 w-full sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 w-full sm:w-auto sm:flex-row sm:items-center sm:gap-6">
           <div className="flex items-center gap-2">
             <h2
               className="text-base font-semibold text-gray-600 dark:text-gray-400"
@@ -1234,6 +1244,10 @@ const Header = ({
               showIcon: true,
               options: [
                 {
+                  label: "All",
+                  value: "all",
+                },
+                {
                   label: "Active",
                   value: "active",
                 },
@@ -1260,7 +1274,7 @@ const Header = ({
             if (filterTitle === "Date") {
               onDateFilterChange(value);
             } else if (filterTitle === "Status") {
-              onStatusFilterChange(value);
+              onStatusFilterChange(value === "all" ? "" : value);
             }
           }}
           selectedValues={{

@@ -5,36 +5,67 @@ import { Share2 } from "lucide-react";
 import DeliverablesStatsCards from "../components/DeliverablesStatsCards";
 import DeliverablesTable, {
   DeliverableRow,
+  KPIDetail,
 } from "../components/DeliverablesTable";
 import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
 import { useParams } from "react-router-dom";
 import { useUserRole } from "@/hooks/useUserRole";
 import type { DeliverablesStats } from "../components/DeliverablesStatsCards";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 const DeliverablesTabContent: React.FC = () => {
   const { id: contractId } = useParams<{ id: string }>();
-  const { isApprover, isVendor, isManager, isAdmin, isViewOnly } = useUserRole();
+  const {
+    isApprover,
+    isVendor,
+    isProjectManager,
+    isManager,
+    isCompanyAdmin,
+    isSuperAdmin,
+    isViewOnly,
+  } = useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
+  const isCompanyAdminLike = isCompanyAdmin || isSuperAdmin;
+
+  const normalizeKpi = React.useCallback((value: unknown): KPIDetail => {
+    if (typeof value === "string") {
+      return { kpi: 0, kpiDays: 0, kpiText: value, kpiStatus: "none" };
+    }
+    const v = (value ?? {}) as any;
+    const kpiText =
+      typeof v?.kpiText === "string"
+        ? v.kpiText
+        : typeof v?.kpi === "string"
+          ? v.kpi
+          : "-";
+    return {
+      kpi: Number(v?.kpi ?? 0),
+      kpiDays: Number(v?.kpiDays ?? 0),
+      kpiText,
+      kpiStatus: typeof v?.kpiStatus === "string" ? v.kpiStatus : "none",
+    };
+  }, []);
 
   const getBasePath = () => {
-    if (isVendor) return `/contract/vendor/contracts/${contractId}/deliverables`;
+    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/deliverables`;
     if (isApprover) return `/contract/approver/contracts/${contractId}/deliverables`;
-    if (isManager) return `/contract/manager/contracts/${contractId}/deliverables`;
-    if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/deliverables`;
-    return `/contract/user/contracts/${contractId}/deliverables`; // Default fallback
+    if (isManager || isCompanyAdminLike)
+      return `/contract/manager/contracts/${contractId}/deliverables`;
+    if (isViewOnly) return `/contract/user/contracts/${contractId}/deliverables`;
+    return `/contract/user/contracts/${contractId}/deliverables`;
   };
 
   const basePath = getBasePath();
+
+  const listQueryKey = ["deliverables", contractId, basePath] as const;
+  const statsQueryKey = ["deliverables-stats", contractId, basePath] as const;
 
   const {
     data: listRes,
     isLoading: listLoading,
   } = useQuery({
-    queryKey: [
-      "deliverables",
-      contractId,
-      basePath
-    ],
+    queryKey: listQueryKey,
     queryFn: async () => {
       const res = await getRequest({
         url: basePath,
@@ -49,11 +80,7 @@ const DeliverablesTabContent: React.FC = () => {
     data: statsRes,
     isLoading: statsLoading,
   } = useQuery({
-    queryKey: [
-      "deliverables-stats",
-      contractId,
-      basePath
-    ],
+    queryKey: statsQueryKey,
     queryFn: async () => {
       const res = await getRequest({
         url: `${basePath}/stats`,
@@ -65,7 +92,8 @@ const DeliverablesTabContent: React.FC = () => {
   });
 
   const rows: DeliverableRow[] = React.useMemo(() => {
-    const items: any[] = listRes?.data?.data || listRes?.data || [];
+    const raw = listRes?.data?.data ?? listRes?.data ?? [];
+    const items: any[] = Array.isArray(raw) ? raw : [];
     return items.map((it) => ({
       id: it?.deliverableId ?? "-",
       title: it?.title ?? "-",
@@ -77,17 +105,23 @@ const DeliverablesTabContent: React.FC = () => {
           : it?.submissionStatus === "late"
           ? "Late"
           : "Pending") as DeliverableRow["submissionStatus"],
-      kpi: it?.kpi?.kpiText ?? it?.kpi ?? "-",
+      kpi: normalizeKpi(it?.kpi),
       status:
         (it?.status === "approved"
           ? "Approved"
           : it?.status === "rejected"
-          ? "Rejected"
-          : it?.status === "pending"
-            ? "Pending"
-            : "Under Review") as DeliverableRow["status"],
+            ? "Rejected"
+            : it?.status === "under_review"
+              ? "Under Review"
+              : it?.status === "late"
+                ? "Late"
+                : it?.status === "pending"
+                  ? "Pending"
+                  : it?.submissionStatus === "submitted"
+                    ? "Under Review"
+                    : "Pending") as DeliverableRow["status"],
     }));
-  }, [listRes]);
+  }, [listRes, normalizeKpi]);
 
   const stats: DeliverablesStats = React.useMemo(() => {
     const data = statsRes?.data?.data || statsRes?.data;
@@ -112,11 +146,13 @@ const DeliverablesTabContent: React.FC = () => {
 
   return (
     <TabsContent value="deliverables" className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-slate-900">Deliverable</h3>
-        <Button variant="outline" className="h-10 rounded-xl px-4">
-          <Share2 className="mr-2 h-4 w-4" /> Export Report
-        </Button>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Deliverable</h3>
+        <ExportReportSheet contractId={contractId ?? ""} contractType="Contract">
+          <Button variant="outline" className="h-10 w-full rounded-xl px-4 sm:w-auto">
+            <Share2 className="mr-2 h-4 w-4" /> Export Report
+          </Button>
+        </ExportReportSheet>
       </div>
 
       <DeliverablesStatsCards stats={stats} isLoading={!!listLoading || !!statsLoading} />
@@ -128,6 +164,9 @@ const DeliverablesTabContent: React.FC = () => {
         isApprover={isApprover}
         isContractManager={isManager}
         basePath={basePath}
+        listInvalidateQueryKey={listQueryKey}
+        statsInvalidateQueryKey={statsQueryKey}
+        personnelPath={`/contract/vendor/contracts/${contractId ?? ""}/personnel`}
       />
     </TabsContent>
   );

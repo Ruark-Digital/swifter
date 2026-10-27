@@ -1,31 +1,49 @@
+import { ReceiptText } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartConfig } from "@/components/ui/chart";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { AnalyticsEmptyState } from "./AnalyticsEmptyState";
 
-type Props = { approved?: number; pending?: number; rejected?: number };
+type Props = {
+  approved?: number;
+  pending?: number;
+  rejected?: number;
+  selectedRange?: string;
+  onRangeChange?: (value: string) => void;
+};
 
 export const InvoiceStatusCard: React.FC<Props> = ({
-  approved = 98,
-  pending = 34,
-  rejected = 12,
+  approved = 0,
+  pending = 0,
+  rejected = 0,
+  selectedRange = "ytd",
+  onRangeChange,
 }) => {
   const data = [
     { name: "Approved", value: approved, color: "#10b981" },
     { name: "Pending", value: pending, color: "#f59e0b" },
     { name: "Rejected", value: rejected, color: "#ef4444" },
   ];
+  // An all-zero breakdown draws no donut slices — show the empty state instead.
+  const hasData = data.some((d) => d.value > 0);
 
   return (
-    <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm flex flex-col">
+    <Card className="rounded-2xl border border-[#E5E7EB] dark:border-slate-800 shadow-sm flex flex-col">
       <CardHeader className="pb-2">
-        <CardTitle className="text-[16px] font-semibold text-[#030712]">
+        <CardTitle className="text-[16px] font-semibold text-[#030712] dark:text-slate-100">
           Invoice Status
         </CardTitle>
-        <Tabs value="ytd" className="w-full">
-          <TabsList className="bg-transparent p-0 gap-2">
+        <Tabs
+          value={selectedRange}
+          onValueChange={(value) => onRangeChange?.(value)}
+          className="w-full"
+        >
+          {/* Horizontal scroll on overflow; `!flex-none shrink-0` defeats
+              shadcn TabsTrigger's baked-in `flex-1` so pills don't stretch. */}
+          <TabsList className="bg-transparent p-0 gap-2 flex overflow-x-auto h-auto w-full justify-start">
             <TabsTrigger
-              className="rounded-md px-3 py-2 text-sm font-semibold bg-[#F0F0F0] text-[#2A4467]"
+              className="!flex-none shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-[#667085] dark:text-slate-400 data-[state=active]:bg-[#F0F0F0] data-[state=active]:text-[#2A4467] data-[state=active]:dark:bg-slate-800 data-[state=active]:dark:text-slate-100"
               value="ytd"
             >
               YTD
@@ -34,7 +52,7 @@ export const InvoiceStatusCard: React.FC<Props> = ({
               <TabsTrigger
                 key={t}
                 value={t.replace(/\s+/g, "")}
-                className="rounded-md px-3 py-2 text-sm font-semibold text-[#667085]"
+                className="!flex-none shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-[#667085] dark:text-slate-400 data-[state=active]:bg-[#F0F0F0] data-[state=active]:text-[#2A4467] data-[state=active]:dark:bg-slate-800 data-[state=active]:dark:text-slate-100"
               >
                 {t}
               </TabsTrigger>
@@ -42,16 +60,27 @@ export const InvoiceStatusCard: React.FC<Props> = ({
           </TabsList>
         </Tabs>
       </CardHeader>
-      <CardContent className="pt-0 px-4 pb-4 space-y-4 flex-1 flex flex-col">
-        <ChartContainer className="h-full " config={{} as ChartConfig}>
+      <CardContent className="pt-0 px-4 pb-4 space-y-4 flex-1 flex flex-col min-h-0">
+        {!hasData ? (
+          <AnalyticsEmptyState
+            icon={ReceiptText}
+            title="No invoice data yet"
+            description="Approved, pending and rejected invoices will appear here once invoices are raised."
+          />
+        ) : (
+          <>
+        {/* Cap the chart so the legend below it never spills outside the
+            card. `flex-1 min-h-0` lets ResponsiveContainer measure a real
+            height; radii are relative percentages so the donut auto-fits. */}
+        <ChartContainer className="flex-1 min-h-0" config={{} as ChartConfig}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={data}
                 cx="50%"
                 cy="50%"
-                innerRadius={80}
-                outerRadius={120}
+                innerRadius="55%"
+                outerRadius="85%"
                 dataKey="value"
                 label={false}
               >
@@ -63,20 +92,22 @@ export const InvoiceStatusCard: React.FC<Props> = ({
           </ResponsiveContainer>
         </ChartContainer>
 
-        <div className="flex items-center justify-center gap-6">
+        <div className="flex items-center justify-center gap-6 shrink-0">
           {data.map((d) => (
             <div key={d.name} className="flex items-center gap-2">
               <span
                 className="inline-block w-3 h-3 rounded-full"
                 style={{ backgroundColor: d.color }}
               />
-              <span className="text-[#030712] text-xs">{d.name}</span>
-              <span className="text-[#030712] text-sm font-semibold">
+              <span className="text-[#030712] dark:text-slate-300 text-xs">{d.name}</span>
+              <span className="text-[#030712] dark:text-slate-100 text-sm font-semibold">
                 {d.value}
               </span>
             </div>
           ))}
         </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

@@ -1,5 +1,5 @@
 import React from "react";
-import { Forger, useFieldArray } from "@/lib/forge";
+import { Forger, useFieldArray } from "@adexdsamson/forge";
 import {
   TextCurrencyInput,
   TextInput,
@@ -18,19 +18,22 @@ import { Control, useWatch } from "react-hook-form";
 import { CreateContractFormData } from "./CreateContractSheet";
 import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
-import { ApiResponseError } from "@/types";
+import { ApiResponse, ApiResponseError } from "@/types";
 import { Button } from "@/components/ui/button";
+import {
+  getPersonnelDisplayName,
+  isApproverPersonnel,
+  type PersonnelLike,
+} from "../lib/approverSelection";
 
 type Props = { control: Control<CreateContractFormData> };
-
-type ApiListResponse<T> = { status: number; message: string; data: T[] };
 export interface Personnel {
-  _id:         string;
-  email:       string;
-  role:        Role[];
-  firstName:   string;
-  lastName:    string;
-  status:      string;
+  _id: string;
+  email: string;
+  role: Role[];
+  firstName: string;
+  lastName: string;
+  status: string;
   statusOrder: string;
 }
 
@@ -67,32 +70,42 @@ const Step7ApprovalLevel: React.FC<Props> = ({ control }) => {
     name: "approvalGroups",
   }) as { approvers?: ApproverTag[] }[] | undefined;
 
+  // Approval thresholds are in the contract's own currency (chosen in Step 1),
+  // so the amount input shows that currency's symbol, not a hardcoded "$".
+  const selectedCurrency = useWatch({
+    control,
+    name: "currency",
+  }) as string | undefined;
+
   const { data: personnelData, isLoading: isLoadingUsers } = useQuery<
-    ApiListResponse<Personnel>,
+    ApiResponse<Personnel[]>,
     ApiResponseError
   >({
+    // Shares cache with Step2ContractTeam — both queryFns must return the
+    // full AxiosResponse so consumers can read `personnelData?.data?.data`
+    // consistently. Returning just the body here caused this dropdown to
+    // collapse to "No results found." whenever Step 2 mounted first.
     queryKey: ["contract-personnel"],
-    queryFn: async () => {
-      const res = await getRequest({ url: "/contract/manager/personnel" });
-      return res.data as ApiListResponse<Personnel>;
-    },
+    queryFn: async () =>
+      await getRequest({ url: "/contract/manager/personnel" }),
     staleTime: 60_000,
   });
 
   const approverTags = React.useMemo<ApproverTag[]>(() => {
-    const people = personnelData?.data?.filter?.(item => item.role.some(role => role.name === "approver")) ?? [];
+    const people =
+      personnelData?.data?.data?.filter?.((item) =>
+        isApproverPersonnel(item as PersonnelLike),
+      ) ?? [];
 
     return people.map((p) => {
       const email = p.email ?? "";
-      const name = p.firstName || email || p._id;
-      const label =
-        email && name && email !== name ? `${name} (${email})` : name;
+      const name = getPersonnelDisplayName(p as PersonnelLike);
       const value = p._id || email;
       return {
         id: value,
         value,
-        text: label,
-        meta: { email },
+        text: name,
+        meta: { email, name, roles: p.role },
       };
     });
   }, [personnelData]);
@@ -163,8 +176,25 @@ const Step7ApprovalLevel: React.FC<Props> = ({ control }) => {
                       String(idx),
                   ),
                 );
+                const selectedInOtherGroups = new Set(
+                  (approvalGroups ?? [])
+                    .filter((_, groupIndex) => groupIndex !== index)
+                    .flatMap((group) =>
+                      (group.approvers ?? []).map(
+                        (approver, approverIndex) =>
+                          approver?.value ||
+                          approver?.id ||
+                          approver?.email ||
+                          approver?.text ||
+                          String(approverIndex),
+                      ),
+                    ),
+                );
                 const tagKey = tag.value || tag.id || tag.text;
-                return tagKey ? !selectedIds.has(tagKey) : true;
+                return tagKey
+                  ? !selectedIds.has(tagKey) &&
+                      !selectedInOtherGroups.has(tagKey)
+                  : true;
               })}
               inputProps={{ autoComplete: "off" }}
               // containerClass="min-h-[7rem] border rounded-lg cursor-pointer"
@@ -176,7 +206,8 @@ const Step7ApprovalLevel: React.FC<Props> = ({ control }) => {
               name={`approvalGroups.${index}.amount`}
               component={TextCurrencyInput}
               containerClass="!w-40"
-              placeholder="$0.00"
+              placeholder="0.00"
+              currency={selectedCurrency}
             />
 
             <div className="flex flex-col gap-2">
@@ -228,6 +259,7 @@ const Step7ApprovalLevel: React.FC<Props> = ({ control }) => {
       </div>
 
       <Button
+        type="button"
         onClick={() => append(defaultApprovalGroup)}
         className="w-fit  bg-[#2A4467] text-white text-xs font-semibold py-2 rounded-lg"
       >

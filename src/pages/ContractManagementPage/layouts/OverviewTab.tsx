@@ -5,11 +5,16 @@ import { Badge } from "@/components/ui/badge";
 import { Share2 } from "lucide-react";
 import EmployeeCardPopover from "../components/EmployeeCardPopover";
 import type { ContractDetail } from "@/types";
-import { cn, formatDateTZ } from "@/lib/utils";
+import { cn, formatDateTZ, formatCalendarDate } from "@/lib/utils";
 import EditContract from "../components/EditContract";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 import { useToastHandler } from "@/hooks/useToaster";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getRequest } from "@/lib/axiosInstance";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
+import { formatContractType } from "../lib/contractType";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useUser } from "@/store/authSlice";
 import { differenceInDays, parseISO } from "date-fns";
 import { LabelItem } from "../components/LabelItem";
 
@@ -18,24 +23,34 @@ import { LabelItem } from "../components/LabelItem";
  *
  * | Element               | Vendor | Contract Manager | Approver | View Only | Company Admin |
  * |-----------------------|--------|------------------|----------|-----------|---------------|
- * | Export Report Button  | ✅     | ✅               | ❌       | ❌        | ✅            |
- * | Edit Contract Button  | ❌     | ✅               | ❌       | ❌        | ❌            |
- * | Project Name          | ❌     | ✅               | ❌       | ✅        | ❌            |
- * | Deviation Scale       | ✅     | ❌               | ✅       | ❌        | ✅            |
- * | Business Division     | ✅     | ❌               | ✅       | ❌        | ✅            |
- * | Contract Type         | ✅     | ❌               | ✅       | ❌        | ✅            |
- * | Durations (Draft etc) | ✅     | ❌               | ✅       | ❌        | ✅            |
- * | Internal Stakeholder  | ✅     | ✅               | ✅       | ✅        | ✅            |
- * | Approve/Reject Btns   | ❌     | ❌               | ✅       | ❌        | ❌            |
+ * | Export Report Button  | âœ…     | âœ…               | âŒ       | âŒ        | âœ…            |
+ * | Edit Contract Button  | âŒ     | âœ…               | âŒ       | âŒ        | âŒ            |
+ * | Project Name          | âŒ     | âœ…               | âŒ       | âœ…        | âŒ            |
+ * | Deviation Scale       | âœ…     | âŒ               | âœ…       | âŒ        | âœ…            |
+ * | Business Division     | âœ…     | âŒ               | âœ…       | âŒ        | âœ…            |
+ * | Contract Type         | âœ…     | âŒ               | âœ…       | âŒ        | âœ…            |
+ * | Durations (Draft etc) | âœ…     | âŒ               | âœ…       | âŒ        | âœ…            |
+ * | Internal Stakeholder  | âœ…     | âœ…               | âœ…       | âœ…        | âœ…            |
+ * | Approve/Reject Btns   | âŒ     | âŒ               | âœ…       | âŒ        | âŒ            |
  * | View Layout           | 3-Col  | 2-Col            | 3-Col    | 2-Col     | 3-Col         |
  */
+
+/** Contract Manager card data, normalized from `contract.creator` — `role`
+ *  flattened to a display string and `phone` surfaced for the contact popover. */
+type ManagerCard = {
+  _id?: string;
+  name: string;
+  email?: string;
+  role?: string;
+  phone?: string;
+};
 
 type ViewProps = {
   contract: ContractDetail;
   status: { label: string; className: string };
   projectName: string;
   vendorName: string;
-  contractManager: ContractDetail["creator"];
+  contractManager?: ManagerCard;
   internalTeam: NonNullable<ContractDetail["internalTeam"]>;
   vendorPersonnel: NonNullable<ContractDetail["vendorPersonnel"]>;
   relationshipLabel: string;
@@ -46,6 +61,10 @@ type ViewProps = {
   reviewDuration: string;
   approvalDuration: string;
   executionDuration: string;
+  /** Display label for `contract.contractType` (handles Combination). */
+  contractTypeLabel?: string;
+  /** Durations are hidden on the vendor side (Vendor/PM). */
+  showDurations?: boolean;
 };
 
 const ManagerView: React.FC<ViewProps> = ({
@@ -60,24 +79,33 @@ const ManagerView: React.FC<ViewProps> = ({
   vendorName,
   internalTeam,
   vendorPersonnel,
+  draftDuration,
+  reviewDuration,
+  approvalDuration,
+  executionDuration,
+  contractTypeLabel,
 }) => (
   <>
     <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <span className="text-slate-500">Contract Name</span>
-          <span className="text-slate-900 font-medium">
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Contract Name</span>
+          <span className="text-slate-900 dark:text-slate-100 font-medium">
             {contract.title || "N/A"}
           </span>
-          <span className="text-slate-500">Project Name</span>
-          <span className="text-slate-900">{projectName || "N/A"}</span>
-          <span className="text-slate-500">Effective Date</span>
-          <span className="text-slate-900">{effectiveDate}</span>
-          <span className="text-slate-500">Published Date</span>
-          <span className="text-slate-900">{publishedDate}</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Project Name</span>
+          <span className="text-slate-900 dark:text-slate-100">{projectName || "N/A"}</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Effective Date</span>
+          <span className="text-slate-900 dark:text-slate-100">{effectiveDate}</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Published Date</span>
+          <span className="text-slate-900 dark:text-slate-100">{publishedDate}</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Draft Duration</span>
+          <span className="text-slate-900 dark:text-slate-100">{draftDuration}</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Review Duration</span>
+          <span className="text-slate-900 dark:text-slate-100">{reviewDuration}</span>
         </div>
         <div className="space-y-2 grid grid-cols-2 gap-3">
-          <span className="text-slate-500">Status</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Status</span>
           <Badge className={cn("w-fit", status.className)}>
             {status.label}
           </Badge>
@@ -86,54 +114,62 @@ const ManagerView: React.FC<ViewProps> = ({
 
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <span className="text-slate-500">Contract ID</span>
-          <span className="text-slate-900">
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Contract ID</span>
+          <span className="text-slate-900 dark:text-slate-100">
             {contract.contractId || contract._id || "N/A"}
           </span>
-          <span className="text-slate-500">Project Relationship</span>
-          <span className="text-slate-900">{relationshipLabel}</span>
-          <span className="text-slate-500">End Date</span>
-          <span className="text-slate-900">{endDate}</span>
-          <span className="text-slate-500">Contract Manager</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Contract Type</span>
+          <span className="text-slate-900 dark:text-slate-100">
+            {contractTypeLabel || "N/A"}
+          </span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Project Relationship</span>
+          <span className="text-slate-900 dark:text-slate-100">{relationshipLabel}</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">End Date</span>
+          <span className="text-slate-900 dark:text-slate-100">{endDate}</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Approval Duration</span>
+          <span className="text-slate-900 dark:text-slate-100">{approvalDuration}</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Execution Duration</span>
+          <span className="text-slate-900 dark:text-slate-100">{executionDuration}</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Contract Manager</span>
           {contractManager ? (
             <EmployeeCardPopover
               triggerLabel={contractManager.name || "N/A"}
               name={contractManager.name || "N/A"}
               email={contractManager.email || "N/A"}
-              role={contractManager.role || "N/A"}
-              phone="N/A"
+              jobTitle={contractManager.role || "N/A"}
+              phone={contractManager.phone || "N/A"}
             />
           ) : (
-            <span className="text-slate-900">N/A</span>
+            <span className="text-slate-900 dark:text-slate-100">N/A</span>
           )}
         </div>
       </div>
     </div>
 
     <div className="space-y-2">
-      <span className="text-slate-500">Description</span>
-      <p className="text-slate-700 max-w-3xl">
+      <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Description</span>
+      <p className="text-slate-700 dark:text-slate-300 w-full">
         {contract.description || "N/A"}
       </p>
     </div>
 
     <div className="space-y-4">
-      <div className="text-base font-semibold text-gray-600">Contract Team</div>
+      <div className="text-base font-semibold text-gray-600 dark:text-slate-400">Contract Team</div>
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
         <div className="space-y-2">
-          <span className="text-slate-500 block">Contract Manager</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500 block">Contract Manager</span>
           {contractManager ? (
             <EmployeeCardPopover
               triggerLabel={contractManager.name}
               name={contractManager.name}
               email={contractManager.email || "N/A"}
-              role={contractManager.role || "N/A"}
-              phone="N/A"
+              jobTitle={contractManager.role || "N/A"}
+              phone={contractManager.phone || "N/A"}
             />
           ) : (
-            <span className="text-slate-900">N/A</span>
+            <span className="text-slate-900 dark:text-slate-100">N/A</span>
           )}
-          <span className="text-slate-500 block mt-5">
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500 block mt-5">
             Internal Stakeholder
           </span>
           <div className="flex flex-col gap-1">
@@ -144,30 +180,30 @@ const ManagerView: React.FC<ViewProps> = ({
                   triggerLabel={member.name}
                   name={member.name}
                   email={member.email || "N/A"}
-                  role={member.role || "N/A"}
+                  jobTitle={member.role || "N/A"}
                   phone="N/A"
                 />
               ))
             ) : (
-              <span className="text-slate-900">N/A</span>
+              <span className="text-slate-900 dark:text-slate-100">N/A</span>
             )}
           </div>
         </div>
 
         <div className="space-y-2">
-          <span className="text-slate-500 block">Vendor/Contractor</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500 block">Vendor/Contractor</span>
           {vendorName ? (
             <EmployeeCardPopover
               triggerLabel={vendorName}
               name={vendorName}
               email="N/A"
-              role="N/A"
+              jobTitle="N/A"
               phone="N/A"
             />
           ) : (
-            <span className="text-slate-900">N/A</span>
+            <span className="text-slate-900 dark:text-slate-100">N/A</span>
           )}
-          <span className="text-slate-500 block mt-5">
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500 block mt-5">
             Vendor/Contractor Key Personnel
           </span>
           <div className="flex flex-col gap-1">
@@ -178,12 +214,12 @@ const ManagerView: React.FC<ViewProps> = ({
                   triggerLabel={person.name}
                   name={person.name}
                   email={person.email || "N/A"}
-                  role={person.role || "N/A"}
+                  jobTitle={person.role || "N/A"}
                   phone={person.phone || "N/A"}
                 />
               ))
             ) : (
-              <span className="text-slate-900">N/A</span>
+              <span className="text-slate-900 dark:text-slate-100">N/A</span>
             )}
           </div>
         </div>
@@ -204,133 +240,131 @@ const VendorView: React.FC<ViewProps> = ({
   reviewDuration,
   approvalDuration,
   executionDuration,
+  contractTypeLabel,
   vendorName,
   vendorPersonnel,
   internalTeam,
+  showDurations = true,
 }) => (
   <>
-    <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-      {/* Column 1 */}
-      <div className="space-y-4">
+    {/* Single auto-flowing grid so fields distribute evenly across the three
+        columns — the old fixed 3-stack layout left the first column half-empty
+        (only 2 fields vs 4) on the Vendor/PM view, causing the left-side gap
+        (QA #161). */}
+    <div className="grid grid-cols-1 gap-x-8 gap-y-4 md:grid-cols-3">
         <div className="flex flex-col gap-1">
-          <span className="text-slate-500">Contract Name</span>
-          <span className="text-slate-900 font-medium">
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Contract Name</span>
+          <span className="text-slate-900 dark:text-slate-100 font-medium">
             {contract.title || "N/A"}
           </span>
         </div>
+        {/* Deviation Scale hidden until the backend field is wired — its
+            value was commented out, leaving an empty labelled slot that
+            created a large left-side gap on the Vendor/PM overview (QA #161). */}
         <div className="flex flex-col gap-1">
-          <span className="text-slate-500">Deviation Scale</span>
-          {/* <span className="text-slate-900">
-            {contract.deviationScale ?? "N/A"}
-          </span> */}
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Published Date</span>
+          <span className="text-slate-900 dark:text-slate-100">{publishedDate}</span>
         </div>
+        {showDurations && (
+          <div className="flex flex-col gap-1">
+            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Draft Duration</span>
+            <span className="text-slate-900 dark:text-slate-100">{draftDuration}</span>
+          </div>
+        )}
+        {showDurations && (
+          <div className="flex flex-col gap-1">
+            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Execution Duration</span>
+            <span className="text-slate-900 dark:text-slate-100">{executionDuration}</span>
+          </div>
+        )}
         <div className="flex flex-col gap-1">
-          <span className="text-slate-500">Published Date</span>
-          <span className="text-slate-900">{publishedDate}</span>
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-slate-500">Draft Duration</span>
-          <span className="text-slate-900">{draftDuration}</span>
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-slate-500">Execution Duration</span>
-          <span className="text-slate-900">{executionDuration}</span>
-        </div>
-      </div>
-
-      {/* Column 2 */}
-      <div className="space-y-4">
-        <div className="flex flex-col gap-1">
-          <span className="text-slate-500">Contract ID</span>
-          <span className="text-slate-900">
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Contract ID</span>
+          <span className="text-slate-900 dark:text-slate-100">
             {contract.contractId || contract._id || "N/A"}
           </span>
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-slate-500">Contract Type</span>
-          <span className="text-slate-900">
-            {typeof contract.contractType === "string"
-              ? contract.contractType
-              : contract.contractType?.name || "Fixed Price"}
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Contract Type</span>
+          <span className="text-slate-900 dark:text-slate-100">
+            {contractTypeLabel || "Fixed Price"}
           </span>
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-slate-500">Effective Date</span>
-          <span className="text-slate-900">{effectiveDate}</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Effective Date</span>
+          <span className="text-slate-900 dark:text-slate-100">{effectiveDate}</span>
         </div>
+        {showDurations && (
+          <div className="flex flex-col gap-1">
+            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Review Duration</span>
+            <span className="text-slate-900 dark:text-slate-100">{reviewDuration}</span>
+          </div>
+        )}
         <div className="flex flex-col gap-1">
-          <span className="text-slate-500">Review Duration</span>
-          <span className="text-slate-900">{reviewDuration}</span>
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-slate-500">Contract Manager</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Contract Manager</span>
           {contractManager ? (
             <EmployeeCardPopover
               triggerLabel={contractManager.name}
               name={contractManager.name}
               email={contractManager.email || "N/A"}
-              role={contractManager.role || "N/A"}
-              phone="N/A"
+              jobTitle={contractManager.role || "N/A"}
+              phone={contractManager.phone || "N/A"}
             />
           ) : (
-            <span className="text-slate-900">N/A</span>
+            <span className="text-slate-900 dark:text-slate-100">N/A</span>
           )}
         </div>
-      </div>
-
-      {/* Column 3 */}
-      <div className="space-y-4">
         <div className="flex flex-col gap-1">
-          <span className="text-slate-500">Contract Relationship</span>
-          <span className="text-slate-900">{relationshipLabel}</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Contract Relationship</span>
+          <span className="text-slate-900 dark:text-slate-100">{relationshipLabel}</span>
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-slate-500">Business Division</span>
-          <span className="text-slate-900">
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Business Division</span>
+          <span className="text-slate-900 dark:text-slate-100">
             {contract.businessDivision?.name || "N/A"}
           </span>
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-slate-500">End Date</span>
-          <span className="text-slate-900">{endDate}</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">End Date</span>
+          <span className="text-slate-900 dark:text-slate-100">{endDate}</span>
         </div>
+        {showDurations && (
+          <div className="flex flex-col gap-1">
+            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Approval Duration</span>
+            <span className="text-slate-900 dark:text-slate-100">{approvalDuration}</span>
+          </div>
+        )}
         <div className="flex flex-col gap-1">
-          <span className="text-slate-500">Approval Duration</span>
-          <span className="text-slate-900">{approvalDuration}</span>
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-slate-500">Status</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Status</span>
           <Badge className={cn("w-fit", status.className)}>
             {status.label}
           </Badge>
         </div>
-      </div>
     </div>
 
     <div className="space-y-2 pt-4">
-      <span className="text-slate-500">Description</span>
-      <p className="text-slate-700 max-w-3xl">
+      <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Description</span>
+      <p className="text-slate-700 dark:text-slate-300 w-full">
         {contract.description || "N/A"}
       </p>
     </div>
 
     <div className="space-y-4 pt-4">
-      <div className="text-base font-semibold text-gray-600">Contract Team</div>
+      <div className="text-base font-semibold text-gray-600 dark:text-slate-400">Contract Team</div>
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
         <div className="space-y-2">
-          <span className="text-slate-500 block">Contract Manager</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500 block">Contract Manager</span>
           {contractManager ? (
             <EmployeeCardPopover
               triggerLabel={contractManager.name}
               name={contractManager.name}
               email={contractManager.email || "N/A"}
-              role={contractManager.role || "N/A"}
-              phone="N/A"
+              jobTitle={contractManager.role || "N/A"}
+              phone={contractManager.phone || "N/A"}
             />
           ) : (
-            <span className="text-slate-900">N/A</span>
+            <span className="text-slate-900 dark:text-slate-100">N/A</span>
           )}
-          <span className="text-slate-500 block mt-5">
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500 block mt-5">
             Internal Stakeholder
           </span>
           <div className="flex flex-col gap-1">
@@ -341,30 +375,30 @@ const VendorView: React.FC<ViewProps> = ({
                   triggerLabel={member.name}
                   name={member.name}
                   email={member.email || "N/A"}
-                  role={member.role || "N/A"}
+                  jobTitle={member.role || "N/A"}
                   phone="N/A"
                 />
               ))
             ) : (
-              <span className="text-slate-900">N/A</span>
+              <span className="text-slate-900 dark:text-slate-100">N/A</span>
             )}
           </div>
         </div>
 
         <div className="space-y-2">
-          <span className="text-slate-500 block">Vendor/Contractor</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500 block">Vendor/Contractor</span>
           {vendorName ? (
             <EmployeeCardPopover
               triggerLabel={vendorName}
               name={vendorName}
               email="N/A"
-              role="N/A"
+              jobTitle="N/A"
               phone="N/A"
             />
           ) : (
-            <span className="text-slate-900">N/A</span>
+            <span className="text-slate-900 dark:text-slate-100">N/A</span>
           )}
-          <span className="text-slate-500 block mt-5">
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500 block mt-5">
             Vendor/Contractor Key Personnel
           </span>
           <div className="flex flex-col gap-1">
@@ -375,12 +409,12 @@ const VendorView: React.FC<ViewProps> = ({
                   triggerLabel={person.name}
                   name={person.name}
                   email={person.email || "N/A"}
-                  role={person.role || "N/A"}
+                  jobTitle={person.role || "N/A"}
                   phone={person.phone || "N/A"}
                 />
               ))
             ) : (
-              <span className="text-slate-900">N/A</span>
+              <span className="text-slate-900 dark:text-slate-100">N/A</span>
             )}
           </div>
         </div>
@@ -402,6 +436,7 @@ const ApproverView: React.FC<ViewProps> = ({
   reviewDuration,
   approvalDuration,
   executionDuration,
+  contractTypeLabel,
   vendorName,
   vendorPersonnel,
   internalTeam,
@@ -454,9 +489,7 @@ const ApproverView: React.FC<ViewProps> = ({
             <LabelItem
               label="Contract Type"
               value={
-                typeof contract.contractType === "string"
-                  ? contract.contractType
-                  : contract.contractType?.name || "Fixed Price"
+                contractTypeLabel || "Fixed Price"
               }
             />
 
@@ -470,11 +503,11 @@ const ApproverView: React.FC<ViewProps> = ({
                     triggerLabel={contractManager.name}
                     name={contractManager.name}
                     email={contractManager.email || "N/A"}
-                    role={contractManager.role || "N/A"}
-                    phone="N/A"
+                    jobTitle={contractManager.role || "N/A"}
+                    phone={contractManager.phone || "N/A"}
                   />
                 ) : (
-                  <span className="text-slate-900">N/A</span>
+                  <span className="text-slate-900 dark:text-slate-100">N/A</span>
                 )
               }
             />
@@ -482,38 +515,38 @@ const ApproverView: React.FC<ViewProps> = ({
         </div>
 
         <div className="space-y-2 pt-4">
-          <span className="text-slate-500 block">Status</span>
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500 block">Status</span>
           <Badge className={cn("w-fit", status.className)}>
             {status.label}
           </Badge>
         </div>
 
         <div className="space-y-2 pt-2">
-          <span className="text-slate-500">Description</span>
-          <p className="text-slate-700 max-w-3xl">
+          <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Description</span>
+          <p className="text-slate-700 dark:text-slate-300 w-full">
             {contract.description || "N/A"}
           </p>
         </div>
 
         <div className="space-y-4 pt-4">
-          <div className="text-base font-semibold text-gray-600">
+          <div className="text-base font-semibold text-gray-600 dark:text-slate-400">
             Contract Team
           </div>
           <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
             <div className="space-y-2">
-              <span className="text-slate-500 block">Contract Manager</span>
+              <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500 block">Contract Manager</span>
               {contractManager ? (
                 <EmployeeCardPopover
                   triggerLabel={contractManager.name}
                   name={contractManager.name}
                   email={contractManager.email || "N/A"}
-                  role={contractManager.role || "N/A"}
-                  phone="N/A"
+                  jobTitle={contractManager.role || "N/A"}
+                  phone={contractManager.phone || "N/A"}
                 />
               ) : (
-                <span className="text-slate-900">N/A</span>
+                <span className="text-slate-900 dark:text-slate-100">N/A</span>
               )}
-              <span className="text-slate-500 block mt-5">
+              <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500 block mt-5">
                 Internal Stakeholder
               </span>
               <div className="flex flex-col gap-1">
@@ -524,30 +557,30 @@ const ApproverView: React.FC<ViewProps> = ({
                       triggerLabel={member.name}
                       name={member.name}
                       email={member.email || "N/A"}
-                      role={member.role || "N/A"}
+                      jobTitle={member.role || "N/A"}
                       phone="N/A"
                     />
                   ))
                 ) : (
-                  <span className="text-slate-900">N/A</span>
+                  <span className="text-slate-900 dark:text-slate-100">N/A</span>
                 )}
               </div>
             </div>
 
             <div className="space-y-2">
-              <span className="text-slate-500 block">Vendor/Contractor</span>
+              <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500 block">Vendor/Contractor</span>
               {vendorName ? (
                 <EmployeeCardPopover
                   triggerLabel={vendorName}
                   name={vendorName}
                   email="N/A"
-                  role="N/A"
+                  jobTitle="N/A"
                   phone="N/A"
                 />
               ) : (
-                <span className="text-slate-900">N/A</span>
+                <span className="text-slate-900 dark:text-slate-100">N/A</span>
               )}
-              <span className="text-slate-500 block mt-5">
+              <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500 block mt-5">
                 Vendor/Contractor Key Personnel
               </span>
               <div className="flex flex-col gap-1">
@@ -558,12 +591,12 @@ const ApproverView: React.FC<ViewProps> = ({
                       triggerLabel={person.name}
                       name={person.name}
                       email={person.email || "N/A"}
-                      role={person.role || "N/A"}
+                      jobTitle={person.role || "N/A"}
                       phone={person.phone || "N/A"}
                     />
                   ))
                 ) : (
-                  <span className="text-slate-900">N/A</span>
+                  <span className="text-slate-900 dark:text-slate-100">N/A</span>
                 )}
               </div>
             </div>
@@ -578,8 +611,8 @@ const ApproverView: React.FC<ViewProps> = ({
       <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
         <div className="space-y-4">
           <div className="flex flex-col gap-1">
-            <span className="text-slate-500">Contract Name</span>
-            <span className="text-slate-900 font-medium">
+            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Contract Name</span>
+            <span className="text-slate-900 dark:text-slate-100 font-medium">
               {contract.title || "N/A"}
             </span>
           </div>
@@ -604,64 +637,62 @@ const ApproverView: React.FC<ViewProps> = ({
 
         <div className="space-y-4">
           <div className="flex flex-col gap-1">
-            <span className="text-slate-500">Contract ID</span>
-            <span className="text-slate-900">
+            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Contract ID</span>
+            <span className="text-slate-900 dark:text-slate-100">
               {contract.contractId || contract._id || "N/A"}
             </span>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-slate-500">Contract Type</span>
-            <span className="text-slate-900">
-              {typeof contract.contractType === "string"
-                ? contract.contractType
-                : contract.contractType?.name || "Fixed Price"}
+            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Contract Type</span>
+            <span className="text-slate-900 dark:text-slate-100">
+              {contractTypeLabel || "Fixed Price"}
             </span>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-slate-500">Effective Date</span>
-            <span className="text-slate-900">{effectiveDate}</span>
+            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Effective Date</span>
+            <span className="text-slate-900 dark:text-slate-100">{effectiveDate}</span>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-slate-500">Review Duration</span>
-            <span className="text-slate-900">{reviewDuration}</span>
+            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Review Duration</span>
+            <span className="text-slate-900 dark:text-slate-100">{reviewDuration}</span>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-slate-500">Contract Manager</span>
+            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Contract Manager</span>
             {contractManager ? (
               <EmployeeCardPopover
                 triggerLabel={contractManager.name}
                 name={contractManager.name}
                 email={contractManager.email || "N/A"}
-                role={contractManager.role || "N/A"}
-                phone="N/A"
+                jobTitle={contractManager.role || "N/A"}
+                phone={contractManager.phone || "N/A"}
               />
             ) : (
-              <span className="text-slate-900">N/A</span>
+              <span className="text-slate-900 dark:text-slate-100">N/A</span>
             )}
           </div>
         </div>
 
         <div className="space-y-4">
           <div className="flex flex-col gap-1">
-            <span className="text-slate-500">Contract Relationship</span>
-            <span className="text-slate-900">{relationshipLabel}</span>
+            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Contract Relationship</span>
+            <span className="text-slate-900 dark:text-slate-100">{relationshipLabel}</span>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-slate-500">Business Division</span>
-            <span className="text-slate-900">
+            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Business Division</span>
+            <span className="text-slate-900 dark:text-slate-100">
               {contract?.businessDivision?.name || "N/A"}
             </span>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-slate-500">End Date</span>
-            <span className="text-slate-900">{endDate}</span>
+            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">End Date</span>
+            <span className="text-slate-900 dark:text-slate-100">{endDate}</span>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-slate-500">Approval Duration</span>
-            <span className="text-slate-900">{approvalDuration}</span>
+            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Approval Duration</span>
+            <span className="text-slate-900 dark:text-slate-100">{approvalDuration}</span>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-slate-500">Status</span>
+            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Status</span>
             <Badge className={cn("w-fit", status.className)}>
               {status.label}
             </Badge>
@@ -670,31 +701,31 @@ const ApproverView: React.FC<ViewProps> = ({
       </div>
 
       <div className="space-y-2 pt-4">
-        <span className="text-slate-500">Description</span>
-        <p className="text-slate-700 max-w-3xl">
+        <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">Description</span>
+        <p className="text-slate-700 dark:text-slate-300 w-full">
           {contract.description || "N/A"}
         </p>
       </div>
 
       <div className="space-y-4 pt-4">
-        <div className="text-base font-semibold text-gray-600">
+        <div className="text-base font-semibold text-gray-600 dark:text-slate-400">
           Contract Team
         </div>
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
           <div className="space-y-2">
-            <span className="text-slate-500 block">Contract Manager</span>
+            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500 block">Contract Manager</span>
             {contractManager ? (
               <EmployeeCardPopover
                 triggerLabel={contractManager.name}
                 name={contractManager.name}
                 email={contractManager.email || "N/A"}
-                role={contractManager.role || "N/A"}
-                phone="N/A"
+                jobTitle={contractManager.role || "N/A"}
+                phone={contractManager.phone || "N/A"}
               />
             ) : (
-              <span className="text-slate-900">N/A</span>
+              <span className="text-slate-900 dark:text-slate-100">N/A</span>
             )}
-            <span className="text-slate-500 block mt-5">
+            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500 block mt-5">
               Internal Stakeholder
             </span>
             <div className="flex flex-col gap-1">
@@ -705,30 +736,30 @@ const ApproverView: React.FC<ViewProps> = ({
                     triggerLabel={member.name}
                     name={member.name}
                     email={member.email || "N/A"}
-                    role={member.role || "N/A"}
+                    jobTitle={member.role || "N/A"}
                     phone="N/A"
                   />
                 ))
               ) : (
-                <span className="text-slate-900">N/A</span>
+                <span className="text-slate-900 dark:text-slate-100">N/A</span>
               )}
             </div>
           </div>
 
           <div className="space-y-2">
-            <span className="text-slate-500 block">Vendor/Contractor</span>
+            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500 block">Vendor/Contractor</span>
             {vendorName ? (
               <EmployeeCardPopover
                 triggerLabel={vendorName}
                 name={vendorName}
                 email="N/A"
-                role="N/A"
+                jobTitle="N/A"
                 phone="N/A"
               />
             ) : (
-              <span className="text-slate-900">N/A</span>
+              <span className="text-slate-900 dark:text-slate-100">N/A</span>
             )}
-            <span className="text-slate-500 block mt-5">
+            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500 block mt-5">
               Vendor/Contractor Key Personnel
             </span>
             <div className="flex flex-col gap-1">
@@ -739,12 +770,12 @@ const ApproverView: React.FC<ViewProps> = ({
                     triggerLabel={person.name}
                     name={person.name}
                     email={person.email || "N/A"}
-                    role={person.role || "N/A"}
+                    jobTitle={person.role || "N/A"}
                     phone={person.phone || "N/A"}
                   />
                 ))
               ) : (
-                <span className="text-slate-900">N/A</span>
+                <span className="text-slate-900 dark:text-slate-100">N/A</span>
               )}
             </div>
           </div>
@@ -756,6 +787,7 @@ const ApproverView: React.FC<ViewProps> = ({
 
 type Props = {
   contract: ContractDetail;
+  currency?: string;
   status: { label: string; className: string };
 };
 
@@ -766,7 +798,52 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
 
   const qc = useQueryClient();
   const { success } = useToastHandler();
-  const { isVendor, isApprover, isViewOnly, isCompanyAdmin } = useUserRole();
+  const { isVendor, isProjectManager, isApprover, isViewOnly, isCompanyAdmin } =
+    useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
+  const currentUser = useUser();
+  // Edit is a manager-owner-only action: the BE `owner` flag when present,
+  // otherwise fall back to matching the creator id.
+  const isContractOwner =
+    typeof contract?.owner === "boolean"
+      ? contract.owner
+      : Boolean(
+          currentUser?._id &&
+            contract?.creator?._id &&
+            currentUser._id === contract.creator._id,
+        );
+
+  // A Combination contract stores its sub-type ids (comma-separated) in
+  // `contractType`, which the BE can't populate to a name, so resolve labels
+  // from the contract-type list (manager/company-admin endpoint only) (#33).
+  const rawContractType = contract.contractType as unknown;
+  const needsTypeOptions =
+    typeof rawContractType === "string" ||
+    Array.isArray(rawContractType) ||
+    (!!rawContractType && !(rawContractType as { name?: string }).name);
+  const typesQuery = useQuery({
+    queryKey: useUserQueryKey(["contract-types"]),
+    queryFn: async () => {
+      const res = await getRequest({ url: "/contract/manager/types" });
+      return res.data as { data: { _id: string; name: string }[] };
+    },
+    staleTime: 60_000,
+    enabled:
+      needsTypeOptions &&
+      !isContractVendorLike &&
+      !isApprover &&
+      !isViewOnly,
+  });
+  const contractTypeLabel = React.useMemo(
+    () =>
+      formatContractType(
+        rawContractType,
+        Array.isArray(typesQuery.data?.data)
+          ? typesQuery.data.data.map((t) => ({ label: t.name, value: t._id }))
+          : [],
+      ),
+    [rawContractType, typesQuery.data?.data],
+  );
 
   const projectName =
     typeof contract.project === "string"
@@ -776,32 +853,41 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
     typeof contract.vendor === "string"
       ? contract.vendor
       : contract.vendor?.name || "";
-  const contractManager = contract.creator;
+  // Normalize the creator into the Contract Manager card: the detail payload
+  // returns `role` as a populated object and includes `phone`, so flatten role
+  // to its name and pass the real phone through to the contact popover (#191).
+  const rawCreator = contract.creator;
+  const contractManager: ManagerCard | undefined = rawCreator
+    ? {
+        _id: rawCreator._id,
+        name: rawCreator.name,
+        email: rawCreator.email,
+        role:
+          typeof rawCreator.role === "string"
+            ? rawCreator.role
+            : rawCreator.role?.name,
+        phone: rawCreator.phone,
+      }
+    : undefined;
   const internalTeam = contract.internalTeam ?? [];
-  const vendorPersonnel = contract.vendorPersonnel ?? [];
+  const vendorPersonnel = contract.personnel ?? [];
   const relationshipLabel =
     contract.contractRelationship === "standalone"
       ? "Stand-Alone Project"
       : contract.contractRelationship === "project"
-        ? "Link to Project"
+        ? "Linked to Project"
         : contract.contractRelationship === "msa_project"
-          ? "Link to MSA"
+          ? "Linked to MSA"
           : (contract as any).contractRelationship === "msa"
-            ? "Link to MSA"
+            ? "Linked to MSA"
             : "N/A";
-  const effectiveDate = formatDateTZ(
-    contract.startDate,
-    "MMM d, yyyy",
-    contract.timezone,
-  );
+  // Effective/end dates are calendar dates — render them from the stored date
+  // portion so they don't roll back a day for viewers west of UTC (QA #277).
+  const effectiveDate = formatCalendarDate(contract.startDate, "dd MMM yyyy");
+  const endDate = formatCalendarDate(contract.endDate, "dd MMM yyyy");
   const publishedDate = formatDateTZ(
-    contract.createdAt,
-    "MMM d, yyyy",
-    contract.timezone,
-  );
-  const endDate = formatDateTZ(
-    contract.endDate,
-    "MMM d, yyyy",
+    contract.datePublished,
+    "dd MMM yyyy",
     contract.timezone,
   );
 
@@ -846,10 +932,15 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
     reviewDuration,
     approvalDuration,
     executionDuration,
+    contractTypeLabel,
   };
 
   const renderView = () => {
-    if (isVendor) return <VendorView {...viewProps} />;
+    // Vendor side (Vendor/PM): Durations and Deviation Scale are not required.
+    if (isContractVendorLike)
+      return (
+        <VendorView {...viewProps} showDurations={false} />
+      );
     if (isApprover) return <ApproverView {...viewProps} />;
     if (isCompanyAdmin) return <VendorView {...viewProps} />;
     if (isViewOnly) return <ManagerView {...viewProps} />;
@@ -859,36 +950,59 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
   return (
     <TabsContent value="overview" className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="text-base font-semibold text-gray-600">
+        <div className="text-base font-semibold text-gray-600 dark:text-slate-400">
           Contract Details
         </div>
         <div className="flex items-center gap-2">
-          {(!isViewOnly && isApprover) || (!isApprover && !isViewOnly) ? (
-            <Button variant="outline">
-              <Share2 className="mr-2 h-4 w-4" /> Export Report
-            </Button>
+          {((!isViewOnly && isApprover) || (!isApprover && !isViewOnly)) &&
+          contract?._id ? (
+            <ExportReportSheet contractId={contract._id} contractType="Contract">
+              <Button variant="outline">
+                <Share2 className="mr-2 h-4 w-4" /> Export Report
+              </Button>
+            </ExportReportSheet>
           ) : null}
 
-          {!isVendor && !isApprover && !isViewOnly && !isCompanyAdmin && (
-            <Button
-              onClick={() => setEditingContractId(contract?._id ?? null)}
-              disabled={contract?.status === "publish"}
-            >
-              Edit Contract
-            </Button>
-          )}
+          {!isContractVendorLike &&
+            !isApprover &&
+            !isViewOnly &&
+            !isCompanyAdmin &&
+            isContractOwner && (
+              <Button
+                onClick={() => setEditingContractId(contract?._id ?? null)}
+                // Primary owners may edit any non-terminal contract; edits to a
+                // live (non-draft) contract re-enter the approval chain via
+                // EditContract (QA #118). "publish" is a live status too (see
+                // formatContractStatus). A rejected contract is editable by the
+                // managing CM so they can revise and reopen it. Terminal states
+                // (completed/cancelled/expired/terminated) stay locked.
+                disabled={
+                  ![
+                    "draft",
+                    "pending_approval",
+                    "active",
+                    "publish",
+                    "rejection",
+                  ].includes(String(contract?.status ?? ""))
+                }
+              >
+                Edit Contract
+              </Button>
+            )}
         </div>
       </div>
 
       {renderView()}
 
-      {editingContractId !== null && (
+      {/* Kept mounted while on the detail page (not conditionally rendered) so
+          unsaved edits survive an accidental close/reopen; only `open` toggles. */}
+      {contract?._id && (
         <EditContract
-          open={true}
+          open={editingContractId !== null}
           onOpenChange={(open) => {
             if (!open) setEditingContractId(null);
           }}
-          contractId={editingContractId}
+          contractId={contract._id}
           onUpdated={() => {
             success("Contract updated successfully", "Changes saved");
             qc.invalidateQueries({ queryKey: ["contract-manager-contracts"] });

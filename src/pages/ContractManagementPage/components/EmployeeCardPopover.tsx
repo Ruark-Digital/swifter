@@ -12,7 +12,9 @@ type Props = {
   name: string;
   userId?: string;
   email?: string;
-  role?: string;
+  /** Job title / functional role. Renamed from `role` to avoid colliding with
+   *  the HTML/ARIA `role` attribute (jsx-a11y/aria-role lint trip). */
+  jobTitle?: string;
   phone?: string;
 };
 
@@ -21,7 +23,7 @@ const EmployeeCardPopover: React.FC<Props> = ({
   name,
   userId = "USR-4021",
   email = "olamide@gmail.com",
-  role = "Supervisor",
+  jobTitle = "Supervisor",
   phone = "+1 (344) 2213",
 }) => {
   const displayName =
@@ -78,7 +80,7 @@ const EmployeeCardPopover: React.FC<Props> = ({
               aria-hidden="true"
             />
             <span className="text-sm text-slate-600">Role</span>
-            <span className="ml-auto text-sm text-slate-700">{role}</span>
+            <span className="ml-auto text-sm text-slate-700">{jobTitle}</span>
           </div>
           <div className="flex items-center gap-2">
             <Phone className="h-4 w-4 text-slate-500" aria-hidden="true" />

@@ -18,7 +18,7 @@ export const TextArea = (props: TextAreaProps) => {
         props.containerClass ?? ""
       }`}
     >
-      <Label className="flex flex-col justify-center text-sm whitespace-nowrap text-stone-900 dark:text-gray-700">
+      <Label className="flex flex-col justify-center text-sm whitespace-nowrap text-stone-900 dark:text-gray-300">
         {props.label}
       </Label>
       <div className="flex items-center bg-white rounded-lg border dark:bg-slate-950 border-solid border-stone-300 dark:border-slate-700 py-1 mt-2  gap-1">

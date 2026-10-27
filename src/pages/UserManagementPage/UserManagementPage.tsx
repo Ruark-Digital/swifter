@@ -4,7 +4,7 @@ import { Search, Users, MoreHorizontal } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getRequest, putRequest, postRequest } from "@/lib/axiosInstance";
+import { getRequest, putRequest, postRequest, deleteRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 import { DataTable } from "@/components/layouts/DataTable";
@@ -40,7 +40,11 @@ type User = {
 
 // API response types
 export type UsersListResponse = {
-  data: Omit<User, "name"> & { firstName: string }[];
+  data: Omit<User, "name"> & {
+    firstName: string;
+    middleName?: string;
+    lastName?: string;
+  }[];
   total: number;
   page: number;
   limit: number;
@@ -124,6 +128,7 @@ const UserManagementPage = () => {
   const [isActivateUserOpen, setIsActivateUserOpen] = useState(false);
   const [isSuspendUserOpen, setIsSuspendUserOpen] = useState(false);
   const [isUnsuspendUserOpen, setIsUnsuspendUserOpen] = useState(false);
+  const [isDeleteUserOpen, setIsDeleteUserOpen] = useState(false);
 
   // Initialize filters from URL parameters
   useEffect(() => {
@@ -132,14 +137,14 @@ const UserManagementPage = () => {
 
     if (
       statusParam &&
-      ["active", "inactive", "pending", "suspended"].includes(statusParam)
+      ["accepted", "inactive", "pending", "suspended"].includes(statusParam)
     ) {
       setStatusFilter(statusParam);
     }
 
     if (
       roleParam &&
-      ["admin", "procurement_lead", "evaluator", "vendor"].includes(roleParam)
+      ["company_admin", "procurement", "evaluator"].includes(roleParam)
     ) {
       setRoleFilter(roleParam);
     }
@@ -213,6 +218,31 @@ const UserManagementPage = () => {
     },
   });
 
+  // Delete user mutation — frees a resigned/inactive user's seat (QA #130).
+  // DELETE /users/{id} exists (also used by UserDetailsSheet); the older
+  // "no delete endpoint" note above predates it.
+  const { mutateAsync: deleteUser, isPending: isDeletingUser } = useMutation<
+    ApiResponse<any>,
+    ApiResponseError,
+    string
+  >({
+    mutationKey: ["deleteUser"],
+    mutationFn: async (userId) => await deleteRequest({ url: `/users/${userId}` }),
+    onSuccess: () => {
+      toast.success("Delete User", "User deleted successfully");
+      setSelectedUserId(null);
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    },
+    onError: (error) => {
+      setSelectedUserId(null);
+      const err = error as ApiResponseError;
+      toast.error(
+        "Delete User",
+        err?.response?.data?.message ?? "Failed to delete user"
+      );
+    },
+  });
+
   // Send reminder invite mutation
   const { mutateAsync: sendReminderInvite, isPending: isSendingReminder } =
     useMutation<ApiResponse<any>, ApiResponseError, string>({
@@ -275,6 +305,16 @@ const UserManagementPage = () => {
     }
   };
 
+  // Handle delete user
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      await deleteUser(userId);
+      setIsDeleteUserOpen(false);
+    } catch (error) {
+      // Error is already handled in onError callback
+    }
+  };
+
   // Handle sending reminder invite
   const handleSendReminderInvite = async (email: string) => {
     try {
@@ -302,7 +342,7 @@ const UserManagementPage = () => {
       } else {
         params.set("role", value);
       }
-      navigate(`/dashboard/users?${params.toString()}`, { replace: true });
+      navigate(`/dashboard/user-management?${params.toString()}`, { replace: true });
     } else if (filterTitle === "Status") {
       setStatusFilter(value === "all" ? "" : value);
       // Update URL
@@ -312,7 +352,7 @@ const UserManagementPage = () => {
       } else {
         params.set("status", value);
       }
-      navigate(`/dashboard/users?${params.toString()}`, { replace: true });
+      navigate(`/dashboard/user-management?${params.toString()}`, { replace: true });
     }
   };
 
@@ -348,14 +388,26 @@ const UserManagementPage = () => {
   const filteredData = users;
 
   // Define table columns
-  const columns: ColumnDef<Omit<User, "name"> & { firstName: string }>[] = [
+  const columns: ColumnDef<
+    Omit<User, "name"> & {
+      firstName: string;
+      middleName?: string;
+      lastName?: string;
+    }
+  >[] = [
     {
       accessorKey: "name",
       header: "User",
       cell: ({ row }) => (
         <div className="flex flex-col">
           <span className="font-medium text-gray-900 dark:text-gray-100">
-            {row.original.firstName}
+            {[
+              row.original.firstName,
+              row.original.middleName,
+              row.original.lastName,
+            ]
+              .filter(Boolean)
+              .join(" ")}
           </span>
           <span className="text-sm text-blue-500 dark:text-blue-400 underline underline-offset-2">
             {row.original.email}
@@ -410,6 +462,7 @@ const UserManagementPage = () => {
               <DropdownMenuItem
                 onClick={() => {
                   setSelectedUserId(row.original?.userId ?? "");
+                  setSelectedUser(row.original as unknown as User);
                   setIsUserDetailsOpen(true);
                 }}
                 className="p-3"
@@ -485,6 +538,17 @@ const UserManagementPage = () => {
                       Activate User
                     </DropdownMenuItem>
                   ) : null}
+
+                  {/* Delete frees a resigned/inactive user's seat (QA #130). */}
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setSelectedUserId(row.original?.userId ?? "");
+                      setIsDeleteUserOpen(true);
+                    }}
+                    className="p-3 text-red-600 dark:text-red-400"
+                  >
+                    Delete User
+                  </DropdownMenuItem>
                 </>
               )}
             </DropdownMenuContent>
@@ -495,10 +559,9 @@ const UserManagementPage = () => {
   ];
 
   const roles = [
-    { label: "Admin", value: "admin" },
-    { label: "Procurement Lead", value: "procurement_lead" },
+    { label: "Company Admin", value: "company_admin" },
+    { label: "Procurement Lead", value: "procurement" },
     { label: "Evaluator", value: "evaluator" },
-    { label: "Vendor", value: "vendor" },
     { value: "contract_manager", label: "Contract Manager" },
     { value: "view_only", label: "View Only" },
     { value: "approver", label: "Approver" },
@@ -556,8 +619,8 @@ const UserManagementPage = () => {
                       showIcon: true,
                       options: [
                         {
-                          label: "Active",
-                          value: "active",
+                          label: "Accepted",
+                          value: "accepted",
                         },
                         {
                           label: "Inactive",
@@ -605,7 +668,9 @@ const UserManagementPage = () => {
         open={isUserDetailsOpen}
         onOpenChange={setIsUserDetailsOpen}
         userId={selectedUserId || undefined}
+        lastActivity={selectedUser?.lastActivity}
         onEdit={(userId) => {
+          setIsUserDetailsOpen(false);
           setEditUserId(userId ?? "");
           setIsEditUserOpen(true);
         }}
@@ -663,6 +728,15 @@ const UserManagementPage = () => {
         title="Unsuspend User"
         isLoading={isDeactivatingUser}
         onPrimaryAction={() => handleUnsuspendUser(selectedUserId ?? "")}
+      />
+
+      <ConfirmAlert
+        open={isDeleteUserOpen}
+        onClose={setIsDeleteUserOpen}
+        text="Are you sure you want to delete this user? This permanently removes their account and frees their seat. This action cannot be undone."
+        title="Delete User"
+        isLoading={isDeletingUser}
+        onPrimaryAction={() => handleDeleteUser(selectedUserId ?? "")}
       />
 
       {/* Send Reminder Dialog */}

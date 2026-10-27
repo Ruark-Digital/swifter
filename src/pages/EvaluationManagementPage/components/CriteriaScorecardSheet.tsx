@@ -97,7 +97,14 @@ export const CriteriaScorecardSheet = ({
       <SheetContent className="w-full sm:max-w-3xl p-0 overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b">
           <div className="flex items-center gap-3">
-            <ChevronLeft className="h-5 w-5 text-gray-600 dark:text-slate-200" />
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              aria-label="Back"
+              className="text-gray-600 dark:text-slate-200 hover:text-gray-900 dark:hover:text-white"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
             <h2 className="text-lg font-medium text-gray-900 dark:text-slate-200">
               Criteria Score Card
             </h2>

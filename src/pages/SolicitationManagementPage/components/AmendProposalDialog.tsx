@@ -16,12 +16,11 @@ import {
   Forger,
   useForge,
   Forge,
-} from "@/lib/forge";
+} from "@adexdsamson/forge";
 
 import { Plus, Trash2, CornerDownRight } from "lucide-react";
-import { usePersist } from "@/lib/forge/usePersist/usePersist";
-import { UseFormSetValue, UseFormGetValues } from "react-hook-form";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { UseFormSetValue, UseFormGetValues, useWatch } from "react-hook-form";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRequest, putRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -33,8 +32,11 @@ interface ProposalPriceAction {
   component: string;
   description?: string;
   quantity: number;
-  unitOfMeasurement: string;
+  // BE spells it with a lowercase "m" (unitOfmeasurement).
+  unitOfmeasurement: string;
   unitPrice: number;
+  // Vendor's submitted currency — BE now returns it on each price-action item.
+  currency?: string;
   subtotal: number;
   subItems?: ProposalPriceAction[];
 }
@@ -131,6 +133,7 @@ const AmendProposalDialog: React.FC<AmendProposalDialogProps> = ({
 }) => {
   const [totalAmount, setTotalAmount] = useState("0.00");
   const toastHandlers = useToastHandler();
+  const queryClient = useQueryClient();
 
   // Initialize form with forge
   const forge = useForge<AmendProposalFormValues>({
@@ -159,6 +162,11 @@ const AmendProposalDialog: React.FC<AmendProposalDialogProps> = ({
     enabled: open && !!proposalId,
   });
   const priceAction = priceBreakdownData?.data?.data;
+  // Vendor's submitted currency (all items share it) — drives the pricing
+  // display instead of a hardcoded USD (QA #214 / price-breakdown currency).
+  const currency =
+    (Array.isArray(priceAction) ? priceAction[0]?.currency : undefined) ||
+    "USD";
 
   // Initialize form with existing data when loaded
   useEffect(() => {
@@ -168,7 +176,7 @@ const AmendProposalDialog: React.FC<AmendProposalDialogProps> = ({
           component: action.component || "",
           description: action.description || "",
           quantity: action.quantity || 0,
-          unitOfmeasurement: action.unitOfMeasurement || "",
+          unitOfmeasurement: action.unitOfmeasurement || "",
           unitPrice: action.unitPrice || 0,
           subtotal:
             action.subtotal || (action.quantity || 0) * (action.unitPrice || 0),
@@ -188,29 +196,32 @@ const AmendProposalDialog: React.FC<AmendProposalDialogProps> = ({
     }
   }, [priceAction, reset]);
 
-  // Use persist to auto-calculate totals
-  usePersist({
-    control,
-    handler: (data, state) => {
-      if (data && data.priceAction && state.type === "change") {
-        // Recalculate main item subtotals
-        const updatedPriceAction = data.priceAction.map((item: any) => ({
-          ...item,
-          subtotal:
-            (parseFloat(item.quantity) || 0) *
-            (parseFloat(item.unitPrice) || 0),
-        }));
-
-        // Update form with recalculated subtotals
-        setValue("priceAction", updatedPriceAction);
-
-        // Calculate and set total
-        const total = calculateTotal({ priceAction: updatedPriceAction });
-        setTotalAmount(total.toFixed(2));
-        setValue("total", total);
-      }
-    },
-  });
+  // Auto-recalculate subtotals + total when priceAction changes. usePersist's
+  // v1 signature dropped {name, type} so we can't gate on `type === "change"`
+  // any more; using a scoped useWatch + setValue with a "did anything actually
+  // change" guard avoids the feedback loop that would otherwise happen when our
+  // own setValue fires a new tick.
+  const watchedPriceAction = useWatch({ control, name: "priceAction" }) as
+    | Array<{ quantity?: string | number; unitPrice?: string | number; subtotal?: number }>
+    | undefined;
+  useEffect(() => {
+    if (!Array.isArray(watchedPriceAction) || watchedPriceAction.length === 0) return;
+    const updatedPriceAction = watchedPriceAction.map((item: any) => ({
+      ...item,
+      subtotal:
+        (parseFloat(item.quantity) || 0) *
+        (parseFloat(item.unitPrice) || 0),
+    }));
+    const subtotalsChanged = updatedPriceAction.some(
+      (next, i) => next.subtotal !== watchedPriceAction[i]?.subtotal,
+    );
+    if (subtotalsChanged) {
+      setValue("priceAction", updatedPriceAction);
+    }
+    const total = calculateTotal({ priceAction: updatedPriceAction });
+    setTotalAmount(total.toFixed(2));
+    setValue("total", total);
+  }, [watchedPriceAction, setValue]);
 
   // Amendment mutation
   const { mutateAsync: amendProposal, isPending: isAmending } = useMutation<
@@ -268,6 +279,17 @@ const AmendProposalDialog: React.FC<AmendProposalDialogProps> = ({
     },
     onSuccess: () => {
       toastHandlers.success("Success", "Proposal pricing amended successfully");
+      // The saved pricing must be visible immediately on reopen. Without this
+      // the dialog's own breakdown query stays cached (and, within the 30s
+      // global staleTime, is not even refetched on reopen), so the vendor sees
+      // stale numbers until they leave the solicitation and come back. Invalidate
+      // this dialog's source query plus the proposal/amendment views that render
+      // pricing (prefix-matched — this dialog only knows proposalId).
+      queryClient.invalidateQueries({
+        queryKey: ["proposal-price-breakdown", proposalId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["vendor-proposal"] });
+      queryClient.invalidateQueries({ queryKey: ["amendments"] });
       onOpenChange(false);
       reset();
     },
@@ -325,7 +347,7 @@ const AmendProposalDialog: React.FC<AmendProposalDialogProps> = ({
 
             {/* Pricing Table */}
             <PricingTable
-              {...{ control, totalAmount, setTotalAmount, setValue, getValues }}
+              {...{ control, totalAmount, setTotalAmount, setValue, getValues, currency }}
             />
 
             {/* Reason / Note */}
@@ -374,6 +396,7 @@ interface PricingTableProps {
   setTotalAmount: (amount: string) => void;
   setValue: UseFormSetValue<AmendProposalFormValues>;
   getValues: UseFormGetValues<AmendProposalFormValues>;
+  currency: string;
 }
 
 const PricingTable: React.FC<PricingTableProps> = ({
@@ -382,6 +405,7 @@ const PricingTable: React.FC<PricingTableProps> = ({
   setTotalAmount,
   setValue,
   getValues,
+  currency,
 }) => {
   // Use field array for price actions
   const { fields, append, remove, update } = useFieldArray({
@@ -399,7 +423,7 @@ const PricingTable: React.FC<PricingTableProps> = ({
     const subtotal = quantity * unitPrice;
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "USD",
+      currency,
     }).format(subtotal);
   };
 
@@ -603,6 +627,7 @@ const PricingTable: React.FC<PricingTableProps> = ({
                 index={index}
                 control={control}
                 removeSubItem={removeSubItem}
+                currency={currency}
               />
             )}
           </div>
@@ -631,7 +656,7 @@ const PricingTable: React.FC<PricingTableProps> = ({
             <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
               {new Intl.NumberFormat("en-US", {
                 style: "currency",
-                currency: "USD",
+                currency,
               }).format(parseFloat(totalAmount))}
             </div>
           </div>
@@ -647,6 +672,7 @@ interface SubPriceTableProps {
   index: number;
   control: ForgeControl<AmendProposalFormValues>;
   removeSubItem: (itemIndex: number, subItemIndex: number) => void;
+  currency: string;
 }
 
 const SubPriceTable: React.FC<SubPriceTableProps> = ({
@@ -654,6 +680,7 @@ const SubPriceTable: React.FC<SubPriceTableProps> = ({
   index,
   control,
   removeSubItem,
+  currency,
 }) => {
   return (
     <div className="ml-8 space-y-2">
@@ -715,7 +742,7 @@ const SubPriceTable: React.FC<SubPriceTableProps> = ({
             <div className="h-8 px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-md text-sm flex items-center">
               {new Intl.NumberFormat("en-US", {
                 style: "currency",
-                currency: "USD",
+                currency,
               }).format((subItem?.quantity || 0) * (subItem?.unitPrice || 0))}
             </div>
           </div>

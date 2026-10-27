@@ -1,4 +1,5 @@
 import React from "react";
+import { resolveEnvFileUrl } from "@/config";
 import {
   Dialog,
   DialogClose,
@@ -7,12 +8,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Forge, Forger, useForge } from "@/lib/forge";
+import { Forge, Forger, useForge } from "@adexdsamson/forge";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { postRequest } from "@/lib/axiosInstance";
 import type { ApiResponse, ApiResponseError } from "@/types";
 import {
   TextArea,
+  TextCurrencyInput,
   TextFileUploader,
   TextInput,
   TextSelect,
@@ -22,9 +24,12 @@ import { contractManagerApi, type ContractChangeManagerDTO } from "../api/contra
 import { vendorApi } from "../api/vendorApi";
 import {
   getCreateChangeTypeOptionsForRole,
+  getCreateChangeSubmitLabel,
   toContractChangeFileItem,
+  mergeChangeAttachments,
   toManagerCreateChangePayload,
   toVendorCreateChangePayload,
+  type ContractChangeType,
   type UploadURLs,
 } from "../lib/contractChanges";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -37,30 +42,92 @@ type Props = {
   contractId: string;
   isManager?: boolean;
   documentType?: "Contract" | "MsaContract";
+  /** "edit" resubmits a rejected change request via PUT instead of creating
+   *  a new one (QA #150). Requires changeId; initialChange pre-fills the
+   *  form. Vendor-only — managers don't resubmit their own change requests. */
+  mode?: "create" | "edit";
+  /** In edit mode, distinguishes a rejected-item resubmit ("Resubmit") from a
+   *  pending-item edit ("Edit"). Both hit the same PUT. */
+  isResubmit?: boolean;
+  changeId?: string;
+  initialChange?: {
+    title?: string;
+    type?: string;
+    urgency?: string;
+    description?: string;
+    files?: { name: string; url: string; type: string; size: string | number }[];
+  };
+  /** Optional controlled-open. When provided, the parent owns the open state
+   *  (used to gate opening behind an edit lock — #76). Omit for the default
+   *  self-managed behavior. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
+
+function FileListItem({ file, index }: { file: File; index?: number }) {
+  const extension = getSimpleFileExtension(file.name).toUpperCase();
+  return (
+    <FileUploaderItem
+      index={index ?? 0}
+      className="h-auto w-full rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800"
+    >
+      {/* pr-8 reserves room for FileUploaderItem's absolutely-positioned
+          delete button so the truncated name doesn't run underneath it. */}
+      <div className="flex items-center gap-3 w-full pr-8">
+        <div className="h-10 w-10 shrink-0 rounded-lg bg-white border border-slate-200 flex items-center justify-center dark:bg-slate-700 dark:border-slate-600">
+          {getFileIcon(extension)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-slate-900 truncate dark:text-slate-100">
+            {file.name}
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {extension || "FILE"} • {formatFileSize(file.size)}
+          </p>
+        </div>
+      </div>
+    </FileUploaderItem>
+  );
+}
 
 const CreateChangeDialog: React.FC<Props> = ({
   trigger,
   contractId,
   isManager = true,
   documentType = "Contract",
+  mode = "create",
+  isResubmit = false,
+  changeId,
+  initialChange,
+  open: controlledOpen,
+  onOpenChange,
 }) => {
+  const isEdit = mode === "edit" && !!changeId;
   const queryClient = useQueryClient();
-  const [open, setOpen] = React.useState(false);
+  const [internalOpen, setInternalOpen] = React.useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = React.useCallback(
+    (next: boolean) => {
+      onOpenChange?.(next);
+      // Only self-manage when uncontrolled; a controlled parent owns `open`.
+      if (controlledOpen === undefined) setInternalOpen(next);
+    },
+    [onOpenChange, controlledOpen],
+  );
   const toastHandler = useToastHandler();
   const changeTypeOptions = React.useMemo(
     () => getCreateChangeTypeOptionsForRole({ isManager, isVendor: !isManager }),
     [isManager],
   );
-  const defaultChangeType = isManager ? "order" : "request";
+  const defaultChangeType = isManager ? "directive" : "request";
 
   const { control, reset } = useForge({
     defaultValues: {
-      changeName: "",
-      changeType: defaultChangeType,
+      changeName: initialChange?.title ?? "",
+      changeType: initialChange?.type ?? defaultChangeType,
       amount: "",
-      urgency: "",
-      description: "",
+      urgency: initialChange?.urgency ?? "",
+      description: initialChange?.description ?? "",
       files: null,
     },
   });
@@ -68,16 +135,37 @@ const CreateChangeDialog: React.FC<Props> = ({
   React.useEffect(() => {
     if (!open) return;
     reset({
-      changeName: "",
-      changeType: defaultChangeType,
+      changeName: initialChange?.title ?? "",
+      changeType: initialChange?.type ?? defaultChangeType,
       amount: "",
-      urgency: "",
-      description: "",
+      urgency: initialChange?.urgency ?? "",
+      description: initialChange?.description ?? "",
       files: null,
     });
-  }, [open, reset, defaultChangeType]);
+    // Only depend on `open` — re-syncing on every initialChange identity
+    // change would reset the form mid-edit if the parent re-renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, reset]);
 
   const files = useWatch({ control, name: "files" }) as File[] | null;
+  const changeType = useWatch({ control, name: "changeType" }) as ContractChangeType | undefined;
+  const submitLabel = isEdit
+    ? isResubmit
+      ? "Resubmit"
+      : "Save Changes"
+    : getCreateChangeSubmitLabel({
+        isManager,
+        changeType: changeType ?? defaultChangeType,
+      });
+
+  // Notices must name the actual change type the user selected (Change Order /
+  // Change Request / Change Proposal / Change Directive), not a hardcoded
+  // "Change Request" (QA #106). The role-filtered options already hold the
+  // exact labels.
+  const changeTypeLabel =
+    changeTypeOptions.find(
+      (option) => option.value === (changeType ?? defaultChangeType),
+    )?.label ?? "Change Request";
 
   const { mutateAsync: uploadFile, isPending: isUploadingFiles } = useMutation<
     ApiResponse<UploadURLs[]>,
@@ -102,8 +190,17 @@ const CreateChangeDialog: React.FC<Props> = ({
   });
 
   const createMutation = useMutation({
-    mutationKey: [isManager ? "contractManager" : "vendor", "contractChanges", "create", contractId],
+    mutationKey: [
+      isManager ? "contractManager" : "vendor",
+      "contractChanges",
+      isEdit ? "update" : "create",
+      contractId,
+      isEdit ? changeId : "new",
+    ],
     mutationFn: async (payload: ContractChangeManagerDTO) => {
+      if (isEdit && changeId) {
+        return await vendorApi.updateChange(contractId, changeId, payload as any);
+      }
       if (isManager) {
         const res = await contractManagerApi.createChangeRequest(
           contractId,
@@ -112,18 +209,34 @@ const CreateChangeDialog: React.FC<Props> = ({
         );
         return res;
       }
-      const res = await vendorApi.createChange(contractId, payload as any);
+      const res =
+        documentType === "MsaContract"
+          ? await vendorApi.createMsaChange(contractId, payload as any)
+          : await vendorApi.createChange(contractId, payload as any);
       return res;
     },
     onSuccess: async () => {
-      toastHandler.success("Change Request", "Change request submitted successfully");
+      toastHandler.success(
+        changeTypeLabel,
+        isEdit
+          ? isResubmit
+            ? `${changeTypeLabel} resubmitted successfully`
+            : `${changeTypeLabel} updated successfully`
+          : `${changeTypeLabel} submitted successfully`,
+      );
       setOpen(false);
       reset();
-      await queryClient.invalidateQueries({ queryKey: ["contractChanges"] });
-      await queryClient.invalidateQueries({ queryKey: ["contractChanges", "stats"] });
+      const listKey = documentType === "MsaContract" ? "msaChanges" : "contractChanges";
+      await queryClient.invalidateQueries({ queryKey: [listKey] });
+      await queryClient.invalidateQueries({ queryKey: [listKey, "stats"] });
+      if (isEdit && changeId) {
+        await queryClient.invalidateQueries({
+          queryKey: ["contract-change-detail"],
+        });
+      }
     },
     onError: (error: ApiResponseError) => {
-      toastHandler.error("Change Request", error);
+      toastHandler.error(changeTypeLabel, error);
     },
   });
 
@@ -135,22 +248,28 @@ const CreateChangeDialog: React.FC<Props> = ({
     description: string;
     files: File[] | null;
   }) => {
-    void data.amount;
-
     const payload: ContractChangeManagerDTO = isManager
       ? toManagerCreateChangePayload({
           changeName: data.changeName,
           changeType: data.changeType,
           urgency: data.urgency,
           description: data.description,
+          amount: data.amount,
         })
       : (toVendorCreateChangePayload({
           changeName: data.changeName,
           changeType: data.changeType,
           urgency: data.urgency,
           description: data.description,
+          amount: data.amount,
         }) as unknown as ContractChangeManagerDTO);
 
+    let uploadedFiles: Array<{
+      name: string;
+      url: string;
+      type: string;
+      size: string;
+    }> = [];
     if (data.files?.length) {
       try {
         const uploadedItems = await Promise.all(
@@ -162,16 +281,24 @@ const CreateChangeDialog: React.FC<Props> = ({
           })
         );
 
-        const filesPayload = uploadedItems.filter(
-          (item): item is { name: string; url: string; type: string; size: number } => Boolean(item)
+        uploadedFiles = uploadedItems.filter(
+          (item): item is { name: string; url: string; type: string; size: string } =>
+            Boolean(item),
         );
-        if (filesPayload.length) {
-          payload.files = filesPayload;
-        }
       } catch (error) {
         toastHandler.error("Upload Failed", error as ApiResponseError);
         return;
       }
+    }
+
+    // On resubmit/edit the previously-attached documents must carry over — a
+    // PATCH that sends only the new uploads (or omits files) drops them, so
+    // uploading a replacement wiped the prior docs (QA #116). Keep the existing
+    // attachments and APPEND any new uploads.
+    const existingFiles = isEdit ? (initialChange?.files ?? []) : [];
+    const mergedFiles = mergeChangeAttachments(existingFiles as any, uploadedFiles);
+    if (mergedFiles.length) {
+      payload.files = mergedFiles as any;
     }
 
     try {
@@ -179,30 +306,6 @@ const CreateChangeDialog: React.FC<Props> = ({
     } catch {
       return;
     }
-  };
-
-  const FileListItem = ({ file, index }: { file: File; index?: number }) => {
-    const extension = getSimpleFileExtension(file.name).toUpperCase();
-    return (
-      <FileUploaderItem
-        index={index ?? 0}
-        className="h-auto w-full rounded-xl border border-slate-200 bg-slate-50 p-3"
-      >
-        <div className="flex items-center gap-3 w-full">
-          <div className="h-10 w-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center">
-            {getFileIcon(extension)}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-900 truncate">
-              {file.name}
-            </p>
-            <p className="text-xs text-slate-500">
-              {extension || "FILE"} • {formatFileSize(file.size)}
-            </p>
-          </div>
-        </div>
-      </FileUploaderItem>
-    );
   };
 
   const isSubmitting = createMutation.isPending || isUploadingFiles;
@@ -213,8 +316,12 @@ const CreateChangeDialog: React.FC<Props> = ({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-0">
         <div className="flex items-center justify-between px-8 pt-8">
-          <DialogTitle className="text-xl font-semibold text-[#0F0F0F]">
-            Create Change
+          <DialogTitle className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
+            {isEdit
+              ? isResubmit
+                ? "Resubmit Change"
+                : "Edit Change"
+              : "Create Change"}
           </DialogTitle>
         </div>
         <div className="px-8 pb-8 pt-6">
@@ -236,8 +343,8 @@ const CreateChangeDialog: React.FC<Props> = ({
               <Forger
                 name="amount"
                 label="Amount"
-                placeholder="Change Proposal"
-                component={TextInput}
+                placeholder="Enter Amount"
+                component={TextCurrencyInput}
               />
               <Forger
                 name="urgency"
@@ -265,12 +372,12 @@ const CreateChangeDialog: React.FC<Props> = ({
                 component={TextFileUploader}
                 element={
                   <div className="flex flex-col items-center gap-3">
-                    <CloudUpload className="h-12 w-12 text-[#2A4467]" />
+                    <CloudUpload className="h-12 w-12 text-[#2A4467] dark:text-blue-300" />
                     <div className="space-y-1 text-center">
-                      <p className="text-base font-semibold text-[#2A4467]">
+                      <p className="text-base font-semibold text-[#2A4467] dark:text-blue-300">
                         Drag & Drop or Click to choose files
                       </p>
-                      <p className="text-sm text-[#6B7280]">
+                      <p className="text-sm text-[#6B7280] dark:text-slate-400">
                         Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
                       </p>
                     </div>
@@ -295,7 +402,7 @@ const CreateChangeDialog: React.FC<Props> = ({
                   } as any
                 }
               />
-              <div className="flex items-center justify-between text-xs text-slate-500">
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                 <span>
                   {fileCount > 0
                     ? `${fileCount} file${fileCount === 1 ? "" : "s"} ready to upload`
@@ -303,13 +410,37 @@ const CreateChangeDialog: React.FC<Props> = ({
                 </span>
                 {isUploadingFiles ? <span>Uploading...</span> : null}
               </div>
+              {isEdit && initialChange?.files?.length ? (
+                <div className="space-y-1 pt-1">
+                  <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                    Existing attachments
+                  </p>
+                  <ul className="space-y-1">
+                    {initialChange.files.map((f, i) => (
+                      <li key={f.url || f.name || i}>
+                        <a
+                          href={resolveEnvFileUrl(f.url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-[#2A4467] dark:text-blue-300 underline underline-offset-2 break-all"
+                        >
+                          {f.name || "Attachment"}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                    These stay attached; any files you upload are added to them.
+                  </p>
+                </div>
+              ) : null}
             </div>
             <div className="flex items-center gap-4 pt-2">
               <DialogClose asChild>
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-12 flex-1 rounded-xl border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] hover:bg-[#E5E7EB]"
+                  className="h-12 flex-1 rounded-xl border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] hover:bg-[#E5E7EB] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                   disabled={isSubmitting}
                 >
                   Cancel
@@ -320,7 +451,13 @@ const CreateChangeDialog: React.FC<Props> = ({
                 disabled={isSubmitting}
                 className="h-12 flex-1 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]"
               >
-                {isSubmitting ? "Sending..." : "Send Request"}
+                {isSubmitting
+                  ? isEdit
+                    ? isResubmit
+                      ? "Resubmitting..."
+                      : "Saving..."
+                    : "Sending..."
+                  : submitLabel}
               </Button>
             </div>
           </Forge>

@@ -274,9 +274,14 @@ const MultipleSelector = React.forwardRef<
         <Button
           ref={ref}
           {...props}
+          type="button"
           onClick={handleTogglePopover}
           className={cn(
-            "flex h-auto min-h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1 dark:border-gray-600  dark:text-gray-100 dark:placeholder:text-gray-400 dark:focus:ring-gray-400",
+            // `min-w-0` is load-bearing: Button base ships `inline-flex` +
+            // `whitespace-nowrap`, so without it a long placeholder grows the
+            // trigger past its container and forces a horizontal scrollbar on
+            // the parent dialog.
+            "flex h-auto min-h-10 w-full min-w-0 items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1 dark:border-gray-600  dark:text-gray-100 dark:placeholder:text-gray-400 dark:focus:ring-gray-400",
             className
           )}
           variant="outline"
@@ -300,6 +305,7 @@ const MultipleSelector = React.forwardRef<
                     >
                       {option.label}
                       <button
+                        type="button"
                         className={cn(
                           "ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                           (option as any).fixed &&
@@ -329,6 +335,7 @@ const MultipleSelector = React.forwardRef<
                   >
                     {`+ ${selectedValues.length - maxCount} more`}
                     <button
+                      type="button"
                       className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
@@ -350,6 +357,7 @@ const MultipleSelector = React.forwardRef<
                 {!hideClearAllButton && (
                   <div>
                     <button
+                      type="button"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           handleClearAll()
@@ -369,8 +377,8 @@ const MultipleSelector = React.forwardRef<
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-between w-full mx-auto">
-              <span className="text-sm text-muted-foreground mx-3 dark:text-gray-400">
+            <div className="flex items-center justify-between w-full mx-auto min-w-0">
+              <span className="text-sm font-normal text-muted-foreground mx-3 dark:text-gray-400 truncate min-w-0">
                 {placeholder}
               </span>
               <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50 dark:text-gray-400" />

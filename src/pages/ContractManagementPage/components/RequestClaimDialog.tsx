@@ -1,4 +1,6 @@
-import React from "react";
+import React, { memo } from "react";
+import { UploadCloud, X } from "lucide-react";
+import { useFormContext, useWatch } from "react-hook-form";
 import {
   Dialog,
   DialogClose,
@@ -7,16 +9,41 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Forge, Forger, useForge } from "@/lib/forge";
-import { TextArea, TextInput, TextSelect } from "@/components/layouts/FormInputs";
+import { Forge, Forger, useForge } from "@adexdsamson/forge";
+import {
+  TextArea,
+  TextCurrencyInput,
+  TextFileUploader,
+  TextInput,
+  TextSelect,
+} from "@/components/layouts/FormInputs";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { postRequest } from "@/lib/axiosInstance";
+import { postRequest, putRequest } from "@/lib/axiosInstance";
+import type { ApiResponse } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 
 type Props = {
   trigger: React.ReactNode;
   createPath?: string;
   invalidateQueryKey?: readonly unknown[];
+  /** "edit" resubmits a rejected claim via PUT. Requires editPath and
+   *  initialClaim to prefill. Mirrors the CreateChangeDialog edit-mode
+   *  contract. */
+  mode?: "create" | "edit";
+  /** In edit mode, distinguishes a rejected-item resubmit ("Resubmit") from a
+   *  pending-item edit ("Edit"). Both hit the same PUT. */
+  isResubmit?: boolean;
+  editPath?: string;
+  initialClaim?: {
+    title?: string;
+    type?: string;
+    impact?: "time" | "cost" | "time_cost";
+    time?: number | string;
+    cost?: number | string;
+    description?: string;
+    files?: Array<{ name: string; url: string; type: string; size: string }>;
+  };
+  detailInvalidateQueryKey?: readonly unknown[];
 };
 
 type ClaimFormValues = {
@@ -26,69 +53,216 @@ type ClaimFormValues = {
   timeImpact: string;
   costImpact: string;
   description: string;
+  files: File[] | null;
 };
+
+const ACCEPTED_FILE_TYPES = {
+  "application/pdf": [".pdf"],
+  "application/msword": [".doc"],
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
+    ".docx",
+  ],
+  "application/vnd.ms-excel": [".xls"],
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+  "application/zip": [".zip"],
+  "image/png": [".png"],
+  "image/jpeg": [".jpeg", ".jpg"],
+} as const;
+
+const uploadClaimFiles = async (files: File[] | null) => {
+  if (!files || files.length === 0) return [];
+  const formData = new FormData();
+  files.forEach((file) => formData.append("file", file));
+  const res = (await postRequest({
+    url: "/upload",
+    payload: formData,
+    config: { headers: { "Content-Type": "multipart/form-data" } },
+  })) as ApiResponse<
+    Array<{ name: string; url: string; type: string; size: string }>
+  >;
+  return res?.data?.data ?? [];
+};
+
+const UploadElement = memo(() => (
+  <div className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-[#9CA3AF] dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-8 text-center">
+    <UploadCloud className="h-9 w-9 text-[#2A4467] dark:text-blue-300" />
+    <div className="space-y-1">
+      <div className="text-sm font-semibold text-[#2A4467] dark:text-blue-300">
+        Drag &amp; Drop or Click to choose files
+      </div>
+      <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
+        Supported formats: DOC, DOCX, PDF, XLS, XLSX, ZIP, PNG, JPEG
+      </div>
+    </div>
+  </div>
+));
+
+const FilesListItem = memo(({ file }: { file: File }) => {
+  const { control, setValue } = useFormContext<ClaimFormValues>();
+  const value = useWatch({ control, name: "files" });
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB] dark:bg-slate-700">
+          <UploadCloud className="h-5 w-5 text-[#2A4467] dark:text-blue-300" />
+        </div>
+        <div className="min-w-0">
+          <div className="truncate text-sm font-medium text-[#0F0F0F] dark:text-slate-100">
+            {file.name}
+          </div>
+          <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
+            {Math.ceil(file.size / 1024)} KB
+          </div>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() =>
+          setValue("files", (value ?? []).filter((f) => f.name !== file.name))
+        }
+        className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF] dark:text-slate-400"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+});
 
 const RequestClaimDialog: React.FC<Props> = ({
   trigger,
   createPath,
   invalidateQueryKey,
+  mode = "create",
+  isResubmit = false,
+  editPath,
+  initialClaim,
+  detailInvalidateQueryKey,
 }) => {
+  const isEdit = mode === "edit" && !!editPath;
   const [open, setOpen] = React.useState(false);
   const qc = useQueryClient();
   const toast = useToastHandler();
-  const { control, setValue, watch } = useForge<ClaimFormValues>({
+
+  const stripCurrency = (raw: unknown): string => {
+    if (raw == null) return "";
+    return String(raw).replace(/[$,\s]/g, "");
+  };
+
+  const { control, setValue, watch, reset } = useForge<ClaimFormValues>({
     defaultValues: {
-      claimTitle: "",
-      claimType: "",
-      impactType: "time",
-      timeImpact: "",
-      costImpact: "",
-      description: "",
+      claimTitle: initialClaim?.title ?? "",
+      claimType: initialClaim?.type ?? "",
+      impactType: initialClaim?.impact ?? "time",
+      timeImpact:
+        initialClaim?.time != null ? String(initialClaim.time) : "",
+      costImpact:
+        initialClaim?.cost != null ? String(initialClaim.cost) : "",
+      description: initialClaim?.description ?? "",
+      files: null,
     },
   });
+
+  React.useEffect(() => {
+    if (!open) return;
+    reset({
+      claimTitle: initialClaim?.title ?? "",
+      claimType: initialClaim?.type ?? "",
+      impactType: initialClaim?.impact ?? "time",
+      timeImpact:
+        initialClaim?.time != null ? String(initialClaim.time) : "",
+      costImpact:
+        initialClaim?.cost != null ? String(initialClaim.cost) : "",
+      description: initialClaim?.description ?? "",
+      files: null,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const impactType = watch("impactType");
-  console.log({ createPath });
 
-  const createMutation = useMutation({
-    mutationKey: ["create-claim", createPath],
-    mutationFn: async (payload: any) => {
-      if (!createPath) throw new Error("Create claim endpoint unavailable");
-      const res = await postRequest({
-        url: createPath,
-        payload,
-      });
-      return res.data;
-    },
-    onSuccess: async () => {
-      toast.success("Claim", "Claim submitted successfully");
-      if (invalidateQueryKey) {
-        await qc.invalidateQueries({ queryKey: invalidateQueryKey });
-      }
-      setOpen(false);
-    },
-    onError: (error) => {
-      console.log({ error });
-      toast.error("Claim", error as any);
-    },
-  });
-
-  const handleClaimSubmit = (data: ClaimFormValues) => {
-    const payload = {
+  const buildPayload = async (data: ClaimFormValues) => {
+    const uploaded = await uploadClaimFiles(data.files);
+    const uploadedFiles = uploaded.map((f) => ({
+      name: f.name,
+      url: f.url,
+      type: f.type,
+      size: f.size,
+    }));
+    const files =
+      uploadedFiles.length > 0
+        ? uploadedFiles
+        : isEdit && initialClaim?.files?.length
+          ? initialClaim.files
+          : undefined;
+    return {
       title: data.claimTitle,
       type: data.claimType,
       impact: data.impactType,
       time:
         data.impactType === "time" || data.impactType === "time_cost"
-          ? Number(data.timeImpact)
+          ? Number(stripCurrency(data.timeImpact))
           : undefined,
       cost:
         data.impactType === "cost" || data.impactType === "time_cost"
-          ? Number(data.costImpact)
+          ? Number(stripCurrency(data.costImpact))
           : undefined,
       description: data.description,
+      files,
     };
-    createMutation.mutate(payload);
+  };
+
+  const invalidateAll = async () => {
+    if (invalidateQueryKey) {
+      await qc.invalidateQueries({ queryKey: invalidateQueryKey });
+    }
+    if (detailInvalidateQueryKey) {
+      await qc.invalidateQueries({ queryKey: detailInvalidateQueryKey });
+    }
+  };
+
+  const createMutation = useMutation({
+    mutationKey: ["create-claim", createPath],
+    mutationFn: async (data: ClaimFormValues) => {
+      if (!createPath) throw new Error("Create claim endpoint unavailable");
+      const payload = await buildPayload(data);
+      const res = await postRequest({ url: createPath, payload });
+      return res.data;
+    },
+    onSuccess: async () => {
+      toast.success("Claim", "Claim submitted successfully");
+      await invalidateAll();
+      setOpen(false);
+    },
+    onError: (error) => {
+      toast.error("Claim", error as any);
+    },
+  });
+
+  const editMutation = useMutation({
+    mutationKey: ["edit-claim", editPath],
+    mutationFn: async (data: ClaimFormValues) => {
+      if (!editPath) throw new Error("Edit claim endpoint unavailable");
+      const payload = await buildPayload(data);
+      const res = await putRequest({ url: editPath, payload });
+      return res.data;
+    },
+    onSuccess: async () => {
+      toast.success(
+        "Claim",
+        isResubmit ? "Claim resubmitted successfully" : "Claim updated successfully",
+      );
+      await invalidateAll();
+      setOpen(false);
+    },
+    onError: (error) => {
+      toast.error("Claim", error as any);
+    },
+  });
+
+  const activeMutation = isEdit ? editMutation : createMutation;
+
+  const handleClaimSubmit = (data: ClaimFormValues) => {
+    activeMutation.mutate(data);
   };
 
   return (
@@ -97,7 +271,11 @@ const RequestClaimDialog: React.FC<Props> = ({
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-0">
         <div className="flex items-center justify-between px-8 pt-8">
           <DialogTitle className="text-xl font-semibold text-[#0F0F0F]">
-            Request Claim
+            {isEdit
+              ? isResubmit
+                ? "Resubmit Claim"
+                : "Edit Claim"
+              : "Create Claim"}
           </DialogTitle>
         </div>
         <div className="px-8 pb-8 pt-6">
@@ -121,6 +299,10 @@ const RequestClaimDialog: React.FC<Props> = ({
                 {
                   label: "Vendor-caused Delay",
                   value: "vendor_delay",
+                },
+                {
+                  label: "Company-caused Delay",
+                  value: "company_delay",
                 },
                 { label: "Scope Change", value: "scope_change" },
                 {
@@ -216,7 +398,7 @@ const RequestClaimDialog: React.FC<Props> = ({
                   name="costImpact"
                   label="Cost"
                   placeholder="Enter Amount"
-                  component={TextInput}
+                  component={TextCurrencyInput}
                 />
               )}
               {impactType === "time_cost" && (
@@ -224,14 +406,14 @@ const RequestClaimDialog: React.FC<Props> = ({
                   <Forger
                     name="timeImpact"
                     label="Time"
-                    placeholder="Enter Date"
+                    placeholder="Enter no. of days"
                     component={TextInput}
                   />
                   <Forger
                     name="costImpact"
                     label="Cost"
                     placeholder="Enter Amount"
-                    component={TextInput}
+                    component={TextCurrencyInput}
                   />
                 </div>
               )}
@@ -243,6 +425,20 @@ const RequestClaimDialog: React.FC<Props> = ({
               component={TextArea}
               rows={4}
             />
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-[#374151]">
+                Supporting Documents
+              </div>
+              <Forger
+                name="files"
+                component={TextFileUploader}
+                element={<UploadElement />}
+                List={FilesListItem as any}
+                containerClass="w-full"
+                accept={ACCEPTED_FILE_TYPES as any}
+                dropzoneOptions={{ multiple: true }}
+              />
+            </div>
             <div className="flex items-center gap-4 pt-2">
               <DialogClose asChild>
                 <Button
@@ -255,10 +451,23 @@ const RequestClaimDialog: React.FC<Props> = ({
               </DialogClose>
               <Button
                 type="submit"
-                disabled={createMutation.isPending || !createPath}
+                disabled={
+                  activeMutation.isPending ||
+                  (isEdit ? !editPath : !createPath)
+                }
                 className="h-12 flex-1 rounded-xl bg-[#2A4467] text-base font-semibold text-white hover:bg-[#1f3552]"
               >
-                {createMutation.isPending ? "Submitting..." : "Request Claim"}
+                {activeMutation.isPending
+                  ? isEdit
+                    ? isResubmit
+                      ? "Resubmitting..."
+                      : "Saving..."
+                    : "Submitting..."
+                  : isEdit
+                    ? isResubmit
+                      ? "Resubmit Claim"
+                      : "Edit Claim"
+                    : "Submit Claim"}
               </Button>
             </div>
           </Forge>

@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Trash2, Plus } from "lucide-react";
 import { useFieldArray, Control, useWatch } from "react-hook-form";
 import { useEffect } from "react";
-import { Forger } from "@/lib/forge";
+import { Forger } from "@adexdsamson/forge";
 import { TextInput, TextArea } from "@/components/layouts/FormInputs/TextInput";
 import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
 import { useQuery } from "@tanstack/react-query";

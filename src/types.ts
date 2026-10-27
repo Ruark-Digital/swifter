@@ -3,6 +3,7 @@ import { AxiosResponse, AxiosError } from "axios";
 export type UserRole =
   | "evaluator"
   | "vendor"
+  | "project_manager"
   | "approver"
   | "view_only"
   | "company_admin"
@@ -16,18 +17,25 @@ export type Role = {
   __v: number;
 };
 
+// BE ships module flags as `{ enabled: boolean }`; legacy payloads (and
+// persisted auth state) carry plain booleans. Read via isModuleEnabled /
+// isModuleDisabled from src/lib/moduleFlags.ts.
+export type ModuleFlagValue = boolean | { enabled: boolean };
+
 export interface Modules {
-  contractManagement: boolean;
+  contractManagement: ModuleFlagValue;
   _id: string;
   companyId: string;
-  solicitationManagement: boolean;
-  evaluationsManagement: boolean;
-  vendorManagement: boolean;
-  reportsAnalytics: boolean;
-  vendorsQA: boolean;
-  generalUpdatesNotifications: boolean;
-  addendumManagement: boolean;
-  myActions: boolean;
+  solicitationManagement: ModuleFlagValue;
+  evaluationsManagement: ModuleFlagValue;
+  vendorManagement: ModuleFlagValue;
+  reportsAnalytics: ModuleFlagValue;
+  vendorsQA: ModuleFlagValue;
+  generalUpdatesNotifications: ModuleFlagValue;
+  addendumManagement: ModuleFlagValue;
+  myActions: ModuleFlagValue;
+  MSAmanagement?: ModuleFlagValue;
+  projectmanagement?: ModuleFlagValue;
   createdAt: Date;
   updatedAt: Date;
   __v: number;
@@ -40,6 +48,10 @@ export type User = {
   email: string;
   name: string;
   role: Role;
+  // Multi-role (QA #177). BE ships up to 2 roles; items may be populated Role
+  // objects, name slugs, or bare document ids. Resolved via useUserRole.
+  roles?: (Role | string)[];
+  currency?: string;
   status: string;
   module: Modules;
   updatedAt: string;
@@ -55,6 +67,7 @@ export type User = {
   isAi: boolean;
   isDeleted: boolean;
   contactEmail: string;
+  projectmanagerId?: string;
 };
 
 export type ApiError = {
@@ -123,14 +136,40 @@ export interface Vendor {
   };
 }
 
+export interface ProjectManager {
+  user: {
+    _id: string;
+    name: string;
+  };
+  status: string;
+}
+
+/** Pending PM take-over request (PM-assignment guide / docs v2.3.0). The BE
+ *  returns this separately from `projectManager` and keeps `projectManager`
+ *  null until the CM approves. `user` may be a populated object or a bare
+ *  ObjectId string depending on the endpoint. */
+export interface PendingProjectManager {
+  user?: string | { _id?: string; name?: string; user?: { name?: string } };
+  status?: string;
+  actionedAt?: string | null;
+}
+
 export interface ContractDetail {
   contractFormationStage: ContractFormationStage;
   _id:                    string;
+  /** BE-computed: true when the authenticated user owns/manages this contract.
+   *  Used to gate owner-only actions like Approve/Reject (QA #140/#144/#164). */
+  owner?:                 boolean;
   company:                Company;
   project:                Company;
   solicitation:           Company;
   vendor:                 Company;
+  msaContract?:           { _id: string; title: string };
   vendorPersonnel:        VendorPersonnel[];
+  /** Returned by the new /edit endpoint (swagger 2.3.0). The legacy
+   *  detail endpoint exposes the same data under `vendorPersonnel`;
+   *  callers should accept either, preferring `personnel` when set. */
+  personnel?:             VendorPersonnel[];
   creator:                Creator;
   contractType:           Company;
   contractTerm:           Company;
@@ -148,9 +187,17 @@ export interface ContractDetail {
   currency:               string;
   contractValue:          number;
   contigency:             string;
+  /** API v2.3.0 corrected the spelling on the contract-detail response
+   *  (ContractServiceDetail.contingency). Accept either; `contigency`
+   *  is the legacy key. */
+  contingency?:           string;
   holdBack:               number;
   holdBackBank:           number;
   paymentTerms:           Company;
+  projectManager:         ProjectManager;
+  /** Pending take-over request; present (with `projectManager` null) while a
+   *  vendor-requested PM assignment awaits CM approval (docs v2.3.0). */
+  pendingProjectManager?: PendingProjectManager;
   paymentStructure:       string;
   deliverables:           ContractDeliverable[];
   insurance:              ContractInsurance;
@@ -165,11 +212,20 @@ export interface ContractDetail {
   isDeleted:              boolean;
   milestone:              any[];
   signatories:            any[];
+  datePublished?:         string;
   createdAt:              string;
   updatedAt:              string;
   __v:                    number;
   holdBackReleased:       number;
   savingAmount:           number;
+  /** Payment-summary figures from the contract-detail response (v2.3.0).
+   *  `billPayment` drives Billed Till Date; `currentBalance` drives the
+   *  Payment Summary's Current Balance (previously sourced from the
+   *  financial-statement dashboard endpoint). `billedAmount` is retained on
+   *  the type but no longer consumed by the Payment Summary. */
+  billedAmount?:          number;
+  billPayment?:           number;
+  currentBalance?:        number;
 }
 
 export interface ContractDeliverable {
@@ -241,7 +297,10 @@ export interface Creator {
   _id:   string;
   name:  string;
   email: string;
-  role: string
+  // The contract-detail payload returns `role` as a populated object
+  // ({ _id, name }); older/list payloads may return a plain string.
+  role: string | { _id?: string; name?: string };
+  phone?: string;
 }
 
 export interface File {
@@ -280,6 +339,15 @@ export interface ContractRfis {
   createdAt:        Date;
   updatedAt:        Date;
   __v:              number;
+  // BE-authoritative turn-taking flags (guaranteed on list items in the
+  // v2.3.0 RFI thread contract; see project_rfi_responder_singular). Gate the
+  // "Respond" affordance on `canRespond` — it is turn-aware, unlike
+  // `isCurrentResponder` which merely marks the assigned responder.
+  canRespond?:         boolean;
+  isCurrentResponder?: boolean;
+  isEligibleResponder?: boolean;
+  hasResponse?:        boolean;
+  responseCount?:      number;
 }
 
 export interface VendorReportRow {
@@ -303,18 +371,19 @@ export interface ReportDetails {
   reportId: string;
   title: string;
   description: string;
-  status: string;
   submittedBy: {
     _id: string;
     name: string;
     email: string;
   };
-  submissionDate: string;
-  responseDeadline?: string;
+  createdAt: string;
+  updatedAt?: string;
   files: Array<{
     name: string;
     type: string;
-    size: number;
+    // BE returns a preformatted size string (e.g. "7.44 MB"); older
+    // payloads may send raw bytes as a number.
+    size: number | string;
     url: string;
   }>;
   comments?: Array<{

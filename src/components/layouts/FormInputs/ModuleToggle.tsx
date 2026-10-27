@@ -1,7 +1,7 @@
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ReactNode } from "react";
-import { ForgerSlotProps } from "@/lib/forge/types";
+import { ForgerSlotProps } from "@adexdsamson/forge";
 
 export type ModuleToggleProps = {
   label?: string | JSX.Element;

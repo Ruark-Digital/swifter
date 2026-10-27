@@ -3,17 +3,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/layouts/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
-import { Upload, CheckCircle } from "lucide-react";
+import { Upload, CheckCircle, X } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { getRequest, putRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
-import { Forge, FormPropsRef, useForge } from "@/lib/forge";
+import { Forge, FormPropsRef, useForge } from "@adexdsamson/forge";
 import CompleteProposalDialog from "./CompleteProposalDialog";
 import FileUploadDialog from "./FileUploadDialog";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useToastHandler } from "@/hooks/useToaster";
+import { useUser } from "@/store/authSlice";
+import { resolveConversionRate } from "@/lib/currencyUtils";
 import { SEOWrapper } from "@/components/SEO";
 import { getStatusLabel, getStatusColorClass } from "@/lib/solicitationStatusUtils";
 
@@ -57,6 +59,8 @@ const schema = yup.object().shape({
     .string()
     .oneOf(["submit", "draft"], "Status must be submit or draft")
     .required("Status is required"),
+  currency: yup.string().optional(),
+  rate: yup.number().optional(),
   document: yup.array().of(
     yup.object().shape({
       requiredDocumentId: yup
@@ -81,14 +85,14 @@ const schema = yup.object().shape({
         quantity: yup
           .number()
           .required("Quantity is required")
-          .min(0, "Quantity must be positive"),
+          .moreThan(0, "Quantity must be greater than 0"),
         unitOfmeasurement: yup
           .string()
           .required("Unit of measurement is required"),
         unitPrice: yup
           .number()
           .required("Unit price is required")
-          .min(0, "Unit price must be positive"),
+          .moreThan(0, "Unit price must be greater than 0"),
         subtotal: yup.number().optional().min(0, "Subtotal must be positive"),
         subItems: yup
           .array()
@@ -99,14 +103,14 @@ const schema = yup.object().shape({
               quantity: yup
                 .number()
                 .required("Sub-quantity is required")
-                .min(0, "Sub-quantity must be positive"),
+                .moreThan(0, "Sub-quantity must be greater than 0"),
               unitOfmeasurement: yup
                 .string()
                 .required("Sub-unit of measurement is required"),
               unitPrice: yup
                 .number()
                 .required("Sub-unit price is required")
-                .min(0, "Sub-unit price must be positive"),
+                .moreThan(0, "Sub-unit price must be greater than 0"),
               subtotal: yup
                 .number()
                 .required("Sub-subtotal is required")
@@ -372,6 +376,7 @@ const ProposalForm = ({
   const [completedProposals, setCompletedProposals] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
   const toast = useToastHandler();
+  const userCurrency = useUser()?.currency;
   const [type, setType] = useState("");
   const formRef = useRef<FormPropsRef>(null);
   const [shouldUnregister, setShouldUnregister] = useState(false);
@@ -409,9 +414,10 @@ const ProposalForm = ({
   });
 
   useEffect(() => {
-    setTimeout(() => {
+    const id = setTimeout(() => {
       setShouldUnregister(true);
     }, 3000);
+    return () => clearTimeout(id);
   }, []);
 
   // Check if proposal has priceAction data and mark pricing document as completed
@@ -479,11 +485,47 @@ const ProposalForm = ({
     }
   };
 
+  // Remove a single previously attached file from a document (QA #98). Mirrors
+  // the watch-driven display used by handleFilesUploaded: strip the file from
+  // form state, and drop the whole document entry once its last file is gone so
+  // the submit payload doesn't carry an empty document.
+  const handleRemoveFile = (
+    requiredDocumentId: string,
+    fileIndex: number
+  ) => {
+    const currentDocuments = forge.getValues("document") || [];
+    const docIndex = currentDocuments.findIndex(
+      (doc) => doc.requiredDocumentId === requiredDocumentId
+    );
+    if (docIndex < 0) return;
+
+    const updatedDocuments = [...currentDocuments];
+    const remainingFiles = (updatedDocuments[docIndex].files || []).filter(
+      (_, index) => index !== fileIndex
+    );
+
+    if (remainingFiles.length > 0) {
+      updatedDocuments[docIndex] = {
+        ...updatedDocuments[docIndex],
+        files: remainingFiles,
+      };
+    } else {
+      updatedDocuments.splice(docIndex, 1);
+    }
+
+    forge.setValue("document", updatedDocuments, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  };
+
   const handleSubmit = async (data: FormValues) => {
     try {
       const submissionData = {
         ...data,
         status: "submit" as const,
+        // Same rate resolution as Create Contract (QA #214).
+        rate: await resolveConversionRate(userCurrency, data.currency),
       };
 
       await updateProposal(submissionData);
@@ -505,6 +547,7 @@ const ProposalForm = ({
       const draftData: FormValues = {
         ...currentValues,
         status: "draft",
+        rate: await resolveConversionRate(userCurrency, currentValues.currency),
       };
       await saveDraftProposal(draftData);
       toast.success("Success", "Proposal saved as draft");
@@ -628,9 +671,18 @@ const ProposalForm = ({
                 {uploadedFiles.map((file, index) => (
                   <span
                     key={index}
-                    className="text-xs text-blue-600 dark:text-blue-400"
+                    className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400"
                   >
-                    {file.name}
+                    <span className="truncate">{file.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveFile(doc._id, index)}
+                      aria-label={`Remove ${file.name}`}
+                      title="Remove file"
+                      className="shrink-0 text-gray-400 hover:text-red-500 focus:outline-none"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
                   </span>
                 ))}
               </div>
@@ -725,6 +777,7 @@ const ProposalForm = ({
         reset={forge.reset}
         setValue={forge.setValue as any}
         getValue={forge.getValues as any}
+        trigger={forge.trigger as any}
         id={selectedDocumentId}
         {...{ shouldUnregister }}
         onComplete={(documentId) => {
@@ -740,7 +793,6 @@ const ProposalForm = ({
         onFilesUploaded={(files) =>
           handleFilesUploaded(files, selectedDocumentId || "")
         }
-        control={forge.control}
         requiredDocumentId={selectedDocumentId || ""}
         maxFiles={5}
         type={type}

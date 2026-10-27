@@ -1,4 +1,5 @@
 import React from "react";
+import * as XLSX from "xlsx";
 import { SEOWrapper } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Share2, Plus } from "lucide-react";
@@ -12,11 +13,17 @@ import {
   useProjectsStats,
   useCreateProject,
 } from "./services/useProjectApi";
-import { formatDateTZ } from "@/lib/utils";
+import { formatDateTZ, resolveCurrency } from "@/lib/utils";
+import { useUser } from "@/store/authSlice";
+import { useUserRole } from "@/hooks/useUserRole";
 
 const ProjectManagementPage: React.FC = () => {
+  const { isViewOnly } = useUserRole();
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [dateFilter, setDateFilter] = React.useState("all");
+  const [statusFilter, setStatusFilter] = React.useState("");
   const [lastCreatedProjectId, setLastCreatedProjectId] = React.useState<
     string | null
   >(null);
@@ -27,30 +34,68 @@ const ProjectManagementPage: React.FC = () => {
   const { data: listRes, isLoading: isListLoading } = useProjectsList({
     page: 1,
     limit: 10,
+    name: searchQuery || undefined,
+    status:
+      statusFilter === "active" ||
+      statusFilter === "completed" ||
+      statusFilter === "cancelled"
+        ? statusFilter
+        : undefined,
   });
   const { data: statsRes } = useProjectsStats();
   const createProject = useCreateProject();
+  const profileCurrency = useUser()?.currency;
 
   const handleCreateClick = () => setIsCreateOpen(true);
   const handleSuccess = () => setIsSuccessOpen(true);
 
+  // QA #41: a search/filter that returns zero rows must not unmount the table
+  // (and its filter controls) — otherwise the user is left on the onboarding
+  // empty state with no way to clear the filter except leaving the module.
+  const hasActiveFilters =
+    Boolean(searchQuery) || Boolean(statusFilter) || dateFilter !== "all";
+
+  const formatAmount = (value: number) =>
+    new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: resolveCurrency(undefined, profileCurrency),
+    }).format(value);
+
   const rows = (listRes?.data ?? []).map((p) => ({
     id: p._id,
     name: p.name,
-    budget:
-      typeof p.budget === "number"
-        ? new Intl.NumberFormat(undefined, {
-            style: "currency",
-            currency: "USD",
-          }).format(p.budget)
-        : undefined,
+    budget: typeof p.budget === "number" ? formatAmount(p.budget) : undefined,
+    totalSpend:
+      typeof p.totalSpend === "number" ? formatAmount(p.totalSpend) : undefined,
+    eac: typeof p.eac === "number" ? formatAmount(p.eac) : undefined,
     startDate: p.startDate ? formatDateTZ(p.startDate, "yyyy-MM-dd") : undefined,
     endDate: p.endDate ? formatDateTZ(p.endDate, "yyyy-MM-dd") : undefined,
     status: p.status,
   }));
 
+  // QA #293: the Export button had no handler. Export the loaded projects to an
+  // .xlsx workbook client-side (mirrors the Action Log tab's export). Values
+  // reuse the same formatting shown in the table.
+  const handleExport = () => {
+    if (!rows.length) return;
+    const exportRows = rows.map((r) => ({
+      "Project Name": r.name ?? "",
+      Budget: r.budget ?? "",
+      "Total Spend": r.totalSpend ?? "",
+      EAC: r.eac ?? "",
+      "Start Date": r.startDate ?? "",
+      "End Date": r.endDate ?? "",
+      Status: r.status ?? "",
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(exportRows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Projects");
+    const today = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(workbook, `projects-${today}.xlsx`);
+  };
+
   return (
-    <div className="space-y-8 pt-10">
+    <div className="space-y-6 sm:space-y-8 pt-6 sm:pt-10">
       <SEOWrapper
         title="Project Management - SwiftPro eProcurement Portal"
         description="Manage projects efficiently. Create, track active work, and review completed tasks."
@@ -58,25 +103,29 @@ const ProjectManagementPage: React.FC = () => {
         robots="noindex, nofollow"
       />
 
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-slate-900">Projects</h2>
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Projects</h2>
+        <div className="flex items-center gap-2 sm:gap-4">
           <Button
             data-testid="export-button"
             variant="outline"
             aria-label="Export projects"
-            className="rounded-xl"
+            className="flex-1 sm:flex-none rounded-xl"
+            onClick={handleExport}
+            disabled={rows.length === 0}
           >
             <Share2 className="mr-2 h-4 w-4" /> Export
           </Button>
-          <Button
-            data-testid="create-project-button"
-            aria-label="Create Project"
-            className="rounded-xl"
-            onClick={handleCreateClick}
-          >
-            <Plus className="mr-2 h-4 w-4" /> Create Project
-          </Button>
+          {!isViewOnly && (
+            <Button
+              data-testid="create-project-button"
+              aria-label="Create Project"
+              className="flex-1 sm:flex-none rounded-xl"
+              onClick={handleCreateClick}
+            >
+              <Plus className="mr-2 h-4 w-4" /> Create Project
+            </Button>
+          )}
         </div>
       </div>
 
@@ -89,10 +138,16 @@ const ProjectManagementPage: React.FC = () => {
       />
 
       {isListLoading ? (
-        <div className="p-10 text-center text-slate-600">Loading projects…</div>
-      ) : rows.length > 0 ? (
+        <div className="p-10 text-center text-slate-600 dark:text-slate-400">Loading projects…</div>
+      ) : rows.length > 0 || hasActiveFilters ? (
         <ProjectsTable
           projects={rows}
+          searchQuery={searchQuery}
+          dateFilter={dateFilter}
+          statusFilter={statusFilter}
+          onSearchQueryChange={setSearchQuery}
+          onDateFilterChange={setDateFilter}
+          onStatusFilterChange={setStatusFilter}
           detailsProjectId={detailsProjectId}
           detailsOpen={isDetailsOpen}
           onDetailsProjectIdChange={setDetailsProjectId}

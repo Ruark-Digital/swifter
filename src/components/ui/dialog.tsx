@@ -3,14 +3,31 @@ import { Dialog as DialogPrimitive } from "radix-ui"
 import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { getSafeAsChild } from "@/components/ui/safeAsChild"
 
 const Dialog = DialogPrimitive.Root
 
-const DialogTrigger = DialogPrimitive.Trigger
+const DialogTrigger = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Trigger>
+>(({ children, asChild, ...props }, ref) => (
+  <DialogPrimitive.Trigger ref={ref} asChild={asChild} {...props}>
+    {asChild ? getSafeAsChild(children) : children}
+  </DialogPrimitive.Trigger>
+))
+DialogTrigger.displayName = DialogPrimitive.Trigger.displayName
 
 const DialogPortal = DialogPrimitive.Portal
 
-const DialogClose = DialogPrimitive.Close
+const DialogClose = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Close>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Close>
+>(({ children, asChild, ...props }, ref) => (
+  <DialogPrimitive.Close ref={ref} asChild={asChild} {...props}>
+    {asChild ? getSafeAsChild(children) : children}
+  </DialogPrimitive.Close>
+))
+DialogClose.displayName = DialogPrimitive.Close.displayName
 
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
@@ -18,6 +35,7 @@ const DialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
+    data-swifter-dialog-overlay="true"
     className={cn(
       "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className
@@ -32,11 +50,79 @@ const DialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     showCloseButton?: boolean
   }
->(({ className, children, showCloseButton = true, ...props }, ref) => (
+>(({ className, children, showCloseButton = true, onInteractOutside, onPointerDownOutside, onFocusOutside, ...props }, ref) => {
+  const contentRef = React.useRef<HTMLDivElement | null>(null);
+  const setContentRef = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      contentRef.current = node;
+      if (typeof ref === "function") ref(node);
+      else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    },
+    [ref],
+  );
+
+  // Distinguish a genuine backdrop click (dismiss) from a bleed-through where
+  // the pointer landed on the overlay only because a Radix Select/Popover
+  // portal was unmounting at that spot (the pointerdown coords sit *inside*
+  // the DialogContent bounding box).
+  const isBleedThroughOntoOverlay = (e: Event, target: EventTarget | null) => {
+    const el = target as HTMLElement | null;
+    const isOverlay = !!el?.closest?.("[data-swifter-dialog-overlay='true']");
+    if (!isOverlay) return false;
+    const orig = (e as CustomEvent<{ originalEvent?: PointerEvent | FocusEvent }>)
+      .detail?.originalEvent as PointerEvent | undefined;
+    const rect = contentRef.current?.getBoundingClientRect();
+    if (!orig || !rect || typeof orig.clientX !== "number") return false;
+    return (
+      orig.clientX >= rect.left &&
+      orig.clientX <= rect.right &&
+      orig.clientY >= rect.top &&
+      orig.clientY <= rect.bottom
+    );
+  };
+
+  return (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
-      ref={ref}
+      ref={setContentRef}
+      onPointerDownOutside={(e) => {
+        const target = e.target as HTMLElement | null;
+        const isOverlay = !!target?.closest?.("[data-swifter-dialog-overlay='true']");
+        // Non-overlay outside pointerdown (Select/Popover portal content, the
+        // body pointer-events shim, etc.) → keep the dialog open.
+        if (!isOverlay) {
+          e.preventDefault();
+          return;
+        }
+        // Overlay hit, but the pointer is over the DialogContent → bleed-
+        // through from a Select interaction; suppress.
+        if (isBleedThroughOntoOverlay(e as unknown as Event, target)) {
+          e.preventDefault();
+          return;
+        }
+        // Real backdrop click → allow dismissal.
+        onPointerDownOutside?.(e);
+      }}
+      onFocusOutside={(e) => {
+        // Focus moving into a portalled Select/Popover is never a dismiss
+        // signal.
+        e.preventDefault();
+        onFocusOutside?.(e);
+      }}
+      onInteractOutside={(e) => {
+        const target = e.target as HTMLElement | null;
+        const isOverlay = !!target?.closest?.("[data-swifter-dialog-overlay='true']");
+        if (!isOverlay) {
+          e.preventDefault();
+          return;
+        }
+        if (isBleedThroughOntoOverlay(e as unknown as Event, target)) {
+          e.preventDefault();
+          return;
+        }
+        onInteractOutside?.(e);
+      }}
       className={cn(
         "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-slate-200 bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg dark:border-slate-800 dark:bg-slate-950",
         className
@@ -52,7 +138,8 @@ const DialogContent = React.forwardRef<
       )}
     </DialogPrimitive.Content>
   </DialogPortal>
-))
+  );
+})
 DialogContent.displayName = DialogPrimitive.Content.displayName
 
 const DialogHeader = ({
@@ -90,7 +177,7 @@ const DialogTitle = React.forwardRef<
   <DialogPrimitive.Title
     ref={ref}
     className={cn(
-      "text-lg font-semibold leading-none tracking-tight",
+      "text-lg font-semibold leading-none tracking-tight text-slate-900 dark:text-slate-50",
       className
     )}
     {...props}
@@ -104,7 +191,7 @@ const DialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn("text-sm text-slate-500", className)}
+    className={cn("text-sm text-slate-500 dark:text-slate-400", className)}
     {...props}
   />
 ))

@@ -10,9 +10,18 @@ type StatProps = {
 };
 
 const toneClasses: Record<StatProps["tone"], { wrap: string; icon: string }> = {
-  gray: { wrap: "bg-slate-100", icon: "text-slate-700" },
-  green: { wrap: "bg-green-100", icon: "text-green-600" },
-  yellow: { wrap: "bg-yellow-100", icon: "text-yellow-600" },
+  gray: {
+    wrap: "bg-slate-100 dark:bg-slate-800",
+    icon: "text-slate-700 dark:text-slate-300",
+  },
+  green: {
+    wrap: "bg-green-100 dark:bg-green-900/30",
+    icon: "text-green-600 dark:text-green-400",
+  },
+  yellow: {
+    wrap: "bg-yellow-100 dark:bg-yellow-900/30",
+    icon: "text-yellow-600 dark:text-yellow-300",
+  },
 };
 
 const StatCard: React.FC<StatProps> = ({ title, value, tone, testId }) => {
@@ -20,12 +29,12 @@ const StatCard: React.FC<StatProps> = ({ title, value, tone, testId }) => {
   return (
     <Card
       data-testid={testId}
-      className="border border-[#E5E7EB] rounded-xl shadow-none"
+      className="border border-[#E5E7EB] dark:border-slate-800 dark:bg-slate-900 rounded-xl shadow-none"
     >
       <CardContent className="p-5 flex items-center justify-between">
         <div className="space-y-1">
-          <p className="text-sm text-slate-500">{title}</p>
-          <p className="text-xl font-semibold text-slate-900">{value}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{title}</p>
+          <p className="text-xl font-semibold text-slate-900 dark:text-slate-50">{value}</p>
         </div>
         <div
           className={`rounded-full ${c.wrap} h-10 w-10 flex items-center justify-center`}

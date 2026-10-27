@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/layouts/SearchInput";
 import { DropdownFilters } from "@/components/layouts/SolicitationFilters";
 import { MoreVertical } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export type LinkedContractRow = {
+  id: string;
   title: string;
   code: string;
   company: string;
@@ -14,7 +16,8 @@ export type LinkedContractRow = {
   value?: string;
   published?: string;
   endDate?: string;
-  status: "Active" | "Terminated" | "Closed" | "Suspended";
+  createdAtRaw?: string;
+  status: string;
 };
 
 type Props = {
@@ -23,77 +26,154 @@ type Props = {
 };
 
 const statusTone = (s: LinkedContractRow["status"]) => {
-  if (s === "Active") return "bg-[#43A0471A] text-[#43A047]";
-  if (s === "Terminated") return "bg-[#E539351A] text-[#E53935]";
-  if (s === "Closed") return "bg-[#6B72801A] text-[#6B7280]";
-  if (s === "Suspended") return "bg-[#F59E0B1A] text-[#F59E0B]";
-  return "bg-[#E5E7EB] text-[#374151]";
+  const normalized = String(s ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+
+  if (normalized === "active") return "bg-[#43A0471A] text-[#43A047]";
+  if (normalized === "published") return "bg-[#43A0471A] text-[#43A047]";
+  if (normalized === "terminated") return "bg-[#E539351A] text-[#E53935]";
+  if (normalized === "expired") return "bg-[#F59E0B1A] text-[#F59E0B]";
+  if (normalized === "draft") return "bg-[#6B72801A] text-[#6B7280] dark:text-slate-400";
+  if (normalized === "closed") return "bg-[#6B72801A] text-[#6B7280] dark:text-slate-400";
+  if (normalized === "suspended") return "bg-[#F59E0B1A] text-[#F59E0B]";
+  if (normalized === "pending_approval") return "bg-[#F59E0B1A] text-[#F59E0B]";
+  return "bg-[#E5E7EB] text-[#374151] dark:text-slate-200";
+};
+
+const normalizeStatus = (value?: string) =>
+  (value ?? "").trim().toLowerCase().replace(/\s+/g, "_");
+
+const applyDateFilter = (
+  rows: LinkedContractRow[],
+  dateFilter: string,
+): LinkedContractRow[] => {
+  if (!dateFilter || dateFilter === "all") return rows;
+  const now = new Date();
+  const startOf = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const today = startOf(now);
+  return rows.filter((row) => {
+    if (!row.createdAtRaw) return true;
+    const created = new Date(row.createdAtRaw);
+    if (dateFilter === "today")
+      return startOf(created).getTime() === today.getTime();
+    if (dateFilter === "last7days")
+      return created >= new Date(today.getTime() - 6 * 86400000);
+    if (dateFilter === "last30days")
+      return created >= new Date(today.getTime() - 29 * 86400000);
+    return true;
+  });
 };
 
 const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
   const [search, setSearch] = React.useState("");
+  const [dateFilter, setDateFilter] = React.useState("all");
+  const [statusFilter, setStatusFilter] = React.useState("all");
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
 
   const filtered = React.useMemo(() => {
-    if (!search) return rows;
-    const q = search.toLowerCase();
-    return rows.filter(
-      (r) =>
-        r.title.toLowerCase().includes(q) ||
-        r.code.toLowerCase().includes(q) ||
-        r.company.toLowerCase().includes(q) ||
-        r.relationship.toLowerCase().includes(q),
-    );
-  }, [rows, search]);
+    let result = rows;
+
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (r) =>
+          r.title.toLowerCase().includes(q) ||
+          r.code.toLowerCase().includes(q) ||
+          r.company.toLowerCase().includes(q) ||
+          r.relationship.toLowerCase().includes(q),
+      );
+    }
+
+    if (statusFilter && statusFilter !== "all") {
+      result = result.filter(
+        (r) => normalizeStatus(r.status) === normalizeStatus(statusFilter),
+      );
+    }
+
+    result = applyDateFilter(result, dateFilter);
+
+    return result;
+  }, [rows, search, statusFilter, dateFilter]);
+
+  const selectedFilterValues: Record<string, string> = {
+    Status: statusFilter,
+    Date: dateFilter,
+  };
+
+  const handleFilterChange = (filterTitle: string, value: string) => {
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    if (filterTitle === "Status") setStatusFilter(value);
+    else if (filterTitle === "Date") setDateFilter(value);
+  };
 
   const columns = React.useMemo<ColumnDef<LinkedContractRow>[]>(() => {
     return [
       {
         accessorKey: "title",
         header: "Contracts",
+        // #98 — make the contract name a link through to the contract detail,
+        // like the contract / MSA / solicitation lists. Falls back to plain
+        // text when the row carries no id to route to.
         cell: ({ row }) => (
           <div className="flex flex-col">
-            <span className="font-medium text-slate-900">{row.original.title}</span>
-            <span className="text-xs text-slate-500">{row.original.code}</span>
+            {row.original.id ? (
+              <Link
+                to={`/dashboard/contract-management/${row.original.id}`}
+                title={row.original.title}
+                className="font-medium text-slate-900 dark:text-slate-100 underline-offset-2 hover:underline"
+              >
+                {row.original.title}
+              </Link>
+            ) : (
+              <span className="font-medium text-slate-900 dark:text-slate-100">
+                {row.original.title}
+              </span>
+            )}
+            <span className="text-xs text-slate-500 dark:text-slate-400">{row.original.code}</span>
           </div>
         ),
       },
       {
         accessorKey: "company",
-        header: "Company",
+        header: "Vendor",
         cell: ({ getValue }) => (
-          <span className="text-sm text-slate-900">{getValue<string>()}</span>
+          <span className="text-sm text-slate-900 dark:text-slate-100">{getValue<string>()}</span>
         ),
       },
       {
         accessorKey: "relationship",
         header: "Contract Relationship",
         cell: ({ getValue }) => (
-          <span className="text-sm text-slate-900">{getValue<string>()}</span>
+          <span className="text-sm text-slate-900 dark:text-slate-100">{getValue<string>()}</span>
         ),
       },
       {
         accessorKey: "value",
-        header: "Value",
+        header: "Original Value",
         cell: ({ getValue }) => {
           const v = getValue<string | undefined>();
-          return <span className="font-semibold text-slate-900">{v ?? "-"}</span>;
+          return (
+            <span className="font-semibold text-slate-900 dark:text-slate-100">{v ?? "-"}</span>
+          );
         },
       },
       {
         id: "date",
         header: "Date",
         cell: ({ row }) => (
-          <div className="text-xs text-slate-500">
+          <div className="text-xs text-slate-500 dark:text-slate-400">
             <div>
-              <span className="text-slate-700">Published:&nbsp;</span>
+              <span className="text-slate-700 dark:text-slate-200">Published:&nbsp;</span>
               <span>{row.original.published ?? "-"}</span>
             </div>
             <div>
-              <span className="text-slate-700">End Date:&nbsp;</span>
+              <span className="text-slate-700 dark:text-slate-200">End Date:&nbsp;</span>
               <span>{row.original.endDate ?? "-"}</span>
             </div>
           </div>
@@ -105,7 +185,9 @@ const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
         cell: ({ getValue }) => {
           const s = getValue<LinkedContractRow["status"]>();
           return (
-            <div className={`inline-flex h-7 items-center rounded-full px-3 text-xs font-semibold ${statusTone(s)}`}>
+            <div
+              className={`inline-flex h-7 items-center rounded-full px-3 text-xs font-semibold ${statusTone(s)}`}
+            >
               {s}
             </div>
           );
@@ -114,9 +196,14 @@ const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
       {
         id: "actions",
         header: "Actions",
-        cell: () => (
-          <Button variant="ghost" className="h-8 w-8 p-0">
-            <MoreVertical className="h-4 w-4 text-slate-500" />
+        cell: ({ row }) => (
+          <Button variant="ghost" className="h-8 w-8 p-0" asChild>
+            <Link
+              to={`/dashboard/contract-management/${row.original.id}`}
+              aria-label="View Contract"
+            >
+              <MoreVertical className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+            </Link>
           </Button>
         ),
       },
@@ -129,38 +216,23 @@ const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
         title: "Date",
         showIcon: true,
         options: [
-          { value: "any", label: "Any" },
-          {
-            hasOptions: true,
-            value: "range",
-            label: "Range",
-            subOptions: [
-              { title: "Last 7 days", value: "7" },
-              { title: "Last 30 days", value: "30" },
-              { title: "Last 60 days", value: "60" },
-              { title: "YTD", value: "YTD" },
-            ],
-          },
+          { label: "All", value: "all" },
+          { label: "Today", value: "today" },
+          { label: "Last 7 Days", value: "last7days" },
+          { label: "Last 30 Days", value: "last30days" },
         ],
       },
       {
         title: "Status",
         showIcon: true,
         options: [
-          { value: "all", label: "All" },
-          { value: "active", label: "Active" },
-          { value: "terminated", label: "Terminated" },
-          { value: "closed", label: "Closed" },
-          { value: "suspended", label: "Suspended" },
-        ],
-      },
-      {
-        title: "Category",
-        options: [
-          { value: "all", label: "All" },
-          { value: "construction", label: "Construction" },
-          { value: "it", label: "IT" },
-          { value: "facilities", label: "Facilities" },
+          { label: "All", value: "all" },
+          { label: "Active", value: "active" },
+          { label: "Draft", value: "draft" },
+          { label: "Suspended", value: "suspended" },
+          { label: "Expired", value: "expired" },
+          { label: "Terminated", value: "terminated" },
+          { label: "Pending Approval", value: "pending_approval" },
         ],
       },
     ],
@@ -172,12 +244,22 @@ const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
       data={filtered}
       columns={columns}
       header={() => (
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-3">
-            <div className="text-sm font-semibold text-slate-700">Contracts</div>
-            <SearchInput placeholder="contract" searchQuery={search} setSearchQuery={setSearch} />
+            <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+              Contracts
+            </div>
+            <SearchInput
+              placeholder="contract"
+              searchQuery={search}
+              setSearchQuery={setSearch}
+            />
           </div>
-          <DropdownFilters filters={filters as any} />
+          <DropdownFilters
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            selectedValues={selectedFilterValues}
+          />
         </div>
       )}
       options={{
@@ -190,7 +272,7 @@ const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
         pagination,
       }}
       classNames={{
-        container: "bg-white rounded-xl px-3",
+        container: "bg-white dark:bg-slate-900 rounded-xl px-3",
       }}
       emptyPlaceholder={
         <div className="text-center py-8">
@@ -202,4 +284,3 @@ const LinkedContracts: React.FC<Props> = ({ rows = [], isLoading = false }) => {
 };
 
 export default LinkedContracts;
-

@@ -1,5 +1,7 @@
+import { CalendarClock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatCurrency } from "@/lib/utils";
+import { formatCompactCurrency } from "@/lib/utils";
+import { AnalyticsEmptyState } from "./AnalyticsEmptyState";
 
 type Item = {
   title: string;
@@ -25,37 +27,7 @@ type Props = {
 };
 
 export const RenewalsTimelineCard: React.FC<Props> = ({ data }) => {
-  const timeline = data?.timeline && Array.isArray(data.timeline) && data.timeline.length > 0
-    ? data.timeline
-    : [
-        {
-          contractTitle: "AWS Cloud Services",
-          vendor: "BlueCorp Industries",
-          contractCode: "CON-2024-001",
-          value: 2500000,
-          daysToExpiry: 30,
-          timelineStatus: "critical",
-          label: "Expires in 30 days",
-        },
-        {
-          contractTitle: "Office Lease Agreement",
-          vendor: "BlueCorp Industries",
-          contractCode: "CON-2024-002",
-          value: 1200000,
-          daysToExpiry: 60,
-          timelineStatus: "warning",
-          label: "Expires in 60 days",
-        },
-        {
-          contractTitle: "Software Licenses",
-          vendor: "BlueCorp Industries",
-          contractCode: "CON-2024-003",
-          value: 800000,
-          daysToExpiry: 90,
-          timelineStatus: "ok",
-          label: "Expires in 90 days",
-        },
-      ];
+  const timeline = Array.isArray(data?.timeline) ? data.timeline : [];
 
   const items: Item[] = timeline.map((t) => {
     const status = (t.timelineStatus ?? "").toLowerCase();
@@ -70,47 +42,65 @@ export const RenewalsTimelineCard: React.FC<Props> = ({ data }) => {
       title: t.contractTitle,
       org: t.vendor,
       code: t.contractCode,
-      amount: formatCurrency(t.value ?? 0, "en-US", "USD"),
+      amount: formatCompactCurrency(t.value ?? 0, "USD"),
       note: t.label || `${t.daysToExpiry} days`,
       color,
     };
   });
   return (
-    <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-[16px] font-semibold text-[#030712]">
+    <Card className="rounded-2xl border border-[#E5E7EB] dark:border-slate-800 shadow-sm flex flex-col max-h-[32rem]">
+      <CardHeader className="pb-3 shrink-0">
+        <CardTitle className="text-[16px] font-semibold text-[#030712] dark:text-slate-100">
           Renewals & Expiry Timeline
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3 pt-0">
-        {items.map((item, idx) => (
+      <CardContent className="space-y-3 pt-0 flex-1 min-h-0 overflow-y-auto">
+        {items.length === 0 ? (
+          <AnalyticsEmptyState
+            icon={CalendarClock}
+            title="No upcoming renewals"
+            description="Contracts approaching their expiry date will appear here."
+          />
+        ) : (
+          items.map((item, idx) => (
           <div
             key={idx}
-            className="flex items-center justify-between rounded-xl border border-[#E5E7EB] px-3 py-3"
+            className="flex items-stretch gap-3 rounded-xl border border-[#E5E7EB] dark:border-slate-800 px-3 py-3"
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
               <span
-                className="inline-block w-3 h-3 rounded-full"
+                className="inline-block w-3 h-3 rounded-full shrink-0"
                 style={{ backgroundColor: item.color }}
               />
-              <div>
-                <p className="text-sm font-medium text-[#030712]">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-[#030712] dark:text-slate-100 truncate">
                   {item.title}
                 </p>
-                <p className="text-xs text-[#6B6B6B]">
+                <p className="text-xs text-[#6B6B6B] dark:text-slate-400 truncate">
                   {item.org} • {item.code}
                 </p>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm font-semibold text-[#030712]">
+            <div className="text-right shrink-0">
+              <p className="text-sm font-semibold text-[#030712] dark:text-slate-100">
                 {item.amount}
               </p>
-              <p className="text-xs text-[#6B6B6B]">{item.note}</p>
+              <p className="text-xs text-[#6B6B6B] dark:text-slate-400">{item.note}</p>
             </div>
-            <span className="inline-block w-3 h-3 rounded-sm bg-[#E5E7EB]" />
+            <div
+              aria-hidden="true"
+              className="flex shrink-0 items-stretch justify-center self-stretch px-1"
+            >
+              <div className="flex w-3 justify-center">
+                <div
+                  data-testid="renewal-timeline-line"
+                  className="w-[2px] rounded-full bg-[#E5E7EB] dark:bg-slate-700"
+                />
+              </div>
+            </div>
           </div>
-        ))}
+          ))
+        )}
       </CardContent>
     </Card>
   );

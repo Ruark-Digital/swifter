@@ -1,7 +1,10 @@
+import { Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/layouts/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
+import { TopNFilter } from "./TopNFilter";
+import { AnalyticsEmptyState } from "./AnalyticsEmptyState";
 
 type VendorRow = {
   vendor: string;
@@ -9,12 +12,13 @@ type VendorRow = {
   risk: number;
   claims: number;
   changeOrders: number;
-  performance: "warn" | "ok" | "good";
+  overallKpi: number;
+  performance: "warn" | "ok" | "good" | "none";
 };
 
 const columns: ColumnDef<VendorRow>[] = [
-  { accessorKey: "vendor", header: "Vendor", cell: ({ row }) => <span className="text-sm font-medium text-[#0F0F0F]">{row.original.vendor}</span> },
-  { accessorKey: "contracts", header: "Contracts", cell: ({ row }) => <span className="text-sm text-[#0F0F0F]">{row.original.contracts}</span> },
+  { accessorKey: "vendor", header: "Vendor", cell: ({ row }) => <span className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">{row.original.vendor}</span> },
+  { accessorKey: "contracts", header: "Contracts", cell: ({ row }) => <span className="text-sm text-[#0F0F0F] dark:text-slate-100">{row.original.contracts}</span> },
   {
     accessorKey: "risk",
     header: "Risk Score",
@@ -44,14 +48,51 @@ const columns: ColumnDef<VendorRow>[] = [
       </span>
     ),
   },
-  { accessorKey: "changeOrders", header: "Change Orders", cell: ({ row }) => <span className="text-sm text-[#0F0F0F]">{row.original.changeOrders}</span> },
+  { accessorKey: "changeOrders", header: "Change Orders", cell: ({ row }) => <span className="text-sm text-[#0F0F0F] dark:text-slate-100">{row.original.changeOrders}</span> },
+  {
+    accessorKey: "overallKpi",
+    header: "Overall KPI",
+    // KPI score (0-100) set during execution; 0/absent = not yet rated, shown as
+    // "-" to match the neutral Performance dot (QA #110).
+    cell: ({ row }) => (
+      <span className="text-sm text-[#0F0F0F] dark:text-slate-100">
+        {row.original.overallKpi > 0 ? Math.round(row.original.overallKpi) : "-"}
+      </span>
+    ),
+  },
   {
     accessorKey: "performance",
     header: "Performance",
     cell: ({ row }) => {
       const p = row.original.performance;
-      const color = p === "warn" ? "#DC2626" : p === "ok" ? "#F59E0B" : "#10B981";
-      return <span className="inline-block w-4 h-4 rounded-full" style={{ backgroundColor: color }} />;
+      // Performance level is KPI-based and set during contract EXECUTION — it is
+      // distinct from the Risk Score column (client clarification, QA #110).
+      // Contracts not yet executed/rated get a neutral grey dot rather than a
+      // misleading green ("high performance") or red ("low performance").
+      const color =
+        p === "warn"
+          ? "#DC2626"
+          : p === "ok"
+            ? "#F59E0B"
+            : p === "good"
+              ? "#10B981"
+              : "#CBD5E1"; // none / not yet rated
+      const label =
+        p === "warn"
+          ? "Low performance"
+          : p === "ok"
+            ? "Medium performance"
+            : p === "good"
+              ? "High performance"
+              : "Performance not yet rated";
+      return (
+        <span
+          className="inline-block h-4 w-4 rounded-full"
+          style={{ backgroundColor: color }}
+          title={label}
+          aria-label={label}
+        />
+      );
     },
   },
 ];
@@ -64,103 +105,116 @@ type Props = {
       riskScore?: number;
       claims?: number;
       changeOrders?: number;
+      overallKpi?: number;
       performance?: string;
     }>;
   };
+  selectedRange?: string;
+  onRangeChange?: (value: string) => void;
+  selectedTop?: number;
+  onTopChange?: (value: number) => void;
 };
 
-export const VendorPerformanceSummaryCard: React.FC<Props> = ({ data }) => {
-  const rows: VendorRow[] =
-    data?.rows && Array.isArray(data.rows) && data.rows.length > 0
-      ? data.rows.map((r) => {
-          const performanceRaw = (r.performance ?? "").toLowerCase();
-          const performance: VendorRow["performance"] =
-            performanceRaw === "critical" || performanceRaw === "warn"
-              ? "warn"
-              : performanceRaw === "ok"
-                ? "ok"
-                : "good";
+export const VendorPerformanceSummaryCard: React.FC<Props> = ({
+  data,
+  selectedRange = "ytd",
+  onRangeChange,
+  selectedTop = 10,
+  onTopChange,
+}) => {
+  const allRows: VendorRow[] = Array.isArray(data?.rows)
+    ? data.rows.map((r) => {
+        const performanceRaw = (r.performance ?? "").trim().toLowerCase();
+        // Performance is KPI-based and set during contract EXECUTION (QA #110).
+        // The BE returns `overallKpi` (0-100); 0/absent means the vendor has no
+        // KPI ratings yet, so the dot is neutral regardless of the `performance`
+        // band the BE defaults to (it returns "bad" for un-rated vendors). Only
+        // rated vendors (overallKpi > 0) take a red/amber/green band — never
+        // default to green.
+        const isRated = typeof r.overallKpi === "number" && r.overallKpi > 0;
+        const performance: VendorRow["performance"] = !isRated
+          ? "none"
+          : performanceRaw === "bad" ||
+              performanceRaw === "poor" ||
+              performanceRaw === "critical" ||
+              performanceRaw === "warn"
+            ? "warn"
+            : performanceRaw === "ok" ||
+                performanceRaw === "fair" ||
+                performanceRaw === "average"
+              ? "ok"
+              : performanceRaw === "good" ||
+                  performanceRaw === "excellent"
+                ? "good"
+                : "none";
 
-          return {
-            vendor: r.vendor ?? "Unknown",
-            contracts: r.contracts ?? 0,
-            risk: r.riskScore ?? 0,
-            claims: r.claims ?? 0,
-            changeOrders: r.changeOrders ?? 0,
-            performance,
-          };
-        })
-      : [
-          {
-            vendor: "BuildCorp Ltd",
-            contracts: 8,
-            risk: 65,
-            claims: 2,
-            changeOrders: 12,
-            performance: "warn",
-          },
-          {
-            vendor: "TechServices Inc",
-            contracts: 15,
-            risk: 42,
-            claims: 0,
-            changeOrders: 5,
-            performance: "good",
-          },
-          {
-            vendor: "Global Consulting",
-            contracts: 12,
-            risk: 58,
-            claims: 1,
-            changeOrders: 8,
-            performance: "ok",
-          },
-          {
-            vendor: "Equipment Supplier",
-            contracts: 6,
-            risk: 38,
-            claims: 0,
-            changeOrders: 3,
-            performance: "good",
-          },
-        ];
+        return {
+          vendor: r.vendor ?? "Unknown",
+          contracts: r.contracts ?? 0,
+          risk: r.riskScore ?? 0,
+          claims: r.claims ?? 0,
+          changeOrders: r.changeOrders ?? 0,
+          overallKpi: r.overallKpi ?? 0,
+          performance,
+        };
+      })
+    : [];
+  const rows = allRows.slice(0, selectedTop);
   return (
-    <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm">
-      <CardHeader className="pb-3">
+    <Card className="rounded-2xl border border-[#E5E7EB] dark:border-slate-800 shadow-sm flex flex-col max-h-[32rem]">
+      <CardHeader className="pb-3 shrink-0">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-[16px] font-semibold text-[#030712]">Vendor Performance Summary</CardTitle>
-          <div className="inline-flex items-center gap-2 border border-[#E5E7EB] rounded-lg px-3 py-2">
-            <span className="text-xs font-medium text-[#6B6B6B]">Top 10</span>
-            <span className="inline-block w-3 h-3 rounded-sm bg-[#E5E7EB]" />
-          </div>
+          <CardTitle className="text-[16px] font-semibold text-[#030712] dark:text-slate-100">Vendor Performance Summary</CardTitle>
+          <TopNFilter value={selectedTop} onChange={onTopChange} />
         </div>
       </CardHeader>
-      <CardContent className="pt-0">
-        <Tabs value="ytd" className="w-full mb-3">
-          <TabsList className="bg-transparent p-0 gap-2">
-            <TabsTrigger className="rounded-md px-3 py-2 text-sm font-semibold bg-[#F0F0F0] text-[#2A4467]" value="ytd">
+      <CardContent className="pt-0 flex-1 min-h-0 overflow-y-auto">
+        <Tabs
+          value={selectedRange}
+          onValueChange={(value) => onRangeChange?.(value)}
+          className="w-full mb-3"
+        >
+          {/* Horizontal scroll on overflow; `!flex-none shrink-0` defeats
+              shadcn TabsTrigger's baked-in `flex-1` so pills don't stretch. */}
+          <TabsList className="bg-transparent p-0 gap-2 flex overflow-x-auto h-auto w-full justify-start">
+            <TabsTrigger
+              className="!flex-none shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-[#667085] dark:text-slate-400 data-[state=active]:bg-[#F0F0F0] data-[state=active]:text-[#2A4467] data-[state=active]:dark:bg-slate-800 data-[state=active]:dark:text-slate-100"
+              value="ytd"
+            >
               YTD
             </TabsTrigger>
             {["12 months", "6 months", "3 months"].map((t) => (
-              <TabsTrigger key={t} value={t.replace(/\s+/g, "")} className="rounded-md px-3 py-2 text-sm font-semibold text-[#667085]">
+              <TabsTrigger
+                key={t}
+                value={t.replace(/\s+/g, "")}
+                className="!flex-none shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-[#667085] dark:text-slate-400 data-[state=active]:bg-[#F0F0F0] data-[state=active]:text-[#2A4467] data-[state=active]:dark:bg-slate-800 data-[state=active]:dark:text-slate-100"
+              >
                 {t}
               </TabsTrigger>
             ))}
           </TabsList>
         </Tabs>
-        <DataTable
-          data={rows}
-          columns={columns}
-          options={{ disablePagination: true, disableSelection: true, isLoading: false, totalCounts: rows.length, manualPagination: false }}
-          classNames={{
-            tHeader: "rounded-xl",
-            tHead: "text-xs text-[#6B6B6B] font-medium",
-            tRow: "rounded-xl",
-            tCell: "text-sm",
-            table: "w-full",
-            container: "w-full",
-          }}
-        />
+        {rows.length === 0 ? (
+          <AnalyticsEmptyState
+            icon={Users}
+            title="No vendor performance data yet"
+            description="Risk scores, claims and change orders per vendor will appear here once contracts are awarded."
+          />
+        ) : (
+          <DataTable
+            data={rows}
+            columns={columns}
+            options={{ disablePagination: true, disableSelection: true, isLoading: false, totalCounts: rows.length, manualPagination: false }}
+            classNames={{
+              tHeader: "rounded-xl",
+              tHead: "text-xs text-[#6B6B6B] dark:text-slate-400 font-medium",
+              tRow: "rounded-xl dark:border-slate-800",
+              tCell: "text-sm",
+              table: "w-full",
+              container: "w-full",
+            }}
+          />
+        )}
       </CardContent>
     </Card>
   );

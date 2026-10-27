@@ -20,23 +20,23 @@ export const StatCard = ({
   isActive = false,
 }: StatCardProps) => {
   return (
-    <Card 
-      className={`p-6 transition-all duration-200 ${
+    <Card
+      className={`p-4 sm:p-6 transition-all duration-200 ${
         onClick ? 'cursor-pointer hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 hover:scale-[1.08]' : ''
       }`}
       onClick={onClick}
     >
       <CardContent className="p-0">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className={`text-sm font-medium mb-1 ${
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className={`text-xs sm:text-sm font-medium mb-1 ${
               isActive ? ' dark:text-blue-300' : 'text-muted-foreground'
             }`}>{title}</p>
-            <p className={`text-2xl font-bold ${
+            <p className={`text-xl sm:text-2xl font-bold ${
               isActive ? 'dark:text-blue-200' : 'text-muted'
             }`}>{value}</p>
           </div>
-          <div className={`p-3 rounded-full ${iconBgColor}`}>
+          <div className={`hidden sm:block p-3 rounded-full ${iconBgColor}`}>
             <Icon className={`h-6 w-6 ${iconColor}`} />
           </div>
         </div>

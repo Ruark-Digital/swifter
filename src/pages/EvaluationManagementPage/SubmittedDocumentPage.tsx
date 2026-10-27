@@ -23,13 +23,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
-import { useForge } from "@/lib/forge";
+import { useForge } from "@adexdsamson/forge";
 import { useToastHandler } from "@/hooks/useToaster";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import * as yup from "yup";
 import { useUser } from "@/store/authSlice";
+import { canSubmitEvaluationCriteria } from "./utils/evaluationSubmission";
+import { formatDateTZ } from "@/lib/utils";
 
 // API Types based on documentation
 type VendorDocument = {
@@ -154,6 +156,35 @@ const useSubmittedDocuments = (
   });
 };
 
+// The submitted-document / criteria endpoints don't carry the vendor's name,
+// so the scoring page can't say who is being scored (QA #271). Reuse the
+// evaluation group's vendor list (same query key as the assigned-evaluation
+// page, so it's usually already cached) and resolve the name by vendor id.
+type EvaluationGroupVendorsResponse = {
+  vendors?: Array<{ vendorId: string; name: string }>;
+};
+
+const useEvaluationGroupVendorName = (
+  evaluationId: string,
+  evaluationGroupId: string,
+  vendorId: string
+) => {
+  const { data } = useQuery<
+    ApiResponse<EvaluationGroupVendorsResponse>,
+    ApiResponseError
+  >({
+    queryKey: ["evaluation-group-vendors", evaluationId, evaluationGroupId],
+    queryFn: async () =>
+      getRequest({
+        url: `/evaluator/${evaluationId}/evaluation-group/${evaluationGroupId}`,
+      }),
+    enabled: !!evaluationId && !!evaluationGroupId,
+  });
+  return (
+    data?.data?.data?.vendors?.find((v) => v.vendorId === vendorId)?.name ?? ""
+  );
+};
+
 type EvaluationCriteriaResponse = {
   criteria: EvaluatorCriteria[];
   info: EvaluatorEvaluationDetail;
@@ -276,6 +307,12 @@ const SubmittedDocumentPage: React.FC = () => {
     error: documentsError,
   } = useSubmittedDocuments(id || "", groupId || "", vendorId || "", user?._id || "");
 
+  const vendorName = useEvaluationGroupVendorName(
+    id || "",
+    groupId || "",
+    vendorId || ""
+  );
+
   const {
     data: criteriaData,
     isLoading: criteriaLoading,
@@ -390,7 +427,7 @@ const SubmittedDocumentPage: React.FC = () => {
   >({
     mutationFn: async () => {
       const response = await postRequest({
-        url: `/evaluator/${id}/submit-evaluation/vendor/${vendorId}`,
+        url: `/evaluator/${id}/submit-evaluation/evaluation-group/${groupId}/vendor/${vendorId}`,
         payload: {},
       });
       return response;
@@ -460,9 +497,15 @@ const SubmittedDocumentPage: React.FC = () => {
       return newState;
     });
 
-    // Reset form and close
-    reset();
-    setActiveCriteriaId(null);
+    // Keep the panel open showing the saved score (read-only).
+    // Restore the form to the just-saved values so the disabled radios
+    // reflect the selection instead of going blank; leaving editingCriteriaId
+    // null lands the row in read-only "Edit Score" mode.
+    reset({
+      comment: data.comment,
+      score: data.score,
+      type: data.type,
+    });
     setEditingCriteriaId(null);
   };
 
@@ -539,6 +582,16 @@ const SubmittedDocumentPage: React.FC = () => {
     setEditingCriteriaId(null);
   };
 
+  // Hooks MUST run on every render, before any early return. Placing this
+  // useMemo call after the loading/error early returns below shortens the
+  // hooks list on the first render and lengthens it later, tripping React's
+  // "Rendered more hooks than during the previous render" and crashing the
+  // page via the error boundary.
+  const isEvaluationReadyForSubmission = useMemo(
+    () => canSubmitEvaluationCriteria(criteria),
+    [criteria],
+  );
+
   // Loading state
   if (documentsLoading || criteriaLoading) {
     return (
@@ -596,9 +649,35 @@ const SubmittedDocumentPage: React.FC = () => {
   };
 
   const flattenedPricingItems = flattenPricingItems(pricingBreakdown);
-  const isEvaluationSubmitted = criteriaData?.data?.data?.submissionStatus === "Submitted";
+  // Include mutation.isSuccess so the whole card (Submit button, Edit Score,
+  // radios) locks instantly on submit — closes the refetch race between
+  // POST and the criteria GET refetch that flips submissionStatus.
+  const isEvaluationSubmitted =
+    criteriaData?.data?.data?.submissionStatus === "Submitted" ||
+    submitEvaluationMutation.isSuccess;
   const evaluationStatus = (evaluationInfo?.status || criteriaEvaluationInfo?.status || "").toString();
   const isEvaluationCompleted = evaluationStatus.toLowerCase() === "completed";
+  const incompleteEvaluationMessage =
+    "Please complete scoring and add your comments before submitting.";
+
+  const handleOpenSubmitDialog = () => {
+    if (!isEvaluationReadyForSubmission) {
+      toast.error("Incomplete evaluation", incompleteEvaluationMessage);
+      return;
+    }
+
+    setShowSubmitDialog(true);
+  };
+
+  const handleConfirmSubmitEvaluation = () => {
+    if (!isEvaluationReadyForSubmission) {
+      setShowSubmitDialog(false);
+      toast.error("Incomplete evaluation", incompleteEvaluationMessage);
+      return;
+    }
+
+    submitEvaluationMutation.mutate();
+  };
 
   
 
@@ -634,12 +713,19 @@ const SubmittedDocumentPage: React.FC = () => {
               "Loading..."}
           </h1>
         </div>
-        <Badge
-          variant="secondary"
-          className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-200 dark:border-green-700"
-        >
-          {evaluationInfo?.status || criteriaEvaluationInfo?.status || "Active"}
-        </Badge>
+        <div className="flex flex-col items-end gap-2">
+          {vendorName && (
+            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              {vendorName}
+            </span>
+          )}
+          <Badge
+            variant="secondary"
+            className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-200 dark:border-green-700"
+          >
+            {evaluationInfo?.status || criteriaEvaluationInfo?.status || "Active"}
+          </Badge>
+        </div>
       </div>
 
       {/* Evaluation ID and Type */}
@@ -938,12 +1024,12 @@ const SubmittedDocumentPage: React.FC = () => {
                                 </p>
                                 {submittedCriteriaTimestamps[criteriaItem._id] && (
                                   <p className="text-xs text-gray-600 mt-1 dark:text-gray-300">
-                                    Submitted at: {new Date(submittedCriteriaTimestamps[criteriaItem._id]).toLocaleString()}
+                                    Submitted at: {formatDateTZ(submittedCriteriaTimestamps[criteriaItem._id], "MMM d, yyyy h:mm a")}
                                   </p>
                                 )}
                                 {revisedCriteriaTimestamps[criteriaItem._id] && (
                                   <p className="text-xs text-green-600 mt-1 dark:text-green-300">
-                                    Revised at: {new Date(revisedCriteriaTimestamps[criteriaItem._id]).toLocaleString()}
+                                    Revised at: {formatDateTZ(revisedCriteriaTimestamps[criteriaItem._id], "MMM d, yyyy h:mm a")}
                                   </p>
                                 )}
                                 {criteriaItem.scoring.comment && (
@@ -965,7 +1051,9 @@ const SubmittedDocumentPage: React.FC = () => {
                           <h4 className="text-sm font-medium text-gray-700 mb-2 dark:text-slate-200">
                             Description
                           </h4>
-                          <p className="text-sm text-gray-600 dark:text-slate-200">
+                          {/* #65 — wrap long criteria descriptions instead of
+                              overflowing to the right. */}
+                          <p className="text-sm text-gray-600 dark:text-slate-200 whitespace-normal break-words">
                             {criteriaItem.description}
                           </p>
                         </div>
@@ -1133,20 +1221,28 @@ const SubmittedDocumentPage: React.FC = () => {
               )}
             </Accordion>
 
-            {criteriaData?.data.data.submissionStatus === "In Progress" && (
+            {!isEvaluationSubmitted && (
               <div className="mt-8 flex justify-end gap-2">
                 <Button variant="outline" className="px-4" onClick={handleBack}>
                   Back to Evaluation
                 </Button>
-                {/* <Button variant="outline" className="px-4" onClick={handleBack}>
-                Reset All
-              </Button> */}
-                <Button
-                  className="text-white px-4"
-                  onClick={() => setShowSubmitDialog(true)}
-                >
-                  Submit Evaluation
-                </Button>
+                <div className="flex flex-col items-end gap-2">
+                  <Button
+                    className="text-white px-4"
+                    onClick={handleOpenSubmitDialog}
+                    disabled={
+                      submitEvaluationMutation.isPending ||
+                      !isEvaluationReadyForSubmission
+                    }
+                  >
+                    Submit Evaluation
+                  </Button>
+                  {!isEvaluationReadyForSubmission ? (
+                    <p className="text-xs text-red-600 dark:text-red-400">
+                      Please complete scoring and add your comments before submitting.
+                    </p>
+                  ) : null}
+                </div>
 
                 <ConfirmAlert
                   open={showSubmitDialog}
@@ -1156,9 +1252,8 @@ const SubmittedDocumentPage: React.FC = () => {
                   type="info"
                   primaryButtonText="Submit"
                   secondaryButtonText="Cancel"
-                  onPrimaryAction={() => {
-                    submitEvaluationMutation.mutate();
-                  }}
+                  primaryButtonLoading={submitEvaluationMutation.isPending}
+                  onPrimaryAction={handleConfirmSubmitEvaluation}
                   onSecondaryAction={() => setShowSubmitDialog(false)}
                 />
               </div>

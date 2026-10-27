@@ -9,6 +9,7 @@ export interface DashboardConfig {
     icon: string;
     color: string;
     bgColor: string;
+    currency?: string;
   }[];
   rows: {
     type: "chart" | "activity" | "mixed";
@@ -346,6 +347,7 @@ const companyAdminConfig: DashboardConfig = {
           visible: true,
           filters: ["12 months", "6 months", "3 months", "30 days", "7 days"],
           legendIconType: "circle",
+          legendPosition: { horizontal: "left" },
         },
         {
           id: "company-role-distribution",
@@ -686,7 +688,7 @@ const contractManagerConfig: DashboardConfig = {
       bgColor: "bg-blue-500/10",
     },
     {
-      title: "Committed vs Actual Value",
+      title: "Budget Spent",
       value: 0,
       icon: "creditCard",
       color: "text-blue-600",
@@ -747,6 +749,7 @@ const viewOnlyConfig: DashboardConfig = contractManagerConfig;
 export const dashboardConfigs: Record<UserRole, DashboardConfig> = {
   evaluator: evaluatorConfig,
   vendor: vendorConfig,
+  project_manager: contractManagerConfig,
   approver: approverConfig,
   view_only: viewOnlyConfig,
   company_admin: companyAdminConfig,

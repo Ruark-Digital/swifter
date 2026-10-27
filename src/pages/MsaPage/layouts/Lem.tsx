@@ -1,20 +1,28 @@
 import React from "react";
 import { TabsContent } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
 import { getRequest } from "@/lib/axiosInstance";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useToastHandler } from "@/hooks/useToaster";
 import type { ApiResponseError } from "@/types";
 import LemTable, { type LemRow } from "@/pages/ContractManagementPage/components/LemTable";
+import SubmitLemDialog from "@/pages/ContractManagementPage/components/SubmitLemDialog";
+import { formatCurrency, resolveCurrency } from "@/lib/utils";
+import { useUser } from "@/store/authSlice";
 
 type Props = {
   contractId: string;
+  currency?: string;
   isActive?: boolean;
+  actionsDisabled?: boolean;
 };
 
-const Lem: React.FC<Props> = ({ contractId, isActive }) => {
-  const { isApprover, isManager, isVendor, isAdmin, isViewOnly } = useUserRole();
+const Lem: React.FC<Props> = ({ contractId, currency, isActive, actionsDisabled }) => {
+  const currencyCode = resolveCurrency(currency, useUser()?.currency);
+  const { isApprover, isManager, isVendor, isProjectManager, isAdmin, isViewOnly } =
+    useUserRole();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<unknown>(null);
@@ -22,12 +30,21 @@ const Lem: React.FC<Props> = ({ contractId, isActive }) => {
   const [debounced, setDebounced] = React.useState("");
 
   const basePath = React.useMemo(() => {
-    if (isVendor) return `/contract/vendor/contracts/${contractId}/lems`;
-    if (isApprover) return `/contract/approver/contracts/${contractId}/lems`;
-    if (isManager) return `/contract/manager/contracts/${contractId}/lems`;
-    if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/lems`;
-    return `/contract/user/contracts/${contractId}/lems`;
-  }, [contractId, isAdmin, isApprover, isManager, isVendor, isViewOnly]);
+    if (isVendor || isProjectManager)
+      return `/contract/vendor/msa-contracts/${contractId}/lems`;
+    if (isApprover) return `/contract/approver/msa-contracts/${contractId}/lems`;
+    if (isManager) return `/contract/manager/msa-contracts/${contractId}/lems`;
+    if (isAdmin || isViewOnly) return `/contract/user/msa-contracts/${contractId}/lems`;
+    return `/contract/user/msa-contracts/${contractId}/lems`;
+  }, [
+    contractId,
+    isAdmin,
+    isApprover,
+    isManager,
+    isVendor,
+    isProjectManager,
+    isViewOnly,
+  ]);
 
   const lemQueryKey = useUserQueryKey(["msa-lem-list", contractId, debounced, basePath]);
 
@@ -59,7 +76,7 @@ const Lem: React.FC<Props> = ({ contractId, isActive }) => {
         title: item?.title || "",
         amount:
           typeof item?.amount === "number"
-            ? `$${item.amount.toLocaleString()}`
+            ? formatCurrency(item.amount, "en-US", currencyCode)
             : item?.amount || "",
         submissionDate: item?.createdAt || item?.submissionDate || "",
         status: item?.status || "Pending",
@@ -78,12 +95,27 @@ const Lem: React.FC<Props> = ({ contractId, isActive }) => {
     toastErrorRef.current("MSA LEM", error as ApiResponseError);
   }, [error]);
 
+  const isVendorLike = isVendor || isProjectManager;
+
   return (
     <TabsContent value="lem" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F]">
+        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F] dark:text-slate-100">
           Labor, Equipment & Material Reports
         </h3>
+        {isVendorLike ? (
+          <SubmitLemDialog
+            contractId={contractId}
+            currency={currencyCode}
+            createPath={`/contract/vendor/msa-contracts/${contractId}/lems`}
+            invalidateQueryKey={lemQueryKey}
+            trigger={
+              <Button className="h-10 rounded-xl px-4" disabled={!!actionsDisabled}>
+                Submit LEM
+              </Button>
+            }
+          />
+        ) : null}
       </div>
 
       <LemTable
@@ -93,6 +125,7 @@ const Lem: React.FC<Props> = ({ contractId, isActive }) => {
         searchValue={search}
         onSearchChange={setSearch}
         basePath={basePath}
+        currency={currencyCode}
       />
     </TabsContent>
   );

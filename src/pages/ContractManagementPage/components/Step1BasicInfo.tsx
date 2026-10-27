@@ -1,12 +1,13 @@
 import React from "react";
-import { Forger } from "@/lib/forge";
+import { Forger } from "@adexdsamson/forge";
 import {
   TextInput,
   TextSelect,
+  TextMultiSelect,
   TextSelectWithSearch,
   TextArea,
 } from "@/components/layouts/FormInputs";
-import { useWatch } from "react-hook-form";
+import { useWatch, useFormContext } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { Info } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -20,17 +21,36 @@ import { businessDivisionApi } from "@/pages/BusinessDivisionsPage/api/businessD
 import { getRequest } from "@/lib/axiosInstance";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUser } from "@/store/authSlice";
+import { getExchangeRate } from "@/lib/currencyUtils";
 
 type Props = {
   typeOptions: Array<{ label: string; value: string }>;
   projectOptions: Array<{ label: string; value: string }>;
+  msaOptions: Array<{
+    label: string;
+    value: string;
+    vendorId?: string;
+    vendorName?: string;
+  }>;
   awardedOptions: Array<{
     label: string;
     value: string;
     vendorEmail?: string;
     vendorId?: string;
+    solicitationName?: string;
+    vendorName?: string;
+    categoryName?: string;
   }>;
+  /** Only the create flow auto-populates name/vendor from the selected awarded
+   *  solicitation. Left off in edit mode so a hydrated contract isn't clobbered. */
+  enableAwardedPrefill?: boolean;
 };
+
+const MSA_CATEGORY_OPTIONS = [
+  { label: "Task Order", value: "Task Order" },
+  { label: "Work Order", value: "Work Order" },
+  { label: "Child Contract", value: "Child Contract" },
+];
 
 const ComplexityRating = ({
   value,
@@ -46,7 +66,7 @@ const ComplexityRating = ({
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <label className="text-sm font-medium text-slate-700">
+        <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
           Complexity Rating (1-10)
         </label>
         <TooltipProvider>
@@ -71,18 +91,20 @@ const ComplexityRating = ({
               className={cn(
                 "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
                 value === num
-                  ? "border-[#2A4467] bg-blue-50"
-                  : "border-slate-200 group-hover:border-slate-300"
+                  ? "border-[#2A4467] bg-blue-50 dark:border-indigo-400 dark:bg-indigo-900/40"
+                  : "border-slate-200 group-hover:border-slate-300 dark:border-slate-600 dark:group-hover:border-slate-500"
               )}
             >
               {value === num && (
-                <div className="w-2.5 h-2.5 rounded-full bg-[#2A4467]" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#2A4467] dark:bg-indigo-300" />
               )}
             </div>
             <span
               className={cn(
                 "text-xs font-medium",
-                value === num ? "text-[#2A4467]" : "text-slate-500"
+                value === num
+                  ? "text-[#2A4467] dark:text-indigo-300"
+                  : "text-slate-500 dark:text-slate-400"
               )}
             >
               {num}
@@ -92,7 +114,9 @@ const ComplexityRating = ({
       </div>
       {error && <span className="text-xs text-red-500 mt-1">{error}</span>}
       {!error && helperText && (
-        <span className="text-xs text-gray-500 mt-1">{helperText}</span>
+        <span className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+          {helperText}
+        </span>
       )}
     </div>
   );
@@ -101,11 +125,88 @@ const ComplexityRating = ({
 const Step1BasicInfo: React.FC<Props> = ({
   typeOptions,
   projectOptions,
+  msaOptions,
   awardedOptions,
+  enableAwardedPrefill = false,
 }) => {
   const { isManager } = useUserRole();
   const currentUser = useUser();
+  const userCurrency = currentUser?.currency;
   const relationship = useWatch({ name: "relationship" });
+  const selectedCurrency = useWatch({ name: "currency" });
+
+  // QA #222/#242/#243: when an awarded solicitation is selected, auto-populate
+  // the contract name, vendor and category from it. We watch the field rather
+  // than injecting an `onChange` on the <Forger>, because a passed onChange
+  // would override the Forge field's own onChange and stop the select from
+  // updating. Category is now carried on the awarded payload (BE added
+  // `categoryName`); its value is the category name, which matches how
+  // categoryOptions are keyed (value === name).
+  const { setValue } = useFormContext();
+  const awardedSolicitation = useWatch({ name: "awardedSolicitation" });
+
+  // #33: "Combination" is a BE-provided contract-type option. When it's chosen,
+  // reveal a multi-select of all the OTHER types (never Combination itself); the
+  // parent submits the picks as a comma-separated id string in `contractType`.
+  const typeValue = useWatch({ name: "type" });
+  const combinationTypeId = React.useMemo(
+    () =>
+      typeOptions.find((o) => o.label?.trim().toLowerCase() === "combination")
+        ?.value,
+    [typeOptions],
+  );
+  const isCombination = !!combinationTypeId && typeValue === combinationTypeId;
+  const combinationSubOptions = React.useMemo(
+    () => typeOptions.filter((o) => o.value !== combinationTypeId),
+    [typeOptions, combinationTypeId],
+  );
+
+  // Clear the sub-type picks when switching away from Combination so a stale
+  // list isn't submitted.
+  React.useEffect(() => {
+    if (!isCombination) setValue("combinationTypes", []);
+  }, [isCombination, setValue]);
+
+  React.useEffect(() => {
+    if (!selectedCurrency && userCurrency) {
+      setValue("currency", userCurrency, { shouldValidate: true });
+    }
+  }, [selectedCurrency, setValue, userCurrency]);
+  React.useEffect(() => {
+    if (!enableAwardedPrefill) return;
+    if (!awardedSolicitation) return;
+    const selected = awardedOptions.find(
+      (opt) => opt.value === awardedSolicitation,
+    );
+    if (!selected) return;
+    if (selected.solicitationName) {
+      setValue("name", selected.solicitationName, { shouldValidate: true });
+    }
+    if (selected.categoryName) {
+      setValue("category", selected.categoryName, { shouldValidate: true });
+    }
+    if (selected.vendorId) {
+      setValue("vendor", selected.vendorId, { shouldValidate: true });
+      if (selected.vendorName) {
+        setValue("vendorLabel", selected.vendorName);
+      }
+    }
+  }, [enableAwardedPrefill, awardedSolicitation, awardedOptions, setValue]);
+
+  // QA #67: linking a contract to an MSA auto-populates the vendor so no manual
+  // vendor selection is needed. Create-mode only (same gate as the awarded
+  // prefill) so an edited contract's hydrated vendor isn't clobbered on mount.
+  const selectedMsaId = useWatch({ name: "msaContractId" });
+
+  React.useEffect(() => {
+    if (!enableAwardedPrefill || !selectedMsaId) return;
+    const msa = msaOptions.find((opt) => opt.value === selectedMsaId);
+    if (msa?.vendorId) {
+      setValue("vendor", msa.vendorId, { shouldValidate: true });
+      if (msa.vendorName) setValue("vendorLabel", msa.vendorName);
+    }
+  }, [enableAwardedPrefill, selectedMsaId, msaOptions, setValue]);
+
   const { data: divisionsRes, isLoading: isLoadingDivisions } = useQuery<
     Awaited<ReturnType<typeof businessDivisionApi.listDivisions>>
   >({
@@ -128,16 +229,88 @@ const Step1BasicInfo: React.FC<Props> = ({
     staleTime: 60000,
   });
 
+  // API spec (POST/PUT /manager/contracts) describes `category` as a
+  // string name (e.g. "Construction", "IT"), and the GET response
+  // surfaces the same name back. Using the name as the option value
+  // keeps the prefill round-trip stable — otherwise the edit form
+  // received "Construction" but the options were keyed by `_id`, so
+  // TextSelectWithSearch couldn't find a match and rendered empty.
   const categoryOptions = React.useMemo(
     () =>
       Array.isArray(categoriesData?.data?.data)
         ? categoriesData.data.data.map((c: { _id?: string; name: string }) => ({
             label: c.name,
-            value: c._id ?? c.name,
+            value: c.name,
           }))
         : [],
     [categoriesData?.data?.data],
   );
+
+  const currencyOptions = React.useMemo(() => {
+    const supportedValuesOf = (Intl as any).supportedValuesOf as
+      | undefined
+      | ((type: string) => string[]);
+
+    const supportedCurrencies =
+      typeof supportedValuesOf === "function" ? supportedValuesOf("currency") : [];
+
+    const fallbackCurrencies = ["CAD", "USD", "EUR", "GBP"];
+
+    const codes =
+      Array.isArray(supportedCurrencies) && supportedCurrencies.length > 0
+        ? supportedCurrencies
+        : fallbackCurrencies;
+
+    const displayNames =
+      typeof (Intl as any).DisplayNames === "function"
+        ? new (Intl as any).DisplayNames(["en"], { type: "currency" })
+        : null;
+
+    const getCurrencyName = (code: string) => {
+      try {
+        const name = displayNames?.of(code);
+        if (typeof name === "string" && name.trim() && name !== code) return name;
+      } catch (err) {
+        void err;
+      }
+
+      try {
+        const parts = new Intl.NumberFormat("en", {
+          style: "currency",
+          currency: code,
+          currencyDisplay: "name",
+        }).formatToParts(0);
+        const name = parts.find((p) => p.type === "currency")?.value;
+        if (typeof name === "string" && name.trim() && name !== code) return name;
+      } catch (err) {
+        void err;
+      }
+
+      return undefined;
+    };
+
+    return Array.from(new Set(codes))
+      .map((code) => {
+        const name = getCurrencyName(code);
+        return {
+          value: code,
+          label: name ? `${code} — ${name}` : code,
+        };
+      })
+      .sort((a, b) => a.value.localeCompare(b.value));
+  }, []);
+
+  const showRateConversion = userCurrency && selectedCurrency && userCurrency !== selectedCurrency;
+
+  const { data: exchangeRate, isLoading: isLoadingRate } = useQuery({
+    queryKey: ["exchangeRate", userCurrency, selectedCurrency],
+    queryFn: async () => {
+      if (!userCurrency || !selectedCurrency || userCurrency === selectedCurrency) return null;
+      return getExchangeRate(userCurrency, selectedCurrency);
+    },
+    enabled: !!showRateConversion,
+    staleTime: 5 * 60 * 1000,
+  });
 
   return (
     <div className="mt-4 space-y-4">
@@ -163,70 +336,51 @@ const Step1BasicInfo: React.FC<Props> = ({
       />
 
       {/* Dynamic Fields based on Relationship */}
+      {/* Single field — render full-width (no 2-col grid) so it doesn't leave
+          an empty cell to its right. The msa / msa_project branches keep the
+          grid because they have 2+ fields to fill it. */}
       {relationship === "project" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Forger
-            name="project"
-            label="Select Project"
-            placeholder="Construction Services ..."
-            component={TextSelect}
-            options={projectOptions}
-            data-testid="select-project-select"
-          />
-          <Forger
-            name="awardedSolicitation"
-            label="Select Awarded Solicitation (Optional)"
-            placeholder="Select Solicitation"
-            component={TextSelect}
-            options={awardedOptions}
-          />
-        </div>
+        <Forger
+          name="project"
+          label="Select Project"
+          placeholder="Construction Services ..."
+          component={TextSelect}
+          options={projectOptions}
+          data-testid="select-project-select"
+        />
       )}
 
       {relationship === "msa" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Forger
-            name="msaCategory"
-            label="Select MSA Category"
-            placeholder="Construction Services ..."
-            component={TextSelect}
-            options={[
-              { label: "Construction Services", value: "construction" },
-              { label: "IT Services", value: "it" },
-            ]}
-          />
-          <Forger
-            name="project" // Using project field for MSA ID based on existing logic, or need a new field? existing logic uses 'project' for MSA ID in buildPayload
-            label="Select project"
-            placeholder="Select Solicitation"
-            component={TextSelect}
-            options={projectOptions} // Assuming MSA options are passed here or need separate props
-          />
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Forger
+              name="msaContractId"
+              label="Select MSA"
+              placeholder="Select MSA"
+              component={TextSelect}
+              options={msaOptions}
+            />
+            <Forger
+              name="msaCategory"
+              label="Select MSA Category"
+              placeholder="Select Category"
+              component={TextSelect}
+              options={MSA_CATEGORY_OPTIONS}
+            />
+          </div>
+        </>
       )}
 
       {relationship === "msa_project" && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Forger
-              name="msaCategory"
-              label="Select MSA Category"
-              placeholder="Construction Services ..."
-              component={TextSelect}
-              options={[
-                { label: "Construction Services", value: "construction" },
-                { label: "IT Services", value: "it" },
-              ]}
-            />
-            <Forger
-              name="msaId" // Separate field for MSA when both are present
+              name="msaContractId"
               label="Select MSA"
               placeholder="Select MSA"
               component={TextSelect}
-              options={[]}
+              options={msaOptions}
             />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Forger
               name="project"
               label="Select Project"
@@ -234,16 +388,27 @@ const Step1BasicInfo: React.FC<Props> = ({
               component={TextSelect}
               options={projectOptions}
             />
-            <Forger
-              name="awardedSolicitation"
-              label="Select Awarded Solicitation (Optional)"
-              placeholder="Select Solicitation"
-              component={TextSelect}
-              options={awardedOptions}
-            />
+            <div className="md:col-span-2">
+              <Forger
+                name="msaCategory"
+                label="Select MSA Category"
+                placeholder="Select Category"
+                component={TextSelect}
+                options={MSA_CATEGORY_OPTIONS}
+              />
+            </div>
           </div>
         </>
       )}
+
+      {/* Awarded solicitation is selectable on every relationship (incl. standalone). */}
+      <Forger
+        name="awardedSolicitation"
+        label="Select Awarded Solicitation (Optional)"
+        placeholder="Select Solicitation"
+        component={TextSelect}
+        options={awardedOptions}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Forger
@@ -263,6 +428,17 @@ const Step1BasicInfo: React.FC<Props> = ({
           data-testid="contract-category-select"
         />
       </div>
+
+      {isCombination && (
+        <Forger
+          name="combinationTypes"
+          label="Combination Types"
+          placeholder="Select the contract types to combine"
+          component={TextMultiSelect}
+          options={combinationSubOptions}
+          data-testid="contract-combination-types-select"
+        />
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Forger
@@ -344,6 +520,33 @@ const Step1BasicInfo: React.FC<Props> = ({
         options={businessDivisionOptions}
         data-testid="business-division-select"
       />
+
+      <Forger
+        name="currency"
+        label="Currency"
+        placeholder="Select currency"
+        searchPlaceholder="Search currency..."
+        emptyMessage="No currency found."
+        component={TextSelectWithSearch}
+        options={currencyOptions}
+      />
+
+      {showRateConversion && (
+        <div className="mt-2 px-3 py-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-md">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-blue-600 dark:text-blue-300 font-medium">Rate Conversion:</span>
+            {isLoadingRate ? (
+              <span className="text-slate-500 dark:text-slate-400">Loading...</span>
+            ) : exchangeRate ? (
+              <span className="text-slate-700 dark:text-slate-200">
+                1 {userCurrency} = {exchangeRate.toFixed(4)} {selectedCurrency}
+              </span>
+            ) : (
+              <span className="text-slate-500 dark:text-slate-400">Unable to fetch rate</span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

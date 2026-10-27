@@ -2,7 +2,7 @@ import React from "react";
 import { UploadCloud, X } from "lucide-react";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
-import { Forge, Forger, useForge } from "@/lib/forge";
+import { Forge, Forger, useForge } from "@adexdsamson/forge";
 import {
   Dialog,
   DialogContent,
@@ -15,11 +15,11 @@ import {
   TextSelect,
 } from "@/components/layouts/FormInputs";
 import { useFormContext, useWatch } from "react-hook-form";
-import { postRequest } from "@/lib/axiosInstance";
-import type { ApiResponse } from "@/types";
+import { getRequest, postRequest } from "@/lib/axiosInstance";
+import type { ApiResponse, ApiResponseError } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 import { cn } from "@/lib/utils";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ContractDetail } from "@/types";
 import { memo, useCallback, useMemo } from "react";
 
@@ -42,48 +42,74 @@ type Props = {
   trigger: React.ReactElement;
   contract?: ContractDetail;
   basePath: string;
+  /** Contract-scoped personnel endpoint (role-branched by the caller, same as
+   *  the RFI tab). Responder options are fetched from here; the `contract`
+   *  prop's approvers/internalTeam/personnel are only a fallback. */
+  personnelPath?: string;
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
+};
+
+type PersonnelEntry = {
+  _id?: string;
+  id?: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
 };
 
 const UploadElement = memo(() => {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-[#9CA3AF] bg-white px-4 py-10 text-center">
-      <UploadCloud className="h-10 w-10 text-[#2A4467]" />
+    <div className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-[#9CA3AF] dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-10 text-center">
+      <UploadCloud className="h-10 w-10 text-[#2A4467] dark:text-blue-300" />
       <div className="space-y-1">
-        <div className="text-sm font-semibold text-[#2A4467]">
+        <div className="text-sm font-semibold text-[#2A4467] dark:text-blue-300">
           Drag &amp; Drop or Click to choose files
         </div>
-        <div className="text-xs font-medium text-[#9CA3AF]">
-          Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
+        <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
+          Supported formats: DOC, DOCX, PDF, XLS, XLSX, ZIP, PNG, JPEG
         </div>
       </div>
     </div>
   );
 });
 
-const FilesListItem = memo(({ file }: { file: File }) => {
-  const { control, setValue } = useFormContext<CreateNcrFormValues>();
-  const value = useWatch({ control, name: "files" });
+const FilesListItem = memo(({ file, index }: { file: File; index?: number }) => {
+  // TextFileUploader passes { file, control, index } to the List slot, so we
+  // pull the live value via useWatch and splice by index. Index is safer than
+  // name-based filter because dropzone allows duplicate filenames.
+  const { setValue } = useFormContext<CreateNcrFormValues>();
+  const value = useWatch({ name: "files" }) as File[] | null | undefined;
+
+  const handleRemove = () => {
+    if (typeof index !== "number") return;
+    const next = (value ?? []).filter((_, i) => i !== index);
+    setValue("files", next.length > 0 ? next : null, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
+
   return (
-    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] bg-white p-3">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB]">
-          <UploadCloud className="h-5 w-5 text-[#2A4467]" />
+    <div className="flex w-full min-w-0 items-center justify-between gap-3 rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-[#EAF1FB] dark:bg-slate-700">
+          <UploadCloud className="h-5 w-5 text-[#2A4467] dark:text-blue-300" />
         </div>
         <div className="min-w-0">
-          <div className="truncate text-sm font-medium text-[#0F0F0F]">
+          <div className="truncate text-sm font-medium text-[#0F0F0F] dark:text-slate-100">
             {file.name}
           </div>
-          <div className="text-xs font-medium text-[#9CA3AF]">
+          <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
             {Math.ceil(file.size / 1024)} KB
           </div>
         </div>
       </div>
       <button
         type="button"
-        onClick={() =>
-          setValue("files", (value ?? []).filter((f) => f.name !== file.name))
-        }
-        className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF]"
+        onClick={handleRemove}
+        className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-[#9CA3AF] dark:text-slate-400 hover:text-red-500 transition-colors"
       >
         <X className="h-4 w-4" />
       </button>
@@ -94,6 +120,9 @@ const FilesListItem = memo(({ file }: { file: File }) => {
 const ACCEPTED_FILE_TYPES = {
   "application/pdf": [".pdf"],
   "application/msword": [".doc"],
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
+    ".docx",
+  ],
   "application/vnd.ms-excel": [".xls"],
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
     ".xlsx",
@@ -104,10 +133,29 @@ const ACCEPTED_FILE_TYPES = {
   "image/jpeg": [".jpeg", ".jpg"],
 } as const;
 
-const CreateNcrDialog: React.FC<Props> = ({ contractId, trigger, contract, basePath }) => {
+const CreateNcrDialog: React.FC<Props> = ({
+  contractId,
+  trigger,
+  contract,
+  basePath,
+  personnelPath,
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
+}) => {
   const [open, setOpen] = React.useState(false);
   const toast = useToastHandler();
   const queryClient = useQueryClient();
+
+  // Responder list comes from the contract-scoped personnel endpoint (same
+  // source the RFI tab uses), fetched only while the dialog is open.
+  const { data: personnelRes } = useQuery<
+    ApiResponse<PersonnelEntry[]>,
+    ApiResponseError
+  >({
+    queryKey: ["ncr-responder-personnel", personnelPath],
+    queryFn: async () => await getRequest({ url: personnelPath as string }),
+    enabled: open && !!personnelPath,
+  });
 
   const { control, reset } = useForge<CreateNcrFormValues>({
     resolver: yupResolver(schema) as any,
@@ -170,11 +218,11 @@ const CreateNcrDialog: React.FC<Props> = ({ contractId, trigger, contract, baseP
     onSuccess: () => {
       toast.success("Success", "NCR created successfully");
       queryClient.invalidateQueries({
-        queryKey: ["contractNcrs", contractId],
+        queryKey: listInvalidateQueryKey ?? ["contractNcrs", contractId],
       });
-      queryClient.refetchQueries({
-        queryKey: ["contractNcrs", contractId],
-      });
+      if (statsInvalidateQueryKey) {
+        queryClient.invalidateQueries({ queryKey: statsInvalidateQueryKey });
+      }
       setOpen(false);
       reset();
     },
@@ -191,22 +239,39 @@ const CreateNcrDialog: React.FC<Props> = ({ contractId, trigger, contract, baseP
   );
 
   const responderOptions = useMemo(() => {
-    const a = Array.isArray(contract?.approvers) ? contract?.approvers : [];
-    const i = Array.isArray(contract?.internalTeam) ? contract?.internalTeam : [];
-    // const m = Array.isArray(contract?.managers) ? contract?.managers : [];
-    const fromApprovers = a.map((u) => ({
-      value: (u as any)?.id ?? (u as any)?._id ?? (u as any)?.email ?? "",
-      label: (u as any)?.name ?? (u as any)?.email ?? "",
-    }));
-    const fromInternal = i.map((u) => ({
-      value: (u as any)?.id ?? (u as any)?._id ?? (u as any)?.email ?? "",
-      label: (u as any)?.name ?? (u as any)?.email ?? "",
-    }));
-    // const fromManagers = m.map((u) => ({
-    //   value: (u as any)?._id ?? (u as any)?.id ?? (u as any)?.user ?? (u as any)?.email ?? "",
-    //   label: (u as any)?.name ?? (u as any)?.email ?? "",
-    // }));
-    const merged = [...fromApprovers, ...fromInternal].filter(
+    const toOption = (u: PersonnelEntry) => {
+      const fullName = [u?.firstName, u?.lastName].filter(Boolean).join(" ").trim();
+      return {
+        value: u?._id ?? u?.id ?? u?.email ?? "",
+        label: u?.name ?? (fullName || u?.email) ?? "",
+      };
+    };
+
+    // Primary source: the contract-scoped personnel endpoint.
+    const personnel = Array.isArray(personnelRes?.data?.data)
+      ? personnelRes?.data?.data ?? []
+      : [];
+    let options = personnel.map(toOption);
+
+    // The personnel endpoint doesn't consistently include vendor-side
+    // personnel (e.g. Vendor PM) for every role, so always merge in the
+    // contract prop's vendor personnel too — dedup below handles overlap.
+    const vendorPersonnel = Array.isArray(contract?.personnel)
+      ? contract?.personnel
+      : Array.isArray(contract?.vendorPersonnel)
+      ? contract?.vendorPersonnel
+      : [];
+    options = [...options, ...vendorPersonnel.map((u) => toOption(u as PersonnelEntry))];
+
+    // Fallback: derive from the contract detail object when personnel hasn't
+    // loaded / returned nothing (e.g. endpoint unavailable for a role).
+    if (options.length === 0) {
+      const a = Array.isArray(contract?.approvers) ? contract?.approvers : [];
+      const i = Array.isArray(contract?.internalTeam) ? contract?.internalTeam : [];
+      options = [...a, ...i, ...vendorPersonnel].map((u) => toOption(u as PersonnelEntry));
+    }
+
+    const valid = options.filter(
       (opt) =>
         typeof opt.value === "string" &&
         opt.value !== "" &&
@@ -214,12 +279,12 @@ const CreateNcrDialog: React.FC<Props> = ({ contractId, trigger, contract, baseP
         opt.label !== "",
     );
     const seen = new Set<string>();
-    return merged.filter((opt) => {
+    return valid.filter((opt) => {
       if (seen.has(opt.value)) return false;
       seen.add(opt.value);
       return true;
     });
-  }, [contract]);
+  }, [personnelRes?.data?.data, contract]);
 
   return (
     <Dialog
@@ -238,7 +303,7 @@ const CreateNcrDialog: React.FC<Props> = ({ contractId, trigger, contract, baseP
       >
         <Forge control={control} onSubmit={onSubmit} className="flex max-h-[90vh] flex-col">
           <div className="flex items-center justify-between px-6 pb-6 pt-8">
-            <div className="text-xl font-semibold text-[#0F0F0F]">Create NCR</div>
+            <div className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">Create NCR</div>
             <button
               type="button"
               onClick={() => setOpen(false)}
@@ -248,7 +313,7 @@ const CreateNcrDialog: React.FC<Props> = ({ contractId, trigger, contract, baseP
             </button>
           </div>
 
-          <div className="flex-1 space-y-6 overflow-y-auto px-6 pb-6">
+          <div className="flex-1 space-y-6 overflow-y-auto px-6 pb-6 min-w-0">
             <Forger
               name="title"
               component={TextInput}
@@ -273,7 +338,7 @@ const CreateNcrDialog: React.FC<Props> = ({ contractId, trigger, contract, baseP
             />
 
             <div className="space-y-4">
-              <div className="text-sm font-medium text-[#6B6B6B]">Upload Files</div>
+              <div className="text-sm font-medium text-[#6B6B6B] dark:text-slate-300">Upload Files</div>
               <Forger
                 name="files"
                 component={TextFileUploader}
@@ -290,7 +355,7 @@ const CreateNcrDialog: React.FC<Props> = ({ contractId, trigger, contract, baseP
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="inline-flex h-10 min-w-[100px] items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-sm font-semibold text-[#0F0F0F]"
+              className="inline-flex h-10 min-w-[100px] items-center justify-center rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F3F4F6] dark:bg-slate-800 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100 hover:bg-[#E5E7EB] dark:hover:bg-slate-700"
             >
               Cancel
             </button>

@@ -1,4 +1,5 @@
 import React from "react";
+import { resolveEnvFileUrl } from "@/config";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { TabsContent } from "@/components/ui/tabs";
@@ -14,12 +15,19 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ArrowLeft, Search, X } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useToastHandler } from "@/hooks/useToaster";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
-import { cn } from "@/lib/utils";
+import { cn, formatCompactCurrency, formatDateTZ, resolveCurrency } from "@/lib/utils";
+import { useUser } from "@/store/authSlice";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import type { ApiResponseError } from "@/types";
 import type {
@@ -34,6 +42,7 @@ import CreateInvoiceDialog from "@/pages/ContractManagementPage/components/Creat
 
 type Props = {
   contractId: string;
+  currency?: string;
   isActive?: boolean;
   actionsDisabled?: boolean;
 };
@@ -54,6 +63,8 @@ type MsaInvoiceDetailsSheetProps = {
   basePath: string;
   statsQueryKey: readonly unknown[];
   invoicesQueryKey: readonly unknown[];
+  /** Contract-level currency; falls back to USD when the API omits it. */
+  currency?: string;
 };
 
 const LabelRow = ({
@@ -76,13 +87,26 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
   basePath,
   statsQueryKey,
   invoicesQueryKey,
+  currency,
 }) => {
-  const { isApprover } = useUserRole();
+  const currencyCode = resolveCurrency(currency, useUser()?.currency);
+  const { isApprover, isManager } = useUserRole();
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
   const [viewerOpen, setViewerOpen] = React.useState(false);
   const [selectedDoc, setSelectedDoc] = React.useState<DocType | null>(null);
+
+  // Approve / reject opens a comment dialog first. `pendingAction` drives the
+  // dialog's title/CTA/color; `commentDraft` resets whenever the dialog closes.
+  const [pendingAction, setPendingAction] = React.useState<
+    "approved" | "rejected" | null
+  >(null);
+  const [commentDraft, setCommentDraft] = React.useState("");
+
+  React.useEffect(() => {
+    if (pendingAction === null) setCommentDraft("");
+  }, [pendingAction]);
 
   const {
     data,
@@ -112,10 +136,19 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
   });
 
   const approveInvoiceMutation = useMutation({
-    mutationFn: async (status: NonNullable<ApprovalActionDTO["action"]>) => {
-      const payload: ApprovalActionDTO = { action: status };
+    mutationFn: async ({
+      action,
+      comment,
+    }: {
+      action: NonNullable<ApprovalActionDTO["action"]>;
+      comment: string;
+    }) => {
+      const payload: ApprovalActionDTO = { action, comment: comment || undefined };
+      const approvePath = isManager
+        ? `/contract/manager/msa-contracts/${contractId}/invoice/${invoiceId}/approve`
+        : `${basePath}/${invoiceId}/approve`;
       const res = await postRequest({
-        url: `${basePath}/${invoiceId}/approve`,
+        url: approvePath,
         payload,
       });
       return res.data;
@@ -132,6 +165,7 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
           queryKey: ["msaInvoiceDetail", contractId, invoiceId, basePath],
         }),
       ]);
+      setPendingAction(null);
       setOpen(false);
     },
     onError: (mutationError) => {
@@ -157,6 +191,7 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
   const canApprove = Boolean(
     approveStatusRes && (approveStatusRes.data?.status ?? approveStatusRes.status),
   );
+  const canManagerAct = isManager && invoice?.status === "pending";
 
   const statusLabel =
     invoice?.status === "approved"
@@ -171,12 +206,12 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
 
   const statusToneClass =
     invoice?.status === "approved"
-      ? "bg-green-100 text-green-700"
+      ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
       : invoice?.status === "rejected"
-        ? "bg-red-100 text-red-700"
+        ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
         : invoice?.status === "draft"
-          ? "bg-slate-100 text-slate-700"
-          : "bg-yellow-100 text-yellow-700";
+          ? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+          : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300";
 
   const invoiceIdLabel = invoice?.invoiceId ?? invoice?._id ?? invoiceId;
   const typeLabel =
@@ -207,13 +242,16 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
           <SheetHeader className="space-y-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827]"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </button>
-                <SheetTitle className="text-base font-semibold text-[#0F0F0F]">
+                <SheetClose asChild>
+                  <button
+                    type="button"
+                    aria-label="Close invoice details"
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827]"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                </SheetClose>
+                <SheetTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   Invoice
                 </SheetTitle>
               </div>
@@ -234,7 +272,7 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
                 <div className="text-xs font-medium text-[#9CA3AF]">
                   Invoice Details
                 </div>
-                <div className="text-base font-semibold text-[#0F0F0F]">
+                <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   {isLoading ? "Loading..." : invoiceIdLabel}
                 </div>
               </div>
@@ -258,6 +296,7 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
                     ? "Loading..."
                     : formatCurrency(
                         typeof invoice?.amount === "number" ? invoice.amount : undefined,
+                        currencyCode,
                       )
                 }
               />
@@ -271,11 +310,29 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
                       : "-"
                 }
               />
+              {/* #92 — invoice submission date (submission = creation for an
+                  invoice); viewer-local, falls back to createdAt. */}
+              <LabelRow
+                label="Invoice Submission Date"
+                value={
+                  isLoading
+                    ? "Loading..."
+                    : (() => {
+                        const submitted =
+                          invoice?.submissionDate ??
+                          invoice?.submittedAt ??
+                          invoice?.createdAt;
+                        return submitted
+                          ? formatDateTZ(submitted, "MMM dd, yyyy")
+                          : "-";
+                      })()
+                }
+              />
             </div>
 
             <div className="space-y-2">
               <div className="text-xs font-medium text-[#9CA3AF]">Description</div>
-              <div className="text-sm text-[#374151]">
+              <div className="text-sm text-[#374151] dark:text-slate-200">
                 {isLoading
                   ? "Loading..."
                   : invoice?.description || "No description provided."}
@@ -284,7 +341,7 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
 
             {files.length > 0 && (
               <div className="space-y-3">
-                <div className="text-base font-semibold text-[#0F0F0F]">
+                <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   Attachments
                 </div>
                 <div className="space-y-2">
@@ -299,7 +356,7 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
                       }}
                       handleDownload={(nextDoc) => {
                         if (!nextDoc.url) return;
-                        window.open(nextDoc.url, "_blank", "noopener,noreferrer");
+                        window.open(nextDoc.url ? resolveEnvFileUrl(nextDoc.url) : "#", "_blank", "noopener,noreferrer");
                       }}
                     />
                   ))}
@@ -319,21 +376,104 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
               <Button
                 variant="outline"
                 className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
-                disabled={approveInvoiceMutation.isPending}
-                onClick={() => approveInvoiceMutation.mutate("rejected")}
+                onClick={() => setPendingAction("rejected")}
               >
-                {approveInvoiceMutation.isPending ? "Processing..." : "Reject"}
+                Reject
               </Button>
               <Button
                 className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
-                disabled={approveInvoiceMutation.isPending}
-                onClick={() => approveInvoiceMutation.mutate("approved")}
+                onClick={() => setPendingAction("approved")}
               >
-                {approveInvoiceMutation.isPending ? "Processing..." : "Approve"}
+                Approve
+              </Button>
+            </div>
+          ) : canManagerAct ? (
+            <div className="flex gap-3 pt-6">
+              <Button
+                variant="outline"
+                className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
+                onClick={() => setPendingAction("rejected")}
+              >
+                Reject
+              </Button>
+              <Button
+                className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
+                onClick={() => setPendingAction("approved")}
+              >
+                Approve
               </Button>
             </div>
           ) : null}
         </div>
+
+        <Dialog
+          open={pendingAction !== null}
+          onOpenChange={(next) => {
+            if (!next && !approveInvoiceMutation.isPending) {
+              setPendingAction(null);
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-md p-0 overflow-hidden">
+            <DialogHeader className="px-6 pt-6 pb-2">
+              <DialogTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+                {pendingAction === "approved" ? "Approve Invoice" : "Reject Invoice"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="px-6 pb-6 space-y-4">
+              <p className="text-sm text-[#6B7280] dark:text-slate-400">
+                {pendingAction === "approved"
+                  ? "Add an optional comment before approving this invoice."
+                  : "Let the vendor know why this invoice is being rejected (optional)."}
+              </p>
+              <textarea
+                value={commentDraft}
+                onChange={(e) => setCommentDraft(e.target.value)}
+                placeholder="Enter your comment"
+                rows={5}
+                className="w-full resize-none rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm text-[#0F0F0F] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#2A4467] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+                autoFocus
+              />
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827] dark:text-slate-100"
+                  disabled={approveInvoiceMutation.isPending}
+                  onClick={() => setPendingAction(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  className={cn(
+                    "h-11 flex-1 rounded-xl text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed",
+                    pendingAction === "approved"
+                      ? "bg-[#16A34A] hover:bg-[#15803D]"
+                      : "bg-[#E53935] hover:bg-[#C62828]",
+                  )}
+                  disabled={approveInvoiceMutation.isPending}
+                  aria-busy={approveInvoiceMutation.isPending}
+                  onClick={() => {
+                    if (pendingAction === null) return;
+                    approveInvoiceMutation.mutate({
+                      action: pendingAction,
+                      comment: commentDraft.trim(),
+                    });
+                  }}
+                >
+                  {approveInvoiceMutation.isPending
+                    ? pendingAction === "approved"
+                      ? "Approving..."
+                      : "Rejecting..."
+                    : pendingAction === "approved"
+                      ? "Approve"
+                      : "Confirm Reject"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </SheetContent>
       {selectedDoc && (
         <DocumentViewer
@@ -354,32 +494,43 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
 const statusTone = (status?: string) => {
   const normalized = status?.toLowerCase();
   if (normalized === "approved") return "bg-[#EAF7EE] text-[#43A047]";
+  if (normalized === "active") return "bg-[#E6F0FF] text-[#2563EB]";
   if (normalized === "pending") return "bg-[#FFF8E1] text-[#F4B400]";
   if (normalized === "rejected") return "bg-[#FEECEC] text-[#E53935]";
-  if (normalized === "draft") return "bg-slate-100 text-slate-700";
-  return "bg-slate-100 text-slate-700";
+  if (normalized === "draft") return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
+  return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
 };
 
-const formatCurrency = (value?: number) => {
+const formatCurrency = (value?: number, currency?: string) => {
   if (typeof value !== "number" || !Number.isFinite(value)) return "-";
-  if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
-  return `$${value.toLocaleString("en-US")}`;
+  return formatCompactCurrency(value, currency || "USD");
 };
 
-const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
-  const { isManager, isApprover, isVendor, isAdmin, isViewOnly } = useUserRole();
+const Invoice: React.FC<Props> = ({ contractId, currency, isActive, actionsDisabled }) => {
+  const currencyCode = resolveCurrency(currency, useUser()?.currency);
+  const { isManager, isApprover, isVendor, isProjectManager, isAdmin, isViewOnly } =
+    useUserRole();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<{ stats?: unknown; list?: unknown }>({});
   const [search, setSearch] = React.useState("");
 
   const basePath = React.useMemo(() => {
-    if (isManager || isAdmin) return `/contract/manager/msa-contract/${contractId}/invoice`;
-    if (isApprover) return `/contract/approver/msa-contract/${contractId}/invoice`;
-    if (isVendor) return `/contract/vendor/msa-contract/${contractId}/invoice`;
-    if (isViewOnly) return `/contract/user/msa-contract/${contractId}/invoice`;
-    return `/contract/user/msa-contract/${contractId}/invoice`;
-  }, [contractId, isAdmin, isApprover, isManager, isVendor, isViewOnly]);
+    if (isManager || isAdmin) return `/contract/manager/msa-contracts/${contractId}/invoice`;
+    if (isApprover) return `/contract/approver/msa-contracts/${contractId}/invoice`;
+    if (isVendor || isProjectManager)
+      return `/contract/vendor/msa-contracts/${contractId}/invoice`;
+    if (isViewOnly) return `/contract/user/msa-contracts/${contractId}/invoice`;
+    return `/contract/user/msa-contracts/${contractId}/invoice`;
+  }, [
+    contractId,
+    isAdmin,
+    isApprover,
+    isManager,
+    isVendor,
+    isProjectManager,
+    isViewOnly,
+  ]);
 
   const statsPath = `${basePath}/stats`;
   const statsQueryKey = useUserQueryKey(["msa-invoices-stats", contractId, statsPath]);
@@ -452,8 +603,11 @@ const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => 
     () =>
       sourceRows.map((invoice) => {
         const raw = invoice as any;
-        const billed = formatCurrency(invoice.amount);
-        const remaining = formatCurrency(raw?.remaining ?? raw?.balance ?? raw?.remainingAmount);
+        const billed = formatCurrency(invoice.amount, currencyCode);
+        const remaining = formatCurrency(
+          raw?.remaining ?? raw?.balance ?? raw?.remainingAmount,
+          currencyCode,
+        );
         return {
           id: raw?._id || invoice.invoiceId || "-",
           invoiceId: invoice.invoiceId || raw?._id || "-",
@@ -468,7 +622,7 @@ const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => 
           status: invoice.status || "pending",
         };
       }),
-    [sourceRows],
+    [sourceRows, currencyCode],
   );
 
   const filteredRows = React.useMemo(() => {
@@ -530,6 +684,7 @@ const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => 
               basePath={basePath}
               statsQueryKey={statsQueryKey}
               invoicesQueryKey={invoicesQueryKey}
+              currency={currencyCode}
               trigger={
                 <Button
                   variant="link"
@@ -543,26 +698,26 @@ const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => 
         ),
       },
     ],
-    [basePath, contractId, invoicesQueryKey, statsQueryKey],
+    [basePath, contractId, invoicesQueryKey, statsQueryKey, currencyCode],
   );
 
   return (
     <TabsContent value="invoice" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F]">
+        <h3 className="text-base font-semibold leading-[36px] tracking-[-0.02em] text-[#0F0F0F] dark:text-slate-100">
           Invoice
         </h3>
-        {isVendor && (
+        {(isVendor || isProjectManager) && (
           <CreateInvoiceDialog
             contractId={contractId}
             createPath={basePath}
             invalidateQueryKey={invoicesQueryKey}
             trigger={
               <Button
-                className="h-12 rounded-xl bg-[#2A4467] px-5 text-base font-semibold text-white hover:bg-[#2A4467]/90"
+                className="h-10 rounded-xl bg-[#2A4467] px-4 text-sm font-semibold text-white hover:bg-[#2A4467]/90"
                 disabled={!!actionsDisabled}
               >
-                Create Invoice
+                Submit Invoice
               </Button>
             }
           />
@@ -580,28 +735,28 @@ const Invoice: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => 
           isLoading: isInvoicesLoading,
         }}
         header={() => (
-          <div className="flex items-center gap-4 border-b border-[#E9E9EB] px-6 py-4">
-            <div className="text-base font-semibold text-[#0F0F0F]">Invoices</div>
+          <div className="flex items-center gap-4 border-b border-[#E9E9EB] dark:border-slate-800 w-full px-6 py-4">
+            <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">Invoices</div>
             <div className="relative w-[320px]">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B]" />
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#6B6B6B] dark:text-slate-400" />
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search changes"
-                className="h-12 rounded-lg border border-[#E5E7EB] pl-9 text-sm text-[#0F0F0F] placeholder:text-[#6B6B6B]"
+                placeholder="Search invoices"
+                className="h-12 rounded-lg border border-[#E5E7EB] dark:border-slate-700 dark:bg-slate-900 pl-9 text-sm text-[#0F0F0F] dark:text-slate-100 placeholder:text-[#6B6B6B] dark:placeholder:text-slate-500"
               />
             </div>
           </div>
         )}
         classNames={{
-          container: "overflow-hidden rounded-xl border border-[#E5E7EB] bg-white",
+          container: "overflow-hidden rounded-xl border border-[#E5E7EB] dark:border-slate-800 bg-white dark:bg-slate-900",
           table: "border-spacing-y-0",
-          tHeader: "bg-[#F9FAFB]",
-          tHeadRow: "border-b border-[#E5E7EB]",
-          tBody: "bg-white",
-          tRow: "border-b border-[#E5E7EB]",
-          tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467]",
-          tCell: "px-6 py-4 text-sm text-slate-700 align-top",
+          tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
+          tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tBody: "bg-white dark:bg-slate-900",
+          tRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tHead: "px-6 py-3 text-sm font-semibold text-[#2A4467] dark:text-indigo-300",
+          tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-200 align-top",
         }}
         emptyPlaceholder={
           <div className="px-6 py-8 text-sm text-slate-500">No invoices found.</div>

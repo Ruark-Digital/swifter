@@ -1,9 +1,11 @@
 import React from "react";
+import { resolveEnvFileUrl } from "@/config";
 import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { getRequest } from "@/lib/axiosInstance";
 import {
   Dialog,
@@ -13,7 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Forge, Forger, useForge } from "@/lib/forge";
+import { Forge, Forger, useForge } from "@adexdsamson/forge";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { TextArea } from "@/components/layouts/FormInputs";
@@ -28,14 +30,43 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Search, Share2, X } from "lucide-react";
+import { ArrowLeft, Search, X } from "lucide-react";
 import { useToastHandler } from "@/hooks/useToaster";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useUser } from "@/store/authSlice";
 import { formatDate } from "date-fns";
 import { DocumentItem, type DocType } from "./DocumentItem";
+import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import { getFileExtension } from "@/lib/fileUtils";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency, formatDateTZ, resolveCurrency } from "@/lib/utils";
+import SubmitLemDialog from "./SubmitLemDialog";
+import MessageComposer from "@/pages/SolicitationManagementPage/components/MessageComposer";
+import type {
+  ContractCommentDTO,
+  ContractChangeCommentDTO,
+  ContractLemDTO,
+} from "../api/contractManagerApi";
+import { deriveLemRateSheetComparison } from "../api/contractManagerApi";
+import { canResubmitLem } from "../lib/lemStatus";
+
+const formatDateValue = (value: unknown) => {
+  if (!value) return "—";
+  const d = value instanceof Date ? value : new Date(value as any);
+  if (Number.isNaN(d.getTime())) return "—";
+  return formatDate(d, "yyyy-MMM-dd");
+};
+
+const getLemStatusColor = (status?: string) => {
+  const lower = (status ?? "").toLowerCase();
+  if (lower === "approved")
+    return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300";
+  if (lower === "rejected")
+    return "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300";
+  if (lower === "pending" || lower === "pending approval")
+    return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300";
+  return "bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-300";
+};
 
 export type LemRow = {
   id: string;
@@ -50,6 +81,11 @@ export interface LemDetailsSheetProps {
   contractId: string;
   lemId: string;
   basePath: string;
+  /** Contract-level currency; falls back to USD when the API omits it. */
+  currency?: string;
+  /** Is the logged-in user the contract's owner/manager — gates the manager
+   *  approve/reject action on the LEM. */
+  owner?: boolean;
 }
 
 const LabelRow = ({
@@ -60,42 +96,371 @@ const LabelRow = ({
   value: React.ReactNode;
 }) => (
   <div className="space-y-2">
-    <div className="text-xs font-medium text-[#9CA3AF]">{label}</div>
-    <div className="text-sm font-medium text-[#111827]">{value}</div>
+    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">{label}</div>
+    <div className="text-sm font-medium text-[#111827] dark:text-slate-100">{value}</div>
   </div>
 );
+
+type LemSummarySheet = {
+  sheetName?: string;
+  headers?: string[];
+  rows?: Array<Record<string, unknown>>;
+};
+type LemSummary = {
+  files?: Array<{ name?: string; sheets?: LemSummarySheet[]; error?: string }>;
+  comparison?: {
+    total?: number | null;
+    rateSheetTotal?: number | null;
+    totalVariance?: number | null;
+    complianceStatus?: string | null;
+  };
+};
+
+const complianceBadgeColor = (status?: string | null) => {
+  const s = (status ?? "").toLowerCase();
+  if (s === "fully compliant")
+    return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300";
+  if (s === "non-compliant")
+    return "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300";
+  return "bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-300";
+};
+
+// Excel headers arrive with embedded CR/LF; collapse to a single line for th display.
+const cleanHeader = (h: string) => h.replace(/\r?\n/g, " ").trim();
+
+const SummaryTotalRow = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) => (
+  <div className="flex items-center justify-between px-4 py-3">
+    <span className="text-sm text-[#6B7280] dark:text-slate-400">{label}</span>
+    <span className="text-sm font-semibold text-[#111827] dark:text-slate-100">
+      {value}
+    </span>
+  </div>
+);
+
+/**
+ * Renders the BE-supplied LEM `summary`: one tab per parsed spreadsheet sheet
+ * (dynamic columns keyed by the sheet's own headers) plus the rate-sheet
+ * comparison totals. The design's normalized per-row comparison columns
+ * (Avg Rate / Man Hour / Fee / Rate Sheet Price / Variance / Match) are not in
+ * the payload — rows are raw cells and `comparison` carries only totals.
+ */
+const LemSummaryContent: React.FC<{
+  summary?: LemSummary;
+  currencyCode: string;
+}> = ({ summary, currencyCode }) => {
+  const sheets = React.useMemo(
+    () =>
+      (summary?.files ?? []).flatMap((f) =>
+        (f.sheets ?? []).map((s) => ({ ...s })),
+      ),
+    [summary],
+  );
+  const comparison = summary?.comparison;
+  // Attachments the BE couldn't parse (spreadsheet errors) — surfaced so the
+  // user knows why a sheet is missing rather than seeing an empty summary.
+  const parseErrors = React.useMemo(
+    () => (summary?.files ?? []).filter((f) => !!f.error),
+    [summary],
+  );
+
+  const money = (v?: number | null) =>
+    typeof v === "number" ? formatCurrency(v, "en-US", currencyCode) : "—";
+
+  if (!sheets.length && !comparison && parseErrors.length === 0) {
+    return (
+      <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
+        No summary available.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      {parseErrors.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-900/20">
+          <div className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+            {parseErrors.length === 1
+              ? "An attachment couldn't be parsed"
+              : "Some attachments couldn't be parsed"}
+          </div>
+          <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs text-amber-700 dark:text-amber-400">
+            {parseErrors.map((f, i) => (
+              <li key={`${f.name ?? "file"}-${i}`}>
+                {f.name ? `${f.name}: ` : ""}
+                {f.error}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {sheets.length > 0 && (
+        <Tabs
+          defaultValue={sheets[0]?.sheetName ?? "sheet-0"}
+          className="space-y-3"
+        >
+          <TabsList className="flex h-auto w-full flex-wrap justify-start gap-2 bg-transparent p-0">
+            {sheets.map((s, i) => (
+              <TabsTrigger
+                key={`${s.sheetName ?? "sheet"}-${i}`}
+                value={s.sheetName ?? `sheet-${i}`}
+                className="flex-none rounded-full border border-[#E5E7EB] px-3 py-1.5 text-xs font-semibold text-[#667085] dark:border-slate-700 dark:text-slate-400 data-[state=active]:border-[#1F3B63] data-[state=active]:bg-[#1F3B63] data-[state=active]:text-white"
+              >
+                {s.sheetName ?? `Sheet ${i + 1}`}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          {sheets.map((s, i) => {
+            const headers = (s.headers ?? []).filter(Boolean);
+            const rows = s.rows ?? [];
+            return (
+              <TabsContent
+                key={`${s.sheetName ?? "sheet"}-${i}-content`}
+                value={s.sheetName ?? `sheet-${i}`}
+              >
+                <div className="overflow-x-auto rounded-xl border border-[#E5E7EB] dark:border-slate-800">
+                  <table className="w-full min-w-max text-sm">
+                    <thead className="bg-[#F9FAFB] dark:bg-slate-800">
+                      <tr className="border-b border-[#E5E7EB] dark:border-slate-800">
+                        {headers.map((h, hi) => (
+                          <th
+                            key={`${h}-${hi}`}
+                            className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400"
+                          >
+                            {cleanHeader(h)}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.length ? (
+                        rows.map((row, ri) => (
+                          <tr
+                            key={ri}
+                            className="border-b border-[#E5E7EB] last:border-0 dark:border-slate-800"
+                          >
+                            {headers.map((h, hi) => {
+                              const cell = row?.[h];
+                              return (
+                                <td
+                                  key={`${ri}-${hi}`}
+                                  className="whitespace-pre-line px-4 py-3 align-top text-slate-700 dark:text-slate-200"
+                                >
+                                  {cell === undefined ||
+                                  cell === null ||
+                                  cell === ""
+                                    ? "—"
+                                    : String(cell)}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td
+                            colSpan={Math.max(headers.length, 1)}
+                            className="px-4 py-6 text-center text-sm text-[#6B7280] dark:text-slate-400"
+                          >
+                            No rows.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </TabsContent>
+            );
+          })}
+        </Tabs>
+      )}
+
+      {comparison && (
+        <div className="divide-y divide-[#E5E7EB] rounded-xl border border-[#E5E7EB] dark:divide-slate-800 dark:border-slate-800">
+          <SummaryTotalRow label="Total" value={money(comparison.total)} />
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="text-sm text-[#6B7280] dark:text-slate-400">
+              Compliance Status
+            </span>
+            {comparison.complianceStatus ? (
+              <span
+                className={cn(
+                  "inline-flex rounded-full px-3 py-1 text-xs font-semibold",
+                  complianceBadgeColor(comparison.complianceStatus),
+                )}
+              >
+                {comparison.complianceStatus}
+              </span>
+            ) : (
+              <span className="text-sm text-slate-400">—</span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
   trigger,
   contractId,
   lemId,
   basePath,
+  currency,
+  owner,
 }) => {
-  const { isVendor } = useUserRole();
-  const { data: lemDetail, isLoading: detailLoading } = useQuery({
-    queryKey: ["lem-detail", contractId, lemId, basePath],
+  const currencyCode = resolveCurrency(currency, useUser()?.currency);
+  const { isVendor, isProjectManager, isApprover, isManager, isAdmin, isViewOnly } =
+    useUserRole();
+  const user = useUser();
+  const queryClient = useQueryClient();
+  const { data: lemDetail, isLoading: detailLoading } = useQuery<ContractLemDTO>({
+    queryKey: useUserQueryKey(["lem-detail", contractId, lemId, basePath]),
     queryFn: async () => {
       const res = await getRequest({
         url: `${basePath}/${lemId}`,
       });
-      return (res)?.data?.data as any;
+      return (res)?.data?.data as ContractLemDTO;
     },
     enabled: !!contractId && !!lemId,
   });
 
+  const toast = useToastHandler();
+
+  // Comments (QA #202) — GET/POST .../lems/{lemId}/comments exist across all
+  // roles; `basePath` already carries the role prefix so we just append.
+  const commentsQueryKey = useUserQueryKey([
+    "contractLemComments",
+    contractId,
+    lemId,
+    basePath,
+  ]);
+  const { data: commentsRes, isLoading: isCommentsLoading } = useQuery<{
+    message?: string;
+    data?: { data?: ContractCommentDTO[]; page?: number; limit?: number };
+  }>({
+    queryKey: commentsQueryKey,
+    queryFn: async () => {
+      const res = await getRequest({ url: `${basePath}/${lemId}/comments` });
+      return (res as { data?: unknown })?.data as {
+        message?: string;
+        data?: { data?: ContractCommentDTO[]; page?: number; limit?: number };
+      };
+    },
+    enabled: !!contractId && !!lemId,
+    staleTime: 60000,
+  });
+
+  const addCommentMutation = useMutation<
+    { message?: string; data?: ContractCommentDTO },
+    unknown,
+    ContractChangeCommentDTO
+  >({
+    mutationKey: ["contractLemComments-add", contractId, lemId, basePath],
+    mutationFn: async (payload) => {
+      const res = await postRequest({
+        url: `${basePath}/${lemId}/comments`,
+        payload,
+      });
+      return (res as { data?: unknown })?.data as {
+        message?: string;
+        data?: ContractCommentDTO;
+      };
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: commentsQueryKey });
+    },
+    onError: (error) => {
+      toast.error("LEM Comment", error as ApiResponseError);
+    },
+  });
+
+  const comments = (commentsRes?.data?.data ?? []) as Array<
+    ContractCommentDTO & { createdBy?: { name?: string; email?: string } }
+  >;
+
+  const getCommentAuthor = (c: ContractCommentDTO) =>
+    c.user?.name ??
+    (c as { createdBy?: { name?: string } }).createdBy?.name ??
+    c.replyTo?.name ??
+    "Unknown";
+
+  const handleSendComment = async (content: string) => {
+    const trimmed = content.trim();
+    if (!trimmed) return;
+    try {
+      await addCommentMutation.mutateAsync({ content: trimmed });
+    } catch {
+      // handled in onError
+    }
+  };
+  const [viewerOpen, setViewerOpen] = React.useState(false);
+  const [selectedDoc, setSelectedDoc] = React.useState<DocType | null>(null);
+
   const handlePreview = (doc: DocType) => {
-    if (!doc.url) return;
-    window.open(doc.url, "_blank", "noopener,noreferrer");
+    if (!doc.url) {
+      toast.error("Preview", "File URL is missing");
+      return;
+    }
+    setSelectedDoc(doc);
+    setViewerOpen(true);
   };
   const handleDownload = (doc: DocType) => {
-    if (!doc.url) return;
+    if (!doc.url) {
+      toast.error("Download", "File URL is missing");
+      return;
+    }
     const a = window.document.createElement("a");
-    a.href = doc.url;
+    a.href = resolveEnvFileUrl(doc.url);
     a.download = doc.name;
     window.document.body.appendChild(a);
     a.click();
     window.document.body.removeChild(a);
   };
+
+  const canApproveOrReject =
+    (isApprover || (isManager && Boolean(owner))) &&
+    !isAdmin &&
+    !isViewOnly &&
+    !isVendor &&
+    !isProjectManager;
+  const approverStatus = lemDetail?.approverStatus;
+  const showApprovalActions =
+    canApproveOrReject && approverStatus === "pending";
+
+  const summary = lemDetail?.summary as LemSummary | undefined;
+  // Overview "Rate Sheet Compliance" and the LEM Summary tab show the
+  // rate-sheet totals. The detail endpoint frequently returns
+  // `summary.comparison` with null rateSheetTotal / totalVariance /
+  // complianceStatus, while the real values live in the sibling top-level
+  // `rateSheet` object. Its current BE shape (docs v2.3.0) is
+  // `{ total, variance, status: "Compliance" | "Non-Compliance" }` — reading the
+  // stale `rateSheetTotal` / `items[]` / `compliant` keys (which no longer
+  // exist) made the fallback contribute nothing, so the compliance indicator
+  // showed "—" / an absent status even when the rate-sheet data was present
+  // (client: "doesn't look accurate"). Read the current fields, keep the legacy
+  // ones as a secondary fallback, and map the rateSheet `status` enum onto the
+  // comparison's "Fully Compliant" / "Non-Compliant" labels so the badge colour
+  // resolves.
+  const rateSheetComparison = React.useMemo(
+    () => deriveLemRateSheetComparison(summary?.comparison, lemDetail?.rateSheet),
+    [summary?.comparison, lemDetail?.rateSheet],
+  );
+  const hasSummary = !!(
+    summary &&
+    ((summary.files?.some((f) => (f.sheets && f.sheets.length) || f.error) ??
+      false) ||
+      !!summary.comparison)
+  );
+
+  // Widen the slide-over on the LEM Summary tab so its wide sheet tables breathe.
+  const [activeTab, setActiveTab] = React.useState("overview");
 
 
   return (
@@ -105,20 +470,24 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
         side="right"
         className={cn(
           "w-full rounded-2xl overflow-y-auto [&>button]:hidden",
-          "sm:max-w-2xl"
+          "transition-[max-width] duration-300 ease-in-out",
+          activeTab === "summary" ? "sm:max-w-5xl" : "sm:max-w-2xl"
         )}
       >
         <div className="space-y-6" data-testid="lem-details-sheet">
           <SheetHeader className="space-y-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827]"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </button>
-                <SheetTitle className="text-base font-semibold text-[#0F0F0F]">
+                <SheetClose asChild>
+                  <button
+                    type="button"
+                    aria-label="Close LEM details"
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] dark:border-slate-700 text-[#111827] dark:text-slate-200"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                </SheetClose>
+                <SheetTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   LEM Details
                 </SheetTitle>
               </div>
@@ -135,19 +504,14 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <div className="text-base font-semibold text-[#0F0F0F]">
+              <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 {detailLoading ? "Loading..." : lemDetail?.title || "—"}
               </div>
-              <Button
-                variant="outline"
-                className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F]"
-              >
-                <Share2 className="mr-2 h-4 w-4" /> Export
-              </Button>
             </div>
 
             <Tabs
-              value="overview"
+              value={activeTab}
+              onValueChange={setActiveTab}
               className="space-y-4"
             >
               <TabsList className="h-auto rounded-none w-full border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent">
@@ -157,12 +521,26 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                 >
                   Overview
                 </TabsTrigger>
+                {hasSummary && (
+                  <TabsTrigger
+                    value="summary"
+                    className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+                  >
+                    LEM Summary
+                  </TabsTrigger>
+                )}
+                <TabsTrigger
+                  value="comments"
+                  className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+                >
+                  Comments
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="space-y-4">
                 <div className="grid gap-6 sm:grid-cols-2">
                   <LabelRow
-                    label="Deliverable Title"
+                    label="Title"
                     value={
                       detailLoading ? "Loading..." : lemDetail?.title || "—"
                     }
@@ -170,7 +548,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                   <LabelRow
                     label="Submitted By"
                     value={
-                      <a className="text-[#2563EB] underline">
+                      <a className="text-[#2563EB] dark:text-blue-400 underline">
                         {lemDetail?.submittedBy?.name || "-"}
                       </a>
                     }
@@ -180,13 +558,18 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                     value={
                       detailLoading || typeof lemDetail?.amount !== "number"
                         ? "—"
-                        : `$${lemDetail.amount.toLocaleString()}`
+                        : formatCurrency(lemDetail.amount, "en-US", currencyCode)
                     }
                   />
                   <LabelRow
                     label="Status"
                     value={
-                      <span className="inline-flex rounded-full bg-[#FEF3C7] px-3 py-1 text-xs font-semibold text-[#F59E0B]">
+                      <span
+                        className={cn(
+                          "inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize",
+                          getLemStatusColor(lemDetail?.status),
+                        )}
+                      >
                         {lemDetail?.status || "Pending"}
                       </span>
                     }
@@ -194,18 +577,16 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                   <LabelRow
                     label="Submission Date"
                     value={
-                      lemDetail?.createdAt
-                        ? formatDate(lemDetail.createdAt, "yyyy-MMM-dd")
-                        : "—"
+                      detailLoading ? "Loading..." : formatDateValue(lemDetail?.createdAt)
                     }
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <div className="text-xs font-medium text-[#9CA3AF]">
+                  <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
                     Description
                   </div>
-                  <div className="text-sm text-[#374151]">
+                  <div className="text-sm text-[#374151] dark:text-slate-200">
                     {detailLoading
                       ? "Loading..."
                       : lemDetail?.description || "—"}
@@ -214,7 +595,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
 
                 {lemDetail?.files && lemDetail.files.length > 0 && (
                   <div className="space-y-3">
-                    <div className="text-base font-semibold text-[#0F0F0F]">
+                    <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                       Attachment
                     </div>
                     {lemDetail.files.map((file: any, index: number) => {
@@ -239,23 +620,123 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                   </div>
                 )}
               </TabsContent>
+
+              <TabsContent value="summary" className="space-y-4">
+                <LemSummaryContent
+                  summary={
+                    summary
+                      ? {
+                          ...summary,
+                          comparison:
+                            rateSheetComparison ?? summary.comparison,
+                        }
+                      : summary
+                  }
+                  currencyCode={currencyCode}
+                />
+              </TabsContent>
+
+              <TabsContent value="comments" className="space-y-4">
+                <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
+                  Comments
+                </div>
+                {isCommentsLoading ? (
+                  <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
+                    Loading comments...
+                  </div>
+                ) : comments.length ? (
+                  <div className="space-y-3">
+                    {comments.map((comment, index) => (
+                      <div
+                        key={comment._id ?? `${index}`}
+                        className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
+                            {getCommentAuthor(comment)}
+                          </div>
+                          <div className="text-xs text-[#6B7280] dark:text-slate-400">
+                            {comment.createdAt
+                              ? formatDateTZ(comment.createdAt, "dd MMM yyyy, HH:mm")
+                              : ""}
+                          </div>
+                        </div>
+                        <div
+                          className="mt-2 text-sm text-[#374151] dark:text-slate-200 prose prose-sm dark:prose-invert max-w-none"
+                          dangerouslySetInnerHTML={{
+                            __html: comment.content ?? "",
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
+                    No comments yet.
+                  </div>
+                )}
+
+                {!isVendor && (
+                  <MessageComposer
+                    onSend={(content) => {
+                      void handleSendComment(content);
+                    }}
+                    isLoading={addCommentMutation.isPending}
+                    currentUser={user ? { name: user.name } : { name: "You" }}
+                    sendType="reply"
+                    isNewChat={false}
+                    onSendTypeChange={() => {}}
+                    sendLabel="Send"
+                  />
+                )}
+              </TabsContent>
             </Tabs>
           </div>
 
-          {(!isVendor && lemDetail?.approverStatus === "pending") && (
+          {/* Vendor/PM resubmit (rejected only) — bottom footer, matching the
+              Deliverables detail layout. A pending LEM is under approval and
+              is not editable (QA #174). */}
+          {isProjectManager &&
+            canResubmitLem(lemDetail?.status) && (
+              <div className="flex gap-3 pt-6 justify-end">
+                <SubmitLemDialog
+                  mode="edit"
+                  isResubmit
+                  lemId={lemId}
+                  contractId={contractId}
+                  currency={currencyCode}
+                  initialLem={{
+                    title: lemDetail?.title,
+                    amount: lemDetail?.amount,
+                    description: lemDetail?.description,
+                    files: lemDetail?.files,
+                  }}
+                  trigger={
+                    <Button
+                      data-testid="edit-lem-trigger"
+                      className="h-11 w-64 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
+                    >
+                      Resubmit
+                    </Button>
+                  }
+                />
+              </div>
+            )}
+
+          {showApprovalActions && (
             <div className="flex gap-3 pt-6">
               <Dialog>
                 <DialogTrigger asChild>
                   <Button
                     variant="outline"
-                    className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
+                    className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                   >
-                    Reject Change
+                    Reject LEM
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md rounded-2xl">
                   <DialogHeader>
-                    <DialogTitle className="text-base font-semibold text-[#0F0F0F]">
+                    <DialogTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                       Reject LEM
                     </DialogTitle>
                   </DialogHeader>
@@ -275,7 +756,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md rounded-2xl">
                   <DialogHeader>
-                    <DialogTitle className="text-base font-semibold text-[#0F0F0F]">
+                    <DialogTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                       Approve LEM
                     </DialogTitle>
                   </DialogHeader>
@@ -289,6 +770,19 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
             </div>
           )}
         </div>
+
+        {selectedDoc && (
+          <DocumentViewer
+            isOpen={viewerOpen}
+            onClose={() => {
+              setViewerOpen(false);
+              setSelectedDoc(null);
+            }}
+            fileUrl={selectedDoc.url ?? ""}
+            fileName={selectedDoc.name}
+            fileType={selectedDoc.type}
+          />
+        )}
       </SheetContent>
     </Sheet>
   );
@@ -297,13 +791,15 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
 const createColumns = (
   contractId: string,
   basePath: string,
+  currency?: string,
+  owner?: boolean,
 ): ColumnDef<LemRow>[] => [
   { accessorKey: "id", header: "LEM ID" },
   {
     accessorKey: "title",
     header: "LEM Title",
     cell: ({ getValue }) => (
-      <div className="max-w-[260px] text-sm text-slate-700">
+      <div className="max-w-[260px] text-sm text-slate-700 dark:text-slate-200">
         {getValue<string>()}
       </div>
     ),
@@ -312,15 +808,15 @@ const createColumns = (
     accessorKey: "amount",
     header: "Amount",
     cell: ({ getValue }) => (
-      <span className="font-medium text-slate-900">{getValue<string>()}</span>
+      <span className="font-medium text-slate-900 dark:text-slate-100">{getValue<string>()}</span>
     ),
   },
   {
     accessorKey: "submissionDate",
     header: "Submission Date",
     cell: ({ getValue }) => (
-      <span className="text-sm text-slate-700">
-        {formatDate(getValue<string>(), "yyyy-MMM-dd")}
+      <span className="text-sm text-slate-700 dark:text-slate-200">
+        {formatDateValue(getValue<string>())}
       </span>
     ),
   },
@@ -329,15 +825,13 @@ const createColumns = (
     header: "Status",
     cell: ({ getValue }) => {
       const s = getValue<string>();
-      const getStatusColor = (status: string) => {
-        const lower = status.toLowerCase();
-        if (lower === "approved") return "bg-green-100 text-green-700";
-        if (lower === "rejected") return "bg-red-100 text-red-600";
-        if (lower === "pending" || lower === "pending approval") return "bg-yellow-100 text-yellow-700";
-        return "bg-gray-100 text-gray-700";
-      };
       return (
-        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(s)}`}>
+        <span
+          className={cn(
+            "px-3 py-1 rounded-full text-xs font-medium capitalize",
+            getLemStatusColor(s),
+          )}
+        >
           {s}
         </span>
       );
@@ -353,10 +847,12 @@ const createColumns = (
             contractId={contractId}
             lemId={row.original.id}
             basePath={basePath}
+            currency={currency}
+            owner={owner}
             trigger={
               <button
                 type="button"
-                className="text-sm font-medium text-green-700 hover:underline"
+                className="text-sm font-medium text-green-700 dark:text-green-400 hover:underline"
               >
                 View
               </button>
@@ -375,6 +871,11 @@ const LemTable: React.FC<{
   searchValue?: string;
   onSearchChange?: (val: string) => void;
   basePath: string;
+  /** Contract-level currency; falls back to USD when the API omits it. */
+  currency?: string;
+  /** Is the logged-in user the contract's owner/manager — threaded to the
+   *  row detail sheet to gate the manager approve/reject action. */
+  owner?: boolean;
 }> = ({
   contractId,
   rows,
@@ -382,6 +883,8 @@ const LemTable: React.FC<{
   searchValue,
   onSearchChange,
   basePath,
+  currency,
+  owner,
 }) => {
   const filteredRows = React.useMemo(() => {
     const source = rows || [];
@@ -396,10 +899,10 @@ const LemTable: React.FC<{
     <div className="space-y-4" data-testid="lem-table">
       <DataTable<LemRow>
         data={filteredRows}
-        columns={createColumns(contractId, basePath)}
+        columns={createColumns(contractId, basePath, currency, owner)}
         header={() => (
-          <div className="flex items-center gap-3 border-b w-full border-[#E5E7EB] px-5 py-4">
-            <span className="text-sm font-medium text-slate-900">LEM</span>
+          <div className="flex items-center gap-3 border-b w-full border-[#E5E7EB] dark:border-slate-800 px-5 py-4">
+            <span className="text-sm font-medium text-slate-900 dark:text-slate-100">LEM</span>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
@@ -421,13 +924,13 @@ const LemTable: React.FC<{
           isLoading: !!isLoading,
         }}
         classNames={{
-          container: "border border-[#E5E7EB] rounded-xl bg-white",
-          tHeader: "bg-[#F9FAFB]",
-          tHeadRow: "border-b border-[#E5E7EB]",
-          tBody: "bg-white",
-          tRow: "border-b border-[#E5E7EB]",
-          tHead: "px-6 py-3 text-xs font-semibold text-slate-500",
-          tCell: "px-6 py-4 text-sm text-slate-700 align-top",
+          container: "border border-[#E5E7EB] dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900",
+          tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
+          tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tBody: "bg-white dark:bg-slate-900",
+          tRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tHead: "px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400",
+          tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-200 align-top",
         }}
       />
     </div>
@@ -467,7 +970,7 @@ const RejectLemForm: React.FC<{
         payload: { action: "rejected", comment: data.comment },
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["lems", contractId] });
+      queryClient.invalidateQueries({ queryKey: ["lem-list", contractId] });
       queryClient.invalidateQueries({
         queryKey: ["lem-detail", contractId, lemId],
       });
@@ -542,7 +1045,7 @@ const ApproveLemForm: React.FC<{
         payload: { action: "approved", comment: data.note },
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["lems", contractId] });
+      queryClient.invalidateQueries({ queryKey: ["lem-list", contractId] });
       queryClient.invalidateQueries({
         queryKey: ["lem-detail", contractId, lemId],
       });

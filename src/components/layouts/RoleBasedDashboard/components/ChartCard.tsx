@@ -165,8 +165,10 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({
   onFilterChange,
   chartData,
 }) => {
-  // Use dynamic chartData if provided, otherwise fallback to chart.data
-  let data = chartData || chart.data;
+  // Use dynamic chartData if provided, otherwise fallback to chart.data.
+  // Default to an empty array so charts can render their frame before their
+  // data query resolves (progressive load) without `.map`/`.every` throwing.
+  let data = chartData || chart.data || [];
 
   // Transform single key-value data for bar charts
   if (chart.type === "bar" && data && data.length > 0) {
@@ -321,7 +323,9 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({
                           {item.name}
                         </span>
                         <span className="text-gray-500 dark:text-gray-400 font-bold">
-                          {typeof item.value === "number" ? item.value.toFixed(0) : 0}%
+                          {typeof (item.percentage ?? item.value) === "number"
+                            ? Number(item.percentage ?? item.value).toFixed(0)
+                            : 0}%
                         </span>
                       </span>
                     );
@@ -490,8 +494,18 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({
                     const hasNameProperty = allKeys.includes("name");
 
                     if (hasNameProperty && allKeys.length > 1) {
-                      // For consolidated single key-value data, exclude 'name' property
-                      return allKeys.filter((key) => key !== "name");
+                      // For consolidated single key-value data, exclude 'name'
+                      // and the display-only companion fields that must never be
+                      // plotted as their own bar series: 'percentage' and
+                      // 'color' (the latter is injected by applyConsistentColors
+                      // for pie-slice coloring; if left in it renders a stray
+                      // series and leaks a "color #ef4444" row into the tooltip).
+                      return allKeys.filter(
+                        (key) =>
+                          key !== "name" &&
+                          key !== "percentage" &&
+                          key !== "color",
+                      );
                     } else {
                       // For multi-key data, assume first key is label, rest are data
                       return allKeys.slice(1);
@@ -609,11 +623,21 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({
   };
 
   return (
-    <Card className={cn("transition-colors", chart.className)}>
-      <CardHeader>
-        <CardTitle className="text-lg font-semibold">{chart.title}</CardTitle>
+    <Card
+      className={cn(
+        "transition-colors flex flex-col max-h-[32rem]",
+        chart.className,
+      )}
+    >
+      <CardHeader className="shrink-0">
+        <CardTitle className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+          {chart.title}
+        </CardTitle>
         {chart.filters && chart.filters.length > 0 && (
-          <div className="flex space-x-2 text-sm overflow-auto py-2">
+          // Keep the pills on one horizontal line at their natural height;
+          // overflow scrolls horizontally inside the card instead of poking
+          // out. `shrink-0` on each Button prevents flex compression.
+          <div className="flex space-x-2 text-sm overflow-x-auto py-2">
             {chart.filters?.map((item) => {
               const isActive =
                 selected?.replace(/\s+/g, "") === item.replace(/\s+/g, "");
@@ -621,7 +645,10 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({
                 <Button
                   variant={isActive ? "default" : "ghost"}
                   key={item}
-                  className={cn("transition-all duration-200 font-medium")}
+                  className={cn(
+                    "transition-all duration-200 font-medium shrink-0",
+                    !isActive && "dark:text-slate-300 dark:hover:bg-slate-800",
+                  )}
                   onClick={() => onFilterChange?.(item)}
                 >
                   {item}
@@ -631,7 +658,7 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({
           </div>
         )}
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="p-0 flex-1 min-h-0 overflow-y-auto">
         {chart.id === "committed-vs-actual-spend" ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
             <div className="h-[22rem] w-full">{renderChart()}</div>
@@ -640,15 +667,19 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({
                 {chart?.sidePanel?.items?.map((it, idx) => (
                   <div key={idx} className="flex items-start justify-between">
                     <div className="space-y-1">
-                      <p className="text-sm font-medium text-gray-800">{it.label}</p>
+                      <p className="text-sm font-medium text-gray-800 dark:text-slate-100">
+                        {it.label}
+                      </p>
                       {it.desc && (
-                        <p className="text-xs text-gray-500">{it.desc}</p>
+                        <p className="text-xs text-gray-500 dark:text-slate-400">
+                          {it.desc}
+                        </p>
                       )}
                     </div>
                     <p
                       className={cn(
                         "text-lg font-semibold",
-                        it.color || "text-[#2A4467]"
+                        it.color || "text-[#2A4467] dark:text-indigo-300",
                       )}
                     >
                       {typeof it.value !== "undefined" ? it.value : "$0.0M"}
@@ -670,12 +701,14 @@ export const ChartComponent: React.FC<ChartComponentProps> = ({
               return (
                 <div key={idx} className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm text-gray-700">{row.name}</p>
-                    <p className="text-sm font-semibold text-gray-700">
+                    <p className="text-sm text-gray-700 dark:text-slate-300">
+                      {row.name}
+                    </p>
+                    <p className="text-sm font-semibold text-gray-700 dark:text-slate-200">
                       ${Number(row.value || 0).toLocaleString()}M
                     </p>
                   </div>
-                  <div className="w-full h-2.5 bg-gray-200 rounded-full">
+                  <div className="w-full h-2.5 bg-gray-200 dark:bg-slate-800 rounded-full">
                     <div
                       className="h-2.5 bg-green-500 rounded-full"
                       style={{ width: `${pct}%` }}

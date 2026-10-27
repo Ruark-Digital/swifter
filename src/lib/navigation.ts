@@ -13,6 +13,7 @@ import {
   Folder,
 } from "lucide-react";
 import { UserRole, Modules } from "@/types";
+import { isModuleEnabled } from "@/lib/moduleFlags";
 
 export type NavigationItem = {
   icon: any;
@@ -28,8 +29,16 @@ export const getNavigationForRole = (
   currentPath: string,
   modules?: Modules
 ): NavigationItem[] => {
+  // Module flags can be booleans (legacy) or `{ enabled: boolean }` objects
+  // (current BE payload) — isModuleEnabled handles both.
+  const showDashboard =
+    role === "project_manager"
+      ? isModuleEnabled(modules?.contractManagement)
+      : isModuleEnabled(modules?.reportsAnalytics) &&
+        role !== "view_only";
+
   const baseNavigation: (NavigationItem | undefined)[] = [
-    modules?.reportsAnalytics && role !== "view_only"
+    showDashboard
       ? {
           icon: MdDashboard,
           title: "Dashboard",
@@ -44,7 +53,7 @@ export const getNavigationForRole = (
     (NavigationItem | undefined)[]
   > = {
     procurement: [
-      modules?.solicitationManagement
+      isModuleEnabled(modules?.solicitationManagement)
         ? {
             icon: FileText,
             title: "Solicitation Management",
@@ -52,7 +61,7 @@ export const getNavigationForRole = (
             active: currentPath.startsWith("/dashboard/solicitation"),
           }
         : undefined,
-      modules?.evaluationsManagement
+      isModuleEnabled(modules?.evaluationsManagement)
         ? {
             icon: ClipboardList,
             title: "Evaluation Management",
@@ -60,39 +69,7 @@ export const getNavigationForRole = (
             active: currentPath.startsWith("/dashboard/evaluation"),
           }
         : undefined,
-      modules?.contractManagement
-        ? {
-            icon: Folder,
-            title: "Projects",
-            to: "/dashboard/project-management",
-            active: currentPath.startsWith("/dashboard/project-management"),
-          }
-        : undefined,
-      modules?.contractManagement
-        ? {
-            icon: FileText,
-            title: "Contract Management",
-            to: "/dashboard/contract-management",
-            active:
-              currentPath.startsWith("/dashboard/contract-management") ||
-              currentPath.startsWith("/dashboard/msa"),
-            children: [
-              {
-                title: "Contracts",
-                to: "/dashboard/contract-management",
-                active: currentPath.startsWith(
-                  "/dashboard/contract-management"
-                ),
-              },
-              {
-                title: "Master Service Agreements (MSA)",
-                to: "/dashboard/msa",
-                active: currentPath.startsWith("/dashboard/msa"),
-              },
-            ],
-          }
-        : undefined,
-      modules?.vendorManagement
+      isModuleEnabled(modules?.vendorManagement)
         ? {
             icon: Users,
             title: "Vendor Management",
@@ -100,6 +77,12 @@ export const getNavigationForRole = (
             active: currentPath.startsWith("/dashboard/vendor"),
           }
         : undefined,
+      {
+        icon: Building2,
+        title: "Business Divisions",
+        to: "/dashboard/business-divisions",
+        active: currentPath.startsWith("/dashboard/business-divisions"),
+      },
       {
         icon: User2,
         title: "Profile",
@@ -108,7 +91,7 @@ export const getNavigationForRole = (
       },
     ],
     contract_manager: [
-      modules?.contractManagement
+      isModuleEnabled(modules?.contractManagement)
         ? {
             icon: Folder,
             title: "Projects",
@@ -116,7 +99,7 @@ export const getNavigationForRole = (
             active: currentPath.startsWith("/dashboard/project-management"),
           }
         : undefined,
-      modules?.contractManagement
+      isModuleEnabled(modules?.contractManagement)
         ? {
             icon: FileText,
             title: "Contract Management",
@@ -140,14 +123,12 @@ export const getNavigationForRole = (
             ],
           }
         : undefined,
-      modules?.vendorManagement
-        ? {
-            icon: Users,
-            title: "Vendor Management",
-            to: "/dashboard/vendor",
-            active: currentPath.startsWith("/dashboard/vendor"),
-          }
-        : undefined,
+      {
+        icon: Building2,
+        title: "Business Divisions",
+        to: "/dashboard/business-divisions",
+        active: currentPath.startsWith("/dashboard/business-divisions"),
+      },
       {
         icon: User2,
         title: "Profile",
@@ -156,7 +137,7 @@ export const getNavigationForRole = (
       },
     ],
     evaluator: [
-      modules?.evaluationsManagement
+      isModuleEnabled(modules?.evaluationsManagement)
         ? {
             icon: ClipboardList,
             title: "My Evaluation",
@@ -178,7 +159,7 @@ export const getNavigationForRole = (
         to: "/dashboard/invitations",
         active: currentPath.startsWith("/dashboard/invitations"),
       },
-      modules?.solicitationManagement
+      isModuleEnabled(modules?.solicitationManagement)
         ? {
             icon: FileText,
             title: "Solicitation Management",
@@ -186,7 +167,7 @@ export const getNavigationForRole = (
             active: currentPath.startsWith("/dashboard/solicitation"),
           }
         : undefined,
-      modules?.contractManagement
+      isModuleEnabled(modules?.contractManagement)
         ? {
             icon: FileText,
             title: "Contract Management",
@@ -217,8 +198,38 @@ export const getNavigationForRole = (
         active: currentPath.startsWith("/dashboard/profile"),
       },
     ],
+    project_manager: [
+      isModuleEnabled(modules?.contractManagement)
+        ? {
+            icon: FileText,
+            title: "Contract Management",
+            to: "/dashboard/contract-management",
+            active:
+              currentPath.startsWith("/dashboard/contract-management") ||
+              currentPath.startsWith("/dashboard/msa"),
+            children: [
+              {
+                title: "Contracts",
+                to: "/dashboard/contract-management",
+                active: currentPath.startsWith("/dashboard/contract-management"),
+              },
+              {
+                title: "Master Service Agreements (MSA)",
+                to: "/dashboard/msa",
+                active: currentPath.startsWith("/dashboard/msa"),
+              },
+            ],
+          }
+        : undefined,
+      {
+        icon: User2,
+        title: "Profile",
+        to: "/dashboard/profile",
+        active: currentPath.startsWith("/dashboard/profile"),
+      },
+    ],
     approver: [
-      modules?.contractManagement
+      isModuleEnabled(modules?.contractManagement)
         ? {
             icon: FileText,
             title: "Contract Management",
@@ -250,7 +261,15 @@ export const getNavigationForRole = (
       },
     ],
     view_only: [
-      modules?.contractManagement
+      isModuleEnabled(modules?.contractManagement)
+        ? {
+            icon: Folder,
+            title: "Projects",
+            to: "/dashboard/project-management",
+            active: currentPath.startsWith("/dashboard/project-management"),
+          }
+        : undefined,
+      isModuleEnabled(modules?.contractManagement)
         ? {
             icon: FileText,
             title: "Contract Management",
@@ -275,6 +294,12 @@ export const getNavigationForRole = (
           }
         : undefined,
       {
+        icon: Building2,
+        title: "Business Divisions",
+        to: "/dashboard/business-divisions",
+        active: currentPath.startsWith("/dashboard/business-divisions"),
+      },
+      {
         icon: User2,
         title: "Profile",
         to: "/dashboard/profile",
@@ -282,7 +307,7 @@ export const getNavigationForRole = (
       },
     ],
     company_admin: [
-      modules?.solicitationManagement
+      isModuleEnabled(modules?.solicitationManagement)
         ? {
             icon: FileText,
             title: "Solicitation Management",
@@ -290,7 +315,23 @@ export const getNavigationForRole = (
             active: currentPath.startsWith("/dashboard/solicitation"),
           }
         : undefined,
-      modules?.contractManagement
+      isModuleEnabled(modules?.evaluationsManagement)
+        ? {
+            icon: ClipboardList,
+            title: "Evaluation Management",
+            to: "/dashboard/evaluation",
+            active: currentPath.startsWith("/dashboard/evaluation"),
+          }
+        : undefined,
+      isModuleEnabled(modules?.contractManagement)
+        ? {
+            icon: Folder,
+            title: "Projects",
+            to: "/dashboard/project-management",
+            active: currentPath.startsWith("/dashboard/project-management"),
+          }
+        : undefined,
+      isModuleEnabled(modules?.contractManagement)
         ? {
             icon: FileText,
             title: "Contract Management",
@@ -326,20 +367,12 @@ export const getNavigationForRole = (
         to: "/dashboard/user-management",
         active: currentPath.startsWith("/dashboard/user-management"),
       },
-      modules?.vendorManagement
+      isModuleEnabled(modules?.vendorManagement)
         ? {
             icon: Users,
             title: "Vendor Management",
             to: "/dashboard/vendor",
             active: currentPath.startsWith("/dashboard/vendor"),
-          }
-        : undefined,
-      modules?.evaluationsManagement
-        ? {
-            icon: ClipboardList,
-            title: "Evaluation",
-            to: "/dashboard/evaluation",
-            active: currentPath.startsWith("/dashboard/evaluation"),
           }
         : undefined,
       {

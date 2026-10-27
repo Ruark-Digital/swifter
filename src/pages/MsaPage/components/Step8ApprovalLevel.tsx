@@ -1,5 +1,5 @@
 import React from "react";
-import { Forger, useFieldArray } from "@/lib/forge";
+import { Forger, useFieldArray } from "@adexdsamson/forge";
 import {
   TextCurrencyInput,
   TextInput,
@@ -19,7 +19,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { InfoIcon } from "lucide-react";
-import { ApiResponseError } from "@/types";
+import { ApiResponse, ApiResponseError } from "@/types";
+import {
+  getPersonnelDisplayName,
+  isApproverPersonnel,
+  type PersonnelLike,
+} from "@/pages/ContractManagementPage/lib/approverSelection";
 
 type ApproverTag = {
   id?: string;
@@ -31,12 +36,11 @@ type ApproverTag = {
 
 type Props = { control: Control<CreateMsaFormData> };
 
-type ApiListResponse<T> = { status: number; message: string; data: T[] };
-
 type Personnel = {
   _id: string;
   email?: string;
-  role?: Array<{ name?: string }>;
+  role?: Array<{ name?: string }> | { name?: string } | string;
+  roles?: Array<{ name?: string }> | { name?: string } | string;
   firstName?: string;
   lastName?: string;
 };
@@ -60,39 +64,42 @@ const Step8ApprovalLevel: React.FC<Props> = ({ control }) => {
     name: "approvalGroups",
   }) as { approvers?: ApproverTag[] }[] | undefined;
 
+  // Approval thresholds are in the MSA's own currency (chosen in Step 1), so
+  // the amount input shows that currency's symbol, not a hardcoded "$".
+  const selectedCurrency = useWatch({
+    control,
+    name: "currency",
+  }) as string | undefined;
+
   const { data: personnelData, isLoading: isLoadingUsers } = useQuery<
-    ApiListResponse<Personnel>,
+    ApiResponse<Personnel[]>,
     ApiResponseError
   >({
+    // Shares cache with Step2ContractTeam — both queryFns must return the
+    // full AxiosResponse so consumers can read `personnelData?.data?.data`
+    // consistently. Returning just the body here caused this dropdown to
+    // collapse to "No results found." whenever Step 2 mounted first.
     queryKey: ["contract-personnel"],
-    queryFn: async () => {
-      const res = await getRequest({ url: "/contract/manager/personnel" });
-      return res.data as ApiListResponse<Personnel>;
-    },
+    queryFn: async () =>
+      await getRequest({ url: "/contract/manager/personnel" }),
     staleTime: 60_000,
   });
 
   const approverTags = React.useMemo<ApproverTag[]>(() => {
     const people =
-      personnelData?.data?.filter?.((item) =>
-        (item.role ?? []).some((r) => r?.name === "approver"),
+      personnelData?.data?.data?.filter?.((item) =>
+        isApproverPersonnel(item as PersonnelLike),
       ) ?? [];
 
     return people.map((p) => {
       const email = p.email ?? "";
-      const name =
-        (p.firstName && p.lastName
-          ? `${p.firstName} (${p.lastName})`
-          : p.firstName) ||
-        email ||
-        p._id;
-      const label = email && name && email !== name ? `${name} (${email})` : name;
+      const name = getPersonnelDisplayName(p as PersonnelLike);
       const value = p._id || email;
       return {
         id: value,
         value,
-        text: label,
-        meta: { email },
+        text: name,
+        meta: { email, name },
       };
     });
   }, [personnelData]);
@@ -173,7 +180,8 @@ const Step8ApprovalLevel: React.FC<Props> = ({ control }) => {
               name={`approvalGroups.${index}.amount`}
               component={TextCurrencyInput}
               containerClass="!w-40"
-              placeholder="$0.00"
+              placeholder="0.00"
+              currency={selectedCurrency}
             />
 
             <div className="flex flex-col gap-2">
@@ -219,6 +227,7 @@ const Step8ApprovalLevel: React.FC<Props> = ({ control }) => {
       </div>
 
       <Button
+        type="button"
         onClick={() => append(defaultApprovalGroup as any)}
         className="w-fit  bg-[#2A4467] text-white text-xs font-semibold py-2 rounded-lg"
       >

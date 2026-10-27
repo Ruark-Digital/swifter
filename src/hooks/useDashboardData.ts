@@ -53,12 +53,18 @@ export interface Distribution {
 
 export interface SolicitationStatusData {
   total: number;
+  // Percentage fields (fractional, summing to 100) — kept for back-compat.
   awarded: number;
   active: number;
   evaluating: number;
   closed: number;
   draft: number;
   percentage: number;
+  // Integer count fields returned alongside the percentages — these are
+  // what the dashboard pie consumes so the slices reflect real counts.
+  activeSol?: number;
+  closedSol?: number;
+  awardedSol?: number;
 }
 
 export interface VendorsDistributionData {
@@ -224,6 +230,15 @@ export type ContractManagerDashboardResponse<T> = {
   data?: T;
 };
 
+export type ContractAiInsight = {
+  type: string;
+  title: string;
+  description: string;
+  severity: "critical" | "warning" | "info";
+  count: number;
+  value?: number;
+};
+
 export type ContractManagerCycleTimeStage = {
   name: string;
   days: number;
@@ -259,11 +274,14 @@ export type ContractManagerRiskDistribution = {
   high: number;
 };
 
+// BE ships two field-name variants for the same values; accept either.
 export type ContractManagerChangeOrderImpact = {
-  totalCOs: number;
-  valueIncrease: number;
-  percentageIncrease: number;
-  chartData: Array<{ date: string; original: number; revised: number }>;
+  totalChangeOrders?: number;
+  totalCOs?: number;
+  valueIncrease?: number;
+  valueIncreasePercentage?: number;
+  percentageIncrease?: number;
+  chartData?: Array<{ date: string; original: number; revised: number }>;
 };
 
 export type ContractManagerComplianceStatus = {
@@ -277,10 +295,16 @@ export type ContractManagerComplianceStatus = {
 export type ContractManagerClauseIntelligence = {
   completionPercentage: number;
   mostNegotiatedClauses: Array<{ category: string; count: number }>;
-  highRiskClauseTypes: Array<{
-    category: string;
+  // BE field is `highRiskClauses` (not `highRiskClauseTypes` — the old name
+  // here never matched the live payload, so this card silently always fell
+  // back to its mock data; QA #97).
+  highRiskClauses: Array<{
+    title: string;
+    category?: string;
+    clauseNumber?: string;
     contracts: number;
     severity: string;
+    averageDeviation?: number;
   }>;
 };
 
@@ -301,6 +325,9 @@ export type ContractManagerVendorSummary = {
     riskScore?: number;
     claims?: number;
     changeOrders?: number;
+    /** KPI-based performance score (0-100) computed during contract execution.
+     *  0 / absent means the vendor has not been rated yet (QA #110). */
+    overallKpi?: number;
     performance?: string;
   }>;
   summary?: unknown;
@@ -328,20 +355,45 @@ export type ContractManagerRenewals = {
  */
 export const useDashboardData = (
   userRole: UserRole,
-  chartFilters: Record<string, string> = {}
+  chartFilters: Record<string, string> = {},
+  isContractsTabActive: boolean = false
 ) => {
   const defaultFilter = "12months";
+  const contractDashboardDefaultFilter = "ytd";
+  // PM's dashboard is otherwise fully aliased to the vendor role (see
+  // RoleBasedDashboard), but My Actions / General Updates must pull from the
+  // CONTRACT vendor-side dashboard, not the solicitation vendor endpoints a
+  // real vendor uses — PM's actions/updates are contract-scoped.
+  const pmContractDashboardBasePath = "/contract/vendor/contracts/dashboard";
 
   // Helper function to get filter for a specific chart
   const getFilterForChart = (chartId: string) => {
     return chartFilters[chartId] || defaultFilter;
   };
   const isContractDashboardRole =
-    userRole === "contract_manager" || userRole === "approver";
+    userRole === "contract_manager" ||
+    userRole === "approver" ||
+    userRole === "procurement" ||
+    userRole === "company_admin";
   const contractDashboardBasePath =
     userRole === "approver"
       ? "/contract/approver/contracts/dashboard"
       : "/contract/manager/contracts/dashboard";
+
+  const getContractDashboardRange = (chartId: string) => {
+    return chartFilters[chartId] || contractDashboardDefaultFilter;
+  };
+
+  const toContractDashboardRangeParam = (range: string) => {
+    return range === "ytd" ? "YTD" : range;
+  };
+
+  // Top-N selector for ranking visuals (Pareto: Top 10 / Top 20). Stored in
+  // chartFilters under a `${chartId}:top` key, defaulting to 10. Sent as the
+  // `top` query param so the BE returns up to N rows (see BE flag in PR).
+  const getContractDashboardTop = (chartId: string): number => {
+    return chartFilters[`${chartId}:top`] === "20" ? 20 : 10;
+  };
 
   // SuperAdmin dashboard count
   const { data: dashboardCount, isLoading: isLoadingCount } = useQuery<
@@ -640,7 +692,7 @@ export const useDashboardData = (
       queryKey: useUserQueryKey(["vendor-my-actions", userRole]),
       queryFn: async () =>
         await getRequest({ url: "/vendor/solicitations/my-actions" }),
-      enabled: userRole === "vendor",
+      enabled: userRole === "vendor" && !isContractsTabActive,
       staleTime: 5 * 60 * 1000,
       refetchOnWindowFocus: false,
       refetchOnMount: false,
@@ -654,8 +706,50 @@ export const useDashboardData = (
     queryKey: useUserQueryKey(["vendor-general-updates", userRole]),
     queryFn: async () =>
       await getRequest({ url: "/vendor/solicitations/general-updates" }),
-    enabled: userRole === "vendor",
+    enabled: userRole === "vendor" && !isContractsTabActive,
     staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
+  // PM Dashboard (aliased to "vendor") - My Actions, contract-scoped
+  const { data: pmContractMyActions, isLoading: isLoadingPmContractMyActions } =
+    useQuery<
+      ContractManagerDashboardResponse<ContractManagerDashboardActivityItem[]>,
+      ApiResponseError
+    >({
+      queryKey: useUserQueryKey(["pm-contract-dashboard-my-actions", userRole]),
+      queryFn: async () => {
+        const res = await getRequest({
+          url: `${pmContractDashboardBasePath}/action-logs`,
+          config: { params: { type: "Contract" } },
+        });
+        return res.data as ContractManagerDashboardResponse<ContractManagerDashboardActivityItem[]>;
+      },
+      enabled: userRole === "vendor" && isContractsTabActive,
+      staleTime: 60 * 1000,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+    });
+
+  // PM Dashboard (aliased to "vendor") - General Updates, contract-scoped
+  const {
+    data: pmContractGeneralUpdates,
+    isLoading: isLoadingPmContractGeneralUpdates,
+  } = useQuery<
+    ContractManagerDashboardResponse<ContractManagerDashboardActivityItem[]>,
+    ApiResponseError
+  >({
+    queryKey: useUserQueryKey(["pm-contract-dashboard-general-updates", userRole]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${pmContractDashboardBasePath}/general-updates`,
+        config: { params: { type: "Contract" } },
+      });
+      return res.data as ContractManagerDashboardResponse<ContractManagerDashboardActivityItem[]>;
+    },
+    enabled: userRole === "vendor" && isContractsTabActive,
+    staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   });
@@ -832,11 +926,22 @@ export const useDashboardData = (
     ContractManagerDashboardResponse<ContractManagerCycleTime>,
     ApiResponseError
   >({
-    queryKey: useUserQueryKey(["contract-manager-dashboard-cycle-time", userRole]),
+    queryKey: useUserQueryKey([
+      "contract-manager-dashboard-cycle-time",
+      userRole,
+      getContractDashboardRange("cycle-time"),
+    ]),
     queryFn: async () => {
       const res = await getRequest({
         url: `${contractDashboardBasePath}/cycle-time`,
-        config: { params: { type: "Contract" } },
+        config: {
+          params: {
+            range: toContractDashboardRangeParam(
+              getContractDashboardRange("cycle-time"),
+            ),
+            type: "Contract",
+          },
+        },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerCycleTime>;
     },
@@ -853,11 +958,22 @@ export const useDashboardData = (
     ContractManagerDashboardResponse<ContractManagerInvoiceStatus>,
     ApiResponseError
   >({
-    queryKey: useUserQueryKey(["contract-manager-dashboard-invoice-status", userRole]),
+    queryKey: useUserQueryKey([
+      "contract-manager-dashboard-invoice-status",
+      userRole,
+      getContractDashboardRange("invoice-status"),
+    ]),
     queryFn: async () => {
       const res = await getRequest({
         url: `${contractDashboardBasePath}/invoice-status`,
-        config: { params: { range: "YTD", type: "Contract" } },
+        config: {
+          params: {
+            range: toContractDashboardRangeParam(
+              getContractDashboardRange("invoice-status"),
+            ),
+            type: "Contract",
+          },
+        },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerInvoiceStatus>;
     },
@@ -874,11 +990,22 @@ export const useDashboardData = (
     ContractManagerDashboardResponse<ContractManagerCommittedVsActualSpend>,
     ApiResponseError
   >({
-    queryKey: useUserQueryKey(["contract-manager-dashboard-committed-vs-actual", userRole]),
+    queryKey: useUserQueryKey([
+      "contract-manager-dashboard-committed-vs-actual",
+      userRole,
+      getContractDashboardRange("committed-vs-actual"),
+    ]),
     queryFn: async () => {
       const res = await getRequest({
         url: `${contractDashboardBasePath}/committed-vs-actual`,
-        config: { params: { range: "YTD", type: "Contract" } },
+        config: {
+          params: {
+            range: toContractDashboardRangeParam(
+              getContractDashboardRange("committed-vs-actual"),
+            ),
+            type: "Contract",
+          },
+        },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerCommittedVsActualSpend>;
     },
@@ -895,11 +1022,24 @@ export const useDashboardData = (
     ContractManagerDashboardResponse<ContractManagerValueByEntity[]>,
     ApiResponseError
   >({
-    queryKey: useUserQueryKey(["contract-manager-dashboard-vendor-contract-value", userRole]),
+    queryKey: useUserQueryKey([
+      "contract-manager-dashboard-vendor-contract-value",
+      userRole,
+      getContractDashboardRange("vendor-contract-value"),
+      getContractDashboardTop("vendor-contract-value"),
+    ]),
     queryFn: async () => {
       const res = await getRequest({
         url: `${contractDashboardBasePath}/vendor-contract-value`,
-        config: { params: { range: "YTD", type: "Contract" } },
+        config: {
+          params: {
+            range: toContractDashboardRangeParam(
+              getContractDashboardRange("vendor-contract-value"),
+            ),
+            type: "Contract",
+            top: getContractDashboardTop("vendor-contract-value"),
+          },
+        },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerValueByEntity[]>;
     },
@@ -916,11 +1056,24 @@ export const useDashboardData = (
     ContractManagerDashboardResponse<ContractManagerValueByEntity[]>,
     ApiResponseError
   >({
-    queryKey: useUserQueryKey(["contract-manager-dashboard-project-contract-value", userRole]),
+    queryKey: useUserQueryKey([
+      "contract-manager-dashboard-project-contract-value",
+      userRole,
+      getContractDashboardRange("project-contract-value"),
+      getContractDashboardTop("project-contract-value"),
+    ]),
     queryFn: async () => {
       const res = await getRequest({
         url: `${contractDashboardBasePath}/project-contract-value`,
-        config: { params: { range: "YTD", type: "Contract" } },
+        config: {
+          params: {
+            range: toContractDashboardRangeParam(
+              getContractDashboardRange("project-contract-value"),
+            ),
+            type: "Contract",
+            top: getContractDashboardTop("project-contract-value"),
+          },
+        },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerValueByEntity[]>;
     },
@@ -937,11 +1090,22 @@ export const useDashboardData = (
     ContractManagerDashboardResponse<ContractManagerRiskDistribution>,
     ApiResponseError
   >({
-    queryKey: useUserQueryKey(["contract-manager-dashboard-risk-distribution", userRole]),
+    queryKey: useUserQueryKey([
+      "contract-manager-dashboard-risk-distribution",
+      userRole,
+      getContractDashboardRange("risk-distribution"),
+    ]),
     queryFn: async () => {
       const res = await getRequest({
         url: `${contractDashboardBasePath}/risk-distribution`,
-        config: { params: { range: "YTD", type: "Contract" } },
+        config: {
+          params: {
+            range: toContractDashboardRangeParam(
+              getContractDashboardRange("risk-distribution"),
+            ),
+            type: "Contract",
+          },
+        },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerRiskDistribution>;
     },
@@ -958,11 +1122,24 @@ export const useDashboardData = (
     ContractManagerDashboardResponse<ContractManagerChangeOrderImpact>,
     ApiResponseError
   >({
-    queryKey: useUserQueryKey(["contract-manager-dashboard-change-order-impact", userRole]),
+    queryKey: useUserQueryKey([
+      "contract-manager-dashboard-change-order-impact",
+      userRole,
+      getContractDashboardRange("change-order-impact"),
+    ]),
     queryFn: async () => {
       const res = await getRequest({
-        url: `${contractDashboardBasePath}/change-order-impact`,
-        config: { params: { range: "YTD", type: "Contract" } },
+        // swagger spelling drift: manager uses `change-order-impact`,
+        // approver uses `changes-order-impact` (plural)
+        url: `${contractDashboardBasePath}/${userRole === "approver" ? "changes-order-impact" : "change-order-impact"}`,
+        config: {
+          params: {
+            range: toContractDashboardRangeParam(
+              getContractDashboardRange("change-order-impact"),
+            ),
+            type: "Contract",
+          },
+        },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerChangeOrderImpact>;
     },
@@ -979,11 +1156,24 @@ export const useDashboardData = (
     ContractManagerDashboardResponse<ContractManagerValueByEntity[]>,
     ApiResponseError
   >({
-    queryKey: useUserQueryKey(["contract-manager-dashboard-category-value", userRole]),
+    queryKey: useUserQueryKey([
+      "contract-manager-dashboard-category-value",
+      userRole,
+      getContractDashboardRange("category-value"),
+      getContractDashboardTop("category-value"),
+    ]),
     queryFn: async () => {
       const res = await getRequest({
         url: `${contractDashboardBasePath}/category-value`,
-        config: { params: { range: "YTD", type: "Contract" } },
+        config: {
+          params: {
+            range: toContractDashboardRangeParam(
+              getContractDashboardRange("category-value"),
+            ),
+            type: "Contract",
+            top: getContractDashboardTop("category-value"),
+          },
+        },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerValueByEntity[]>;
     },
@@ -1000,11 +1190,22 @@ export const useDashboardData = (
     ContractManagerDashboardResponse<ContractManagerComplianceStatus>,
     ApiResponseError
   >({
-    queryKey: useUserQueryKey(["contract-manager-dashboard-compliance-status", userRole]),
+    queryKey: useUserQueryKey([
+      "contract-manager-dashboard-compliance-status",
+      userRole,
+      getContractDashboardRange("compliance-status"),
+    ]),
     queryFn: async () => {
       const res = await getRequest({
         url: `${contractDashboardBasePath}/compliance-status`,
-        config: { params: { range: "YTD", type: "Contract" } },
+        config: {
+          params: {
+            range: toContractDashboardRangeParam(
+              getContractDashboardRange("compliance-status"),
+            ),
+            type: "Contract",
+          },
+        },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerComplianceStatus>;
     },
@@ -1042,15 +1243,52 @@ export const useDashboardData = (
     ContractManagerDashboardResponse<ContractManagerContractStatus>,
     ApiResponseError
   >({
-    queryKey: useUserQueryKey(["contract-manager-dashboard-contract-status", userRole]),
+    queryKey: useUserQueryKey([
+      "contract-manager-dashboard-contract-status",
+      userRole,
+      getContractDashboardRange("contract-status"),
+    ]),
     queryFn: async () => {
       const res = await getRequest({
         url: `${contractDashboardBasePath}/contract-status`,
-        config: { params: { range: "YTD", type: "Contract" } },
+        config: {
+          params: {
+            range: toContractDashboardRangeParam(
+              getContractDashboardRange("contract-status"),
+            ),
+            type: "Contract",
+          },
+        },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerContractStatus>;
     },
     enabled: isContractDashboardRole,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
+  // AI Insights & Alerts shares the manager endpoint for contract managers and procurement.
+  const {
+    data: contractManagerAiInsights,
+    isLoading: isLoadingContractManagerAiInsights,
+  } = useQuery<
+    ContractManagerDashboardResponse<ContractAiInsight[]>,
+    ApiResponseError
+  >({
+    queryKey: useUserQueryKey(["contract-manager-dashboard-ai-insights", userRole]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${contractDashboardBasePath}/ai-insights`,
+        config: { params: { type: "Contract" } },
+      });
+      return res.data as ContractManagerDashboardResponse<ContractAiInsight[]>;
+    },
+    enabled:
+      userRole === "contract_manager" ||
+      userRole === "procurement" ||
+      userRole === "approver" ||
+      userRole === "company_admin",
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
@@ -1063,11 +1301,20 @@ export const useDashboardData = (
     ContractManagerDashboardResponse<ContractManagerVendorSummary>,
     ApiResponseError
   >({
-    queryKey: useUserQueryKey(["contract-manager-dashboard-vendor-summary", userRole]),
+    queryKey: useUserQueryKey([
+      "contract-manager-dashboard-vendor-summary",
+      userRole,
+      getContractDashboardTop("vendor-summary"),
+    ]),
     queryFn: async () => {
       const res = await getRequest({
         url: `${contractDashboardBasePath}/vendor-summary`,
-        config: { params: { type: "Contract" } },
+        config: {
+          params: {
+            type: "Contract",
+            top: getContractDashboardTop("vendor-summary"),
+          },
+        },
       });
       return res.data as ContractManagerDashboardResponse<ContractManagerVendorSummary>;
     },
@@ -1111,7 +1358,8 @@ export const useDashboardData = (
         );
       case "weekly-activities":
         return DashboardDataTransformer.transformWeeklyActivities(
-          weeklyActivities?.data?.data
+          weeklyActivities?.data?.data,
+          getFilterForChart("weekly-activities")
         );
       case "sub-distribution":
         return DashboardDataTransformer.transformSubDistribution(
@@ -1226,6 +1474,8 @@ export const useDashboardData = (
     isLoadingVendorGeneralUpdates ||
     isLoadingProcurementMyActions ||
     isLoadingProcurementGeneralUpdates ||
+    isLoadingPmContractMyActions ||
+    isLoadingPmContractGeneralUpdates ||
     // isLoadingProcurementSolicitationStatus ||
     // isLoadingProcurementBidIntent ||
     // isLoadingProcurementVendorsDistribution ||
@@ -1246,8 +1496,22 @@ export const useDashboardData = (
     isLoadingContractManagerComplianceStatus ||
     isLoadingContractManagerClauseIntelligence ||
     isLoadingContractManagerContractStatus ||
+    isLoadingContractManagerAiInsights ||
     isLoadingContractManagerVendorSummary ||
     isLoadingContractManagerRenewals;
+
+  // Initial-paint gate: block the dashboard only until the role's PRIMARY
+  // stats query resolves — NOT until every chart/activity query finishes.
+  // The stat cards (above the fold) all derive from this single query per
+  // role; charts and activity panels render their own card shells and stream
+  // in afterward. This is what turns a multi-second blank spinner (the slowest
+  // of ~6-17 parallel calls) into an instant first paint.
+  const isInitialLoading =
+    (userRole === "super_admin" && isLoadingCount) ||
+    (userRole === "company_admin" && isLoadingSolicitationStatus) ||
+    (userRole === "procurement" && isLoadingProcurement) ||
+    (userRole === "evaluator" && isLoadingEvaluatorDashboard) ||
+    (userRole === "vendor" && isLoadingVendorDashboard);
 
   return {
     // SuperAdmin data
@@ -1290,6 +1554,10 @@ export const useDashboardData = (
     vendorMyActions: vendorMyActions?.data?.data,
     vendorGeneralUpdates: vendorGeneralUpdates?.data?.data,
 
+    // PM data (aliased to "vendor"; contract-scoped My Actions/General Updates)
+    pmContractMyActions: pmContractMyActions?.data,
+    pmContractGeneralUpdates: pmContractGeneralUpdates?.data,
+
     contractManagerTotalCards: contractManagerTotalCards?.data,
     contractManagerYtdCards: contractManagerYtdCards?.data,
     contractManagerActionLogs: contractManagerActionLogs?.data,
@@ -1305,6 +1573,7 @@ export const useDashboardData = (
     contractManagerComplianceStatus: contractManagerComplianceStatus?.data,
     contractManagerClauseIntelligence: contractManagerClauseIntelligence?.data,
     contractManagerContractStatus: contractManagerContractStatus?.data,
+    contractManagerAiInsights: contractManagerAiInsights?.data,
     contractManagerVendorSummary: contractManagerVendorSummary?.data,
     contractManagerRenewals: contractManagerRenewals?.data,
 
@@ -1313,6 +1582,7 @@ export const useDashboardData = (
 
     // Loading states
     isLoading,
+    isInitialLoading,
     isLoadingCount,
     isLoadingRoles,
     isLoadingActivities,
@@ -1335,6 +1605,8 @@ export const useDashboardData = (
     isLoadingVendorGeneralUpdates,
     isLoadingProcurementMyActions,
     isLoadingProcurementGeneralUpdates,
+    isLoadingPmContractMyActions,
+    isLoadingPmContractGeneralUpdates,
     isLoadingContractManagerTotalCards,
     isLoadingContractManagerYtdCards,
     isLoadingContractManagerActionLogs,
@@ -1352,5 +1624,6 @@ export const useDashboardData = (
     isLoadingContractManagerContractStatus,
     isLoadingContractManagerVendorSummary,
     isLoadingContractManagerRenewals,
+    isLoadingContractManagerAiInsights,
   };
 };

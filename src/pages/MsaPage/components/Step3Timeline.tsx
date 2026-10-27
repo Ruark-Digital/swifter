@@ -1,11 +1,11 @@
 import React from "react";
-import { ForgeControl, Forger } from "@/lib/forge";
+import { ForgeControl, Forger } from "@adexdsamson/forge";
 import {
   TextDatePicker,
   TextInput,
   TextSelect,
 } from "@/components/layouts/FormInputs";
-import { useForgeValues } from "@/lib/forge";
+import { useForgeValues } from "@adexdsamson/forge";
 import { CreateMsaFormData } from "../layouts/CreateMSADialog";
 import { useWatch } from "react-hook-form";
 import { formatDateTZ } from "@/lib/utils";
@@ -22,6 +22,14 @@ const Step3Timeline: React.FC<Props> = ({
   isLoadingTermTypes,
   control,
 }) => {
+  // Past dates are intentionally allowed across every stage — MSA
+  // contracts can be backdated, and editing an in-flight MSA needs to
+  // keep the original past timeline. The chain still enforces order
+  // (stage N start >= stage N-1 end) but no longer floors at today.
+  const clampMinDate = React.useCallback(
+    (d?: Date) => (d instanceof Date && !Number.isNaN(d.getTime()) ? d : undefined),
+    [],
+  );
   const { setValue } = useForgeValues({ control });
   const endDate = useWatch({ control, name: "endDate" });
   const effectiveDate = useWatch({ control, name: "effectiveDate" });
@@ -59,7 +67,7 @@ const Step3Timeline: React.FC<Props> = ({
             component={TextDatePicker}
             showTime
           />
-          <p className="text-xs font-semibold text-[#2A4467]">
+          <p className="text-xs font-semibold text-[#2A4467] dark:text-slate-300">
             Could be in the past, present or future.
           </p>
         </div>
@@ -70,7 +78,7 @@ const Step3Timeline: React.FC<Props> = ({
             placeholder="Select end date"
             component={TextDatePicker}
             showTime
-            minDate={effectiveDate}
+            minDate={clampMinDate(effectiveDate)}
           />
         </div>
       </div>
@@ -100,94 +108,86 @@ const Step3Timeline: React.FC<Props> = ({
         }
       />
 
-      <div className="space-y-4 rounded-2xl bg-[#F9FAFB] p-4">
-        <p className="text-sm font-medium text-[#0F0F0F]">
-          Duration of Contract Formation  Stage
+      <div className="space-y-4 rounded-2xl bg-[#F9FAFB] dark:bg-slate-800/60 p-4">
+        <p className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">
+          Contract Formation Duration
         </p>
 
         <div className="space-y-3">
-          <p className="text-sm font-medium text-[#0F0F0F]">Draft Stage</p>
+          <p className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">Draft Duration</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Forger
               name="draftStartDate"
               label="Start Date"
               placeholder="Select start date"
               component={TextDatePicker}
-              maxDate={effectiveDate}
             />
             <Forger
               name="draftEndDate"
               label="End Date"
               placeholder="Select end date"
               component={TextDatePicker}
-              minDate={draftStartDate}
-              maxDate={effectiveDate}
+              minDate={clampMinDate(draftStartDate)}
             />
           </div>
         </div>
 
         <div className="space-y-3">
-          <p className="text-sm font-medium text-[#0F0F0F]">Review Stage</p>
+          <p className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">Review Duration</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Forger
               name="reviewStartDate"
               label="Start Date"
               placeholder="Select start date"
               component={TextDatePicker}
-              minDate={draftEndDate || draftStartDate}
-              maxDate={effectiveDate}
+              minDate={clampMinDate(draftEndDate || draftStartDate)}
             />
             <Forger
               name="reviewEndDate"
               label="End Date"
               placeholder="Select end date"
               component={TextDatePicker}
-              minDate={reviewStartDate}
-              maxDate={effectiveDate}
+              minDate={clampMinDate(reviewStartDate)}
             />
           </div>
         </div>
 
         <div className="space-y-3">
-          <p className="text-sm font-medium text-[#0F0F0F]">Approval Stage</p>
+          <p className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">Approval Duration</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Forger
               name="approvalStartDate"
               label="Start Date"
               placeholder="Select start date"
               component={TextDatePicker}
-              minDate={reviewEndDate || reviewStartDate}
-              maxDate={effectiveDate}
+              minDate={clampMinDate(reviewEndDate || reviewStartDate)}
             />
             <Forger
               name="approvalEndDate"
               label="End Date"
               placeholder="Select end date"
               component={TextDatePicker}
-              minDate={approvalStartDate}
-              maxDate={effectiveDate}
+              minDate={clampMinDate(approvalStartDate)}
             />
           </div>
         </div>
 
         <div className="space-y-3">
-          <p className="text-sm font-medium text-[#0F0F0F]">Execution Stage</p>
+          <p className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">Execution Duration</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Forger
               name="executionStartDate"
               label="Start Date"
               placeholder="Select start date"
               component={TextDatePicker}
-              minDate={approvalEndDate || approvalStartDate}
-              maxDate={effectiveDate}
+              minDate={clampMinDate(approvalEndDate || approvalStartDate)}
             />
             <Forger
               name="executionEndDate"
               label="End Date"
               placeholder="Select end date"
               component={TextDatePicker}
-              minDate={executionStartDate}
-              maxDate={effectiveDate}
+              minDate={clampMinDate(executionStartDate)}
             />
           </div>
         </div>

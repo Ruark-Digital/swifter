@@ -10,6 +10,7 @@ interface CardStatsProps {
   icon: string;
   color: string;
   bgColor: string;
+  currency?: string;
   onClick?: () => void;
 }
 
@@ -408,9 +409,48 @@ export const CardStats: React.FC<CardStatsProps> = ({
   icon,
   color,
   bgColor,
+  currency,
   onClick,
 }) => {
   const IconComponent = IconMap[icon as IconMapKey] || IconMap.folder;
+  const displayValue = React.useMemo(() => {
+    const safeValue = Number.isFinite(value) ? value : 0;
+
+    // "Budget Spent" (formerly "Committed vs Actual") is a percentage stat.
+    if (title.toLowerCase().includes("budget spent")) {
+      return `${Math.round(safeValue)}%`;
+    }
+
+    if (
+      title === "Total Contract Value" ||
+      title === "Savings Realized" ||
+      title === "Holdbacks"
+    ) {
+      // Prefix with the currency code (e.g. "CAD 101.1B") when the API
+      // supplies one. Guard against unknown codes — Intl throws on those.
+      if (currency) {
+        try {
+          return new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency,
+            currencyDisplay: "code",
+            notation: "compact",
+            compactDisplay: "short",
+            maximumFractionDigits: 1,
+          }).format(safeValue);
+        } catch {
+          // Fall through to the plain compact format below.
+        }
+      }
+      return new Intl.NumberFormat("en-US", {
+        notation: "compact",
+        compactDisplay: "short",
+        maximumFractionDigits: 1,
+      }).format(safeValue);
+    }
+
+    return String(safeValue);
+  }, [title, value, currency]);
 
   return (
     <Card 
@@ -425,7 +465,7 @@ export const CardStats: React.FC<CardStatsProps> = ({
           <div className="space-y-2">
             <p className="text-sm text-gray-600 dark:text-gray-400">{title}</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              {value}
+              {displayValue}
             </p>
           </div>
           <div className={cn("p-2.5 rounded-full", bgColor)}>

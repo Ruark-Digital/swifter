@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Forge, Forger, useForge } from "@/lib/forge";
+import { Forge, Forger, useForge } from "@adexdsamson/forge";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -50,6 +50,36 @@ const schema = yup.object({
 
 // Memoize timezone options to prevent recreation on every render
 const timeZoneOptions = [{ label: "Select Timezone", value: "" }, ...timezones];
+
+// Module-scope component (stable reference) so Forge's memoized Forger
+// correctly detects prop changes (showPassword/onToggle) and re-renders.
+const PasswordFieldInput = ({
+  showPassword,
+  onToggle,
+  label,
+  placeholder,
+  ...props
+}: any) => (
+  <TextInput
+    {...props}
+    label={label}
+    placeholder={placeholder}
+    type={showPassword ? "text" : "password"}
+    endAdornment={
+      <button
+        type="button"
+        onClick={onToggle}
+        className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+      >
+        {showPassword ? (
+          <EyeOff className="h-5 w-5" />
+        ) : (
+          <Eye className="h-5 w-5" />
+        )}
+      </button>
+    }
+  />
+);
 
 const OnboardingPage = () => {
   const setUser = useSetUser();
@@ -135,8 +165,15 @@ const OnboardingPage = () => {
           return;
         }
 
-        setValue("name", decoded.name || "");
-        setValue("emailAddress", decoded.email || "");
+        const decodedName =
+          decoded.name ||
+          [decoded.firstName, decoded.lastName].filter(Boolean).join(" ") ||
+          "";
+        const decodedEmail =
+          decoded.emailAddress || decoded.email || decoded.primaryEmail || "";
+
+        setValue("name", decodedName);
+        setValue("emailAddress", decodedEmail);
         setValue("companyName", decoded.companyName || "");
         setTokenState(decoded.token);
       } catch (error) {
@@ -192,7 +229,13 @@ const OnboardingPage = () => {
         );
       }
     },
-    [mutateAsync, setUser, setToken, toast, navigate]
+    // `token` MUST stay in this dependency list: it starts as "" and is only
+    // populated after the invite link is decrypted in the effect above. Omitting
+    // it freezes onSubmit on the initial token="" (mutateAsync and the other deps
+    // are stable, so the callback is never recreated), which submits an empty
+    // token and the backend rejects it with 400 "Invalid or expired invite
+    // token" — the "unable to complete registration" failure (QA #89).
+    [mutateAsync, setUser, setToken, toast, navigate, token]
   );
 
   // Memoize password toggle handlers to prevent recreation
@@ -203,57 +246,6 @@ const OnboardingPage = () => {
   const toggleConfirmPasswordVisibility = useCallback(() => {
     setShowConfirmPassword((prev) => !prev);
   }, []);
-
-  // Memoize password input components to prevent inline component creation
-  const PasswordInput = useCallback(
-    (props: any) => (
-      <TextInput
-        {...props}
-        label="Password"
-        placeholder="Enter Password"
-        type={showPassword ? "text" : "password"}
-        endAdornment={
-          <button
-            type="button"
-            onClick={togglePasswordVisibility}
-            className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
-          >
-            {showPassword ? (
-              <EyeOff className="h-5 w-5" />
-            ) : (
-              <Eye className="h-5 w-5" />
-            )}
-          </button>
-        }
-      />
-    ),
-    [showPassword, togglePasswordVisibility]
-  );
-
-  const ConfirmPasswordInput = useCallback(
-    (props: any) => (
-      <TextInput
-        {...props}
-        label="Confirm Password"
-        placeholder="Enter Password"
-        type={showConfirmPassword ? "text" : "password"}
-        endAdornment={
-          <button
-            type="button"
-            onClick={toggleConfirmPasswordVisibility}
-            className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
-          >
-            {showConfirmPassword ? (
-              <EyeOff className="h-5 w-5" />
-            ) : (
-              <Eye className="h-5 w-5" />
-            )}
-          </button>
-        }
-      />
-    ),
-    [showConfirmPassword, toggleConfirmPasswordVisibility]
-  );
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950  py-12 px-4 sm:px-6 lg:px-8 transition-colors">
@@ -320,11 +312,22 @@ const OnboardingPage = () => {
                   options={timeZoneOptions}
                 />
 
-                <Forger name="password" component={PasswordInput} />
+                <Forger
+                  name="password"
+                  component={PasswordFieldInput}
+                  label="Password"
+                  placeholder="Enter Password"
+                  showPassword={showPassword}
+                  onToggle={togglePasswordVisibility}
+                />
 
                 <Forger
                   name="confirmPassword"
-                  component={ConfirmPasswordInput}
+                  component={PasswordFieldInput}
+                  label="Confirm Password"
+                  placeholder="Enter Password"
+                  showPassword={showConfirmPassword}
+                  onToggle={toggleConfirmPasswordVisibility}
                 />
 
                 <Button

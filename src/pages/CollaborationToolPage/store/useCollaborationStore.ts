@@ -1,10 +1,9 @@
 import { create } from "zustand";
 
-export type CollaborationTab = "comments" | "log";
+export type CollaborationTab = "comments" | "redline" | "versions";
 
 type CollaborationStoreState = {
   activeTab: CollaborationTab;
-  hasVisitedLog: boolean;
   presenceActive: boolean;
   setActiveTab: (tab: CollaborationTab) => void;
   setPresenceActive: (active: boolean) => void;
@@ -12,12 +11,7 @@ type CollaborationStoreState = {
 
 export const useCollaborationStore = create<CollaborationStoreState>((set) => ({
   activeTab: "comments",
-  hasVisitedLog: false,
   presenceActive: true,
-  setActiveTab: (tab) =>
-    set((state) => ({
-      activeTab: tab,
-      hasVisitedLog: state.hasVisitedLog || tab === "log",
-    })),
+  setActiveTab: (tab) => set({ activeTab: tab }),
   setPresenceActive: (presenceActive) => set({ presenceActive }),
 }));

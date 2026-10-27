@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Trash2, Plus } from "lucide-react";
-import { useFieldArray, Control } from "react-hook-form";
+import { useFieldArray } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
-import { Forger } from "@/lib/forge";
+import { Forger } from "@adexdsamson/forge";
 import { TextInput } from "@/components/layouts/FormInputs/TextInput";
 import { TextMultiSelect } from "@/components/layouts/FormInputs/TextSelect";
 import { getRequest } from "@/lib/axiosInstance";
@@ -17,7 +17,7 @@ type Evaluator = {
 };
 
 interface Step2FormProps {
-  control: Control<any>;
+  control: any;
   isEdit?: boolean;
 }
 
@@ -39,17 +39,22 @@ const Step2Form = ({ control, isEdit = false }: Step2FormProps) => {
       }),
   });
 
-  // Transform evaluators data to options format
+  // Transform evaluators data to options format.
+  // Show the evaluator's name as the label, falling back to email when the
+  // account has no name set. Email stays searchable via fieldMap.
   const evaluatorOptions =
     evaluatorsData?.data?.data
-      ?.map((evaluator) => ({
-        label: evaluator.email,
-        value: evaluator._id,
-        fieldMap: {
-          name: evaluator.name?.toLowerCase?.() ?? "",
-          email: evaluator.email ?? "",
-        },
-      })) || [];
+      ?.map((evaluator) => {
+        const name = evaluator.name?.trim();
+        return {
+          label: name || evaluator.email,
+          value: evaluator._id,
+          fieldMap: {
+            name: name?.toLowerCase?.() ?? "",
+            email: evaluator.email ?? "",
+          },
+        };
+      }) || [];
 
 
   const addGroup = () => {

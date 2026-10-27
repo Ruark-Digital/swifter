@@ -4,11 +4,10 @@ import {
   DialogClose,
   DialogContent,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { CloudUpload, X } from "lucide-react";
-import { Forge, Forger, useForge } from "@/lib/forge";
+import { Forge, Forger, useForge } from "@adexdsamson/forge";
 import {
   TextArea,
   TextDatePicker,
@@ -17,7 +16,7 @@ import {
 } from "@/components/layouts/FormInputs";
 import { postRequest } from "@/lib/axiosInstance";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useWatch } from "react-hook-form";
+import { useFormContext } from "react-hook-form";
 import { formatFileSize } from "@/lib/fileUtils";
 
 type SubmitCapaDialogProps = {
@@ -26,7 +25,44 @@ type SubmitCapaDialogProps = {
   ncrId: string;
   ncrTitle?: string;
   basePath: string;
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
 };
+
+function FileListItem({ file }: { file: File }) {
+  const { setValue, getValues } = useFormContext();
+  const handleRemove = () => {
+    const current = (getValues("files") as File[] | undefined) || [];
+    setValue(
+      "files",
+      current.filter((f: File) => f.name !== file.name) as any,
+    );
+  };
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB] dark:bg-slate-700">
+          <CloudUpload className="h-5 w-5 text-[#2A4467] dark:text-blue-300" />
+        </div>
+        <div className="min-w-0">
+          <div className="truncate text-sm font-medium text-[#0F0F0F] dark:text-slate-100">
+            {file.name}
+          </div>
+          <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
+            {formatFileSize(file.size)}
+          </div>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={handleRemove}
+        className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF] dark:text-slate-400"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
 
 const SubmitCapaDialog: React.FC<SubmitCapaDialogProps> = ({
   trigger,
@@ -34,6 +70,8 @@ const SubmitCapaDialog: React.FC<SubmitCapaDialogProps> = ({
   ncrId,
   ncrTitle,
   basePath,
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
 }) => {
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
@@ -106,54 +144,64 @@ const SubmitCapaDialog: React.FC<SubmitCapaDialogProps> = ({
       await queryClient.invalidateQueries({
         queryKey: ["contractNcrs", "detail", contractId, ncrId],
       });
+      if (listInvalidateQueryKey) {
+        await queryClient.invalidateQueries({ queryKey: listInvalidateQueryKey });
+      }
+      if (statsInvalidateQueryKey) {
+        await queryClient.invalidateQueries({ queryKey: statsInvalidateQueryKey });
+      }
+      // The PM "My Actions" / general-updates feeds are cached with
+      // refetchOnMount:false and a 60s staleTime, so submitting a CAPA in
+      // response to an NCR left the corresponding action item on the PM
+      // dashboard until a manual refresh. Invalidate those feeds so the action
+      // item clears immediately (QA #18). The keys carry a user-id prefix, so
+      // match by name via a predicate; a no-op for non-PM roles.
+      await queryClient.invalidateQueries({
+        predicate: (q) =>
+          q.queryKey.some(
+            (k) =>
+              k === "pm-contract-dashboard-my-actions" ||
+              k === "pm-contract-dashboard-general-updates",
+          ),
+      });
     },
   });
 
-  const FileListItem = ({ file }: { file: File; control: unknown }) => {
-    const value = useWatch({ control, name: "files" }) as File[] | null;
-    return (
-      <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] bg-white p-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB]">
-            <CloudUpload className="h-5 w-5 text-[#2A4467]" />
-          </div>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-medium text-[#0F0F0F]">
-              {file.name}
-            </div>
-            <div className="text-xs font-medium text-[#9CA3AF]">
-              {formatFileSize(file.size)}
-            </div>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() =>
-            setValue(
-              "files",
-              (value ?? []).filter((f) => f.name !== file.name) as any,
-            )
+  const triggerElement = React.useMemo(() => {
+    if (React.isValidElement(trigger)) {
+      const existingOnClick = trigger.props.onClick as
+        | ((event: React.MouseEvent<HTMLElement>) => void)
+        | undefined;
+
+      return React.cloneElement(trigger, {
+        onClick: (event: React.MouseEvent<HTMLElement>) => {
+          existingOnClick?.(event);
+          if (!event.defaultPrevented) {
+            setOpen(true);
           }
-          className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF]"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
+        },
+      });
+    }
+
+    return (
+      <Button type="button" onClick={() => setOpen(true)}>
+        {trigger}
+      </Button>
     );
-  };
+  }, [trigger]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      {triggerElement}
       <DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl p-0">
         <div className="flex items-center justify-between px-8 pt-8">
-          <DialogTitle className="text-xl font-semibold text-[#0F0F0F]">
-            Submit CAPA
+          <DialogTitle className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
+            Submit Corrective Action and Preventive Action
           </DialogTitle>
         </div>
         <div className="px-8 pb-8 pt-2">
-          <p className="text-sm font-semibold text-[#0F0F0F] mb-3">
-            Corrective & Preventive Action Plan
+          <p className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100 mb-3">
+            Corrective Action and Preventive Action
           </p>
           <Forge
             control={control}
@@ -197,18 +245,18 @@ const SubmitCapaDialog: React.FC<SubmitCapaDialogProps> = ({
               List={FileListItem}
               element={
                 <div className="flex flex-col items-center gap-3">
-                  <CloudUpload className="h-12 w-12 text-[#2A4467]" />
+                  <CloudUpload className="h-12 w-12 text-[#2A4467] dark:text-blue-300" />
                   <div className="space-y-1 text-center">
-                    <p className="text-base font-semibold text-[#2A4467]">
+                    <p className="text-base font-semibold text-[#2A4467] dark:text-blue-300">
                       Drag & Drop or Click to choose files
                     </p>
-                    <p className="text-sm text-[#6B7280]">
+                    <p className="text-sm text-[#6B7280] dark:text-slate-400">
                       Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
                     </p>
                   </div>
                 </div>
               }
-              className="rounded-xl border-2 border-dashed border-[#9CA3AF] bg-white"
+              className="rounded-xl border-2 border-dashed border-[#9CA3AF] dark:border-slate-600 bg-white dark:bg-slate-800"
               accept={
                 {
                   "application/pdf": [".pdf"],
@@ -228,7 +276,7 @@ const SubmitCapaDialog: React.FC<SubmitCapaDialogProps> = ({
               <DialogClose asChild>
                 <button
                   type="button"
-                  className="h-12 min-w-20 flex-1 rounded-xl border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] hover:bg-[#E5E7EB]"
+                  className="h-12 min-w-20 flex-1 rounded-xl border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F] hover:bg-[#E5E7EB] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                 >
                   Cancel
                 </button>

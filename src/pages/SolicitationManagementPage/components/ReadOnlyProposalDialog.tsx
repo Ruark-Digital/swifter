@@ -21,6 +21,8 @@ interface ProposalPriceAction {
   quantity: number;
   unitOfmeasurement: string;
   unitPrice: number;
+  // Vendor's submitted currency — BE now returns it on each price-action item.
+  currency?: string;
   subtotal: number;
   subItems?: ProposalPriceAction[];
 }
@@ -62,11 +64,16 @@ const ReadOnlyProposalDialog: React.FC<ReadOnlyProposalDialogProps> = ({
 
   // Calculate total amount from price breakdown data
   const priceBreakdownItems = Array.isArray(priceBreakdownData?.data) ? priceBreakdownData.data : [];
-  const totalAmount = priceBreakdownItems.reduce((sum: number, item: ProposalPriceAction) => {
-    const itemTotal = item.subtotal || 0;
-    const subItemsTotal = (item.subItems || []).reduce((subSum: number, subItem: ProposalPriceAction) => subSum + (subItem.subtotal || 0), 0);
-    return sum + itemTotal + subItemsTotal;
-  }, 0);
+  // Read the vendor's submitted currency from the response (all items share it).
+  const currency = priceBreakdownItems[0]?.currency || "USD";
+  // A top-level item's `subtotal` already rolls in its sub-items (the submission
+  // form and BE compute the parent subtotal as its own qty×price plus every
+  // sub-item's qty×price). Summing the sub-item subtotals again here double-
+  // counted them, inflating the total — so sum only the top-level subtotals.
+  const totalAmount = priceBreakdownItems.reduce(
+    (sum: number, item: ProposalPriceAction) => sum + (item.subtotal || 0),
+    0,
+  );
 
   const renderPriceItem = (item: ProposalPriceAction, index: number, isSubItem = false) => {
     return (
@@ -77,13 +84,13 @@ const ReadOnlyProposalDialog: React.FC<ReadOnlyProposalDialogProps> = ({
             {isSubItem && <CornerDownRight className="text-gray-400 h-4 w-4" />}
             {!isSubItem && <span className="font-medium">{index + 1}</span>}
           </div>
-          <div className="col-span-2">
-            <div className="font-medium text-gray-900 dark:text-gray-100">
+          <div className="col-span-2 min-w-0">
+            <div className="font-medium text-gray-900 dark:text-gray-100 break-words">
               {item.component}
             </div>
           </div>
-          <div className="col-span-2">
-            <div className="text-gray-600 dark:text-gray-400">
+          <div className="col-span-2 min-w-0">
+            <div className="text-gray-600 dark:text-gray-400 break-words">
               {item.description || "-"}
             </div>
           </div>
@@ -92,19 +99,19 @@ const ReadOnlyProposalDialog: React.FC<ReadOnlyProposalDialogProps> = ({
               {item.quantity}
             </div>
           </div>
-          <div className="col-span-2">
-            <div className="text-gray-900 dark:text-gray-100">
+          <div className="col-span-2 min-w-0">
+            <div className="text-gray-900 dark:text-gray-100 break-words">
               {item.unitOfmeasurement}
             </div>
           </div>
-          <div className="col-span-1">
+          <div className="col-span-2">
             <div className="text-right text-gray-900 dark:text-gray-100">
-              {formatCurrency(item.unitPrice, "en-US", "USD")}
+              {formatCurrency(item.unitPrice, "en-US", currency)}
             </div>
           </div>
-          <div className="col-span-1">
+          <div className="col-span-2">
             <div className="text-right font-medium text-gray-900 dark:text-gray-100">
-              {formatCurrency(item.subtotal, "en-US", "USD")}
+              {formatCurrency(item.subtotal, "en-US", currency)}
             </div>
           </div>
         </div>
@@ -155,8 +162,8 @@ const ReadOnlyProposalDialog: React.FC<ReadOnlyProposalDialogProps> = ({
                 <div className="col-span-2">Description</div>
                 <div className="col-span-1">Quantity</div>
                 <div className="col-span-2">Unit of Measurement</div>
-                <div className="col-span-1">Unit Price</div>
-                <div className="col-span-1">Subtotal</div>
+                <div className="col-span-2">Unit Price</div>
+                <div className="col-span-2">Subtotal</div>
               </div>
 
               {/* Items */}
@@ -178,7 +185,7 @@ const ReadOnlyProposalDialog: React.FC<ReadOnlyProposalDialogProps> = ({
                   </div>
                   <div className="text-right">
                     <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                      {formatCurrency(totalAmount, "en-US", "USD")}
+                      {formatCurrency(totalAmount, "en-US", currency)}
                     </div>
                   </div>
                 </div>

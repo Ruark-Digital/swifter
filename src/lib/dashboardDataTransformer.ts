@@ -13,7 +13,7 @@ import {
 } from "@/hooks/useDashboardData";
 import { DashboardConfig } from "@/config/dashboardConfig";
 import { applyConsistentColors } from "./chartColorUtils";
-import { formatDateTZ } from "./utils";
+import { capitalizeCoi, formatDateTZ, formatDateInZoneAbbrev } from "./utils";
 
 // Dynamic link generation utility
 type UserRole = "procurement" | "evaluator" | "vendor";
@@ -38,9 +38,23 @@ const ACTIVITY_LINK_MAPPINGS: LinkMapping = {
       scored: "/dashboard/evaluation",
     },
     myActions: {
-      create_evaluation: "/dashboard/evaluation",
-      create_evaluation_group: "/dashboard/evaluation",
+      // "Create evaluation" actions fire before any evaluation exists (the BE
+      // sends evaluation: null / no evaId), so link to the SOLICITATION where
+      // the PL creates it — not /dashboard/evaluation/<id> with no id. Matched
+      // as natural-language phrases (BE statusText: "…please create evaluation")
+      // and listed before the generic "evaluation" key so they win.
+      "create evaluation group": "/dashboard/solicitation",
+      "create evaluation": "/dashboard/solicitation",
+      create_evaluation: "/dashboard/solicitation",
+      create_evaluation_group: "/dashboard/solicitation",
       release_group: "/dashboard/evaluation",
+      // BE statusText for a released group reads "…has been released for
+      // evaluation, please proceed with scoring" — no `release_group` token.
+      // Match on the phrase so PL's My Actions row is linked, not plain text.
+      "released for evaluation": "/dashboard/evaluation",
+      "proceed with evaluation": "/dashboard/evaluation",
+      "proceed with scoring": "/dashboard/evaluation",
+      evaluation: "/dashboard/evaluation",
     },
   },
   evaluator: {
@@ -67,6 +81,92 @@ const ACTIVITY_LINK_MAPPINGS: LinkMapping = {
   },
 };
 
+const LINKABLE_DASHBOARD_ACTIVITY_NAMES = new Set([
+  "approve",
+  "reject",
+  "change_reject",
+  "amendment_reject",
+  "invoice_reject",
+  "deliverable_reject",
+  "claim_reject",
+  "rejection",
+  "create",
+  "update",
+  "delete",
+  "approve_level",
+  "comment",
+  "add_comment",
+  "publish",
+  "reply_comment",
+  "upload_document",
+  "manage_contract",
+  "create_claim",
+  "create_change",
+  "create_rfi",
+  "create_invoice",
+  "create_invoice_co_required",
+  "assign_pm",
+  "approve_pm_assignment",
+  "reject_pm_assignment",
+  "create_lem",
+  "approve_lem",
+  "approve_change",
+  "approve_change_next_level",
+  "approve_rfi",
+  "approve_invoice",
+  "approve_invoice_co_required",
+  "approve_holdback",
+  "savings",
+  "approve_amendment",
+  "create_amendment",
+  "amendment_applied",
+  "amendment_msa_ceiling_exceeded",
+  "notify_no_evaluators",
+  "send_redline_turn",
+  "finalize_redline_turn",
+  "issue_rfi",
+  "reply_rfi",
+  "issue_ncr",
+  "issue_ncr_capa",
+  "respond_ncr",
+  "respond_ncr_capa",
+  "approve_ncr_capa",
+  "close_ncr",
+  "release_holdback",
+  "submit_deliverable",
+  "approve_deliverable",
+  "submit_kpi",
+  "submit_report",
+  "new_ratesheet",
+  "approve_ratesheet",
+  "update_ratesheet",
+  "submit_compliance",
+  "update_policy",
+  "approve_policy",
+  "update_security_compliance",
+  "approve_security_compliance",
+  "approve_compliance",
+  "update_compliance",
+  "approve_claim",
+  "amendment_cost_change",
+  "amendment_acceptance",
+  "amendment_acceptance_update",
+  "edit_change",
+  "create_approver",
+  "create_holdback_invoice",
+  "reopen_invoice_approval",
+  "amendment_assign_approver",
+  "completed",
+  "terminated",
+  "suspended",
+  "new_lem",
+  "project_created",
+  "project_updated",
+  "project_eac_updated",
+  "business_division_created",
+  "business_division_updated",
+]);
+
 /**
  * Generate dynamic link based on user role, activity type, and action
  * @param userRole - The user's role (procurement, evaluator, vendor)
@@ -90,8 +190,22 @@ function generateDynamicLink(
   const basePath = activityMapping[action];
   if (!basePath) return null;
 
-  const isEvaluation = basePath.includes("/evaluation") ||
-    action.toLowerCase().includes("evaluation");
+  // The destination path decides which id to use — not the action text. A
+  // "create evaluation" action maps to the SOLICITATION (no evaluation exists
+  // yet), so it must use solId even though the action mentions "evaluation".
+  const isEvaluation = basePath.includes("/evaluation");
+
+  // Evaluators score through the ASSIGNED evaluation route, which needs both the
+  // evaluation id and the group id. The generic /dashboard/evaluation/{id} route
+  // is the PL/manager detail view and returns an error page for an evaluator
+  // (#92). Fall back to the evaluation list when the group id is missing, rather
+  // than a broken detail link.
+  if (isEvaluation && userRole === "evaluator") {
+    return data.evaId && data.evaGroupId
+      ? `/dashboard/evaluation/assigned/${data.evaId}/${data.evaGroupId}`
+      : "/dashboard/evaluation";
+  }
+
   const targetId = isEvaluation ? data.evaId : data.solId;
 
   return targetId ? `${basePath}/${targetId}` : null;
@@ -115,16 +229,40 @@ function applyDynamicStatusTextReplacement(
   // Only route to evaluation page if "evaluation" is mentioned in statusText; otherwise route to solicitation.
   if (userRole === "procurement" && activityType === "general") {
     const lower = statusText.toLowerCase();
-    const toEvaluation = lower.includes("evaluation");
-    const base = toEvaluation
+    // Scoring events ("Vendor X was scored on Criterion Y by Reviewer Z")
+    // are evaluation-scoped even though "evaluation" isn't in the phrase.
+    const isScoringEvent = lower.includes("scored on") || lower.includes("was scored");
+    const toEvaluation = lower.includes("evaluation") || isScoringEvent;
+    const hasEvaluationTarget = Boolean(data.evaId);
+    const base = toEvaluation && hasEvaluationTarget
       ? "/dashboard/evaluation"
       : "/dashboard/solicitation";
-    const targetId = toEvaluation ? data.evaId : data.solId;
+    const targetId = toEvaluation
+      ? data.evaId ?? data.solId
+      : data.solId ?? data.evaId;
     const href = targetId ? `${base}/${targetId}` : base;
 
+    // For scoring events the BE payload doesn't populate sol/evaluation.name
+    // with the vendor, so data.name resolves to "Unknown" and no anchor is
+    // inserted. Fall back to the leading vendor phrase in statusText so the
+    // Company Admin / PL general-updates row is at least linkable.
+    let anchorTarget = data.name;
+    if (
+      isScoringEvent &&
+      (!anchorTarget || !statusText.includes(anchorTarget))
+    ) {
+      const match = statusText.match(
+        /^(.+?)\s+(?:was\s+)?scored(?:\s+on)?\b/i,
+      );
+      if (match) anchorTarget = match[1].trim();
+    }
+
+    if (!anchorTarget) return statusText;
+    const escapedName = anchorTarget.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     return statusText.replace(
-      data.name,
-      `<a href="${href}" class="underline underline-offset-4 text-blue-600">${data.name}</a>`
+      new RegExp(escapedName, "i"),
+      (matchedName) =>
+        `<a href="${href}" class="underline underline-offset-4 text-blue-600">${matchedName}</a>`,
     );
   }
 
@@ -155,9 +293,15 @@ function applyDynamicStatusTextReplacement(
   }
 
   if (userRole === "evaluator") {
+    // Evaluators score via the assigned route (needs both ids); fall back to the
+    // evaluation list instead of a malformed /assigned/{id}/ URL (#92).
+    const evaluatorHref =
+      data.evaId && data.evaGroupId
+        ? `/dashboard/evaluation/assigned/${data.evaId}/${data.evaGroupId}`
+        : "/dashboard/evaluation";
     return statusText.replace(
       data.name,
-      `<a href="/dashboard/evaluation/assigned/${data.evaId ?? ""}/${data.evaGroupId ?? ""}" class="underline underline-offset-4 text-blue-600">${data.name}</a>`
+      `<a href="${evaluatorHref}" class="underline underline-offset-4 text-blue-600">${data.name}</a>`
     );
   }
 
@@ -459,15 +603,19 @@ export class ChartDataTransformer {
 
     if (!data) return applyConsistentColors(defaultData);
 
+    // The /solicitations/analytics/status endpoint returns both percentages
+    // (active/closed/awarded — fractional) and integer counts
+    // (activeSol/closedSol/awardedSol). Prefer the integer counts so the
+    // pie reflects raw solicitation counts, not decimal percentages.
     const chartData = [
       { name: "Draft", value: data.draft || 0 },
-      { name: "Active", value: data.active || 0 },
+      { name: "Active", value: data.activeSol ?? data.active ?? 0 },
       {
         name: "Under Evaluation",
         value: data.evaluating || data.underEvaluating || 0,
       },
-      { name: "Closed", value: data.closed || 0 },
-      { name: "Awarded", value: data.awarded || 0 },
+      { name: "Closed", value: data.closedSol ?? data.closed ?? 0 },
+      { name: "Awarded", value: data.awardedSol ?? data.awarded ?? 0 },
     ];
 
     return applyConsistentColors(chartData);
@@ -943,27 +1091,74 @@ export class DashboardDataTransformer {
   /**
    * Transform weekly activities data for area chart
    */
-  static transformWeeklyActivities(data: WeeklyActivities | undefined) {
-    if (!data || (!data.solicitations && !data.evaluations)) {
-      // Return default data structure
-      return Array.from({ length: 7 }, (_, i) => ({
-        day: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i],
-        activities: 0,
-      }));
+  static transformWeeklyActivities(
+    data: WeeklyActivities | undefined,
+    range: string = "12months",
+    now: Date = new Date()
+  ) {
+    // QA #115: the BE returns this endpoint pre-bucketed as
+    // `{ labels: string[], datasets: [{ name, values: number[] }] }` (the same
+    // shape as the other activity charts), so the per-item bucketing below —
+    // which only reads `solicitations`/`evaluations` item arrays — produced an
+    // all-zero (empty) "Company Activity" chart. Sum every activity dataset per
+    // label into a single "activities" series the area chart can plot.
+    const preBucketed = data as unknown as {
+      labels?: unknown;
+      datasets?: Array<{ name?: string; values?: unknown }>;
+    };
+    if (
+      Array.isArray(preBucketed?.labels) &&
+      Array.isArray(preBucketed?.datasets)
+    ) {
+      return (preBucketed.labels as unknown[]).map((label, i) => {
+        const activities = (preBucketed.datasets ?? []).reduce((sum, ds) => {
+          const value = Array.isArray(ds?.values)
+            ? Number((ds.values as unknown[])[i])
+            : 0;
+          return sum + (Number.isFinite(value) ? value : 0);
+        }, 0);
+        return { day: String(label), activities };
+      });
     }
 
-    // Transform API data to chart format
-    // Combine solicitations and evaluations data
-    const totalActivities =
-      (data.solicitations?.length || 0) + (data.evaluations?.length || 0);
+    // QA #69: bucket each solicitation/evaluation by its own date over the
+    // selected range (days for "7days"/"30days", months otherwise) instead of
+    // spreading the total evenly over a fixed Mon–Sun axis.
+    const match = /^(\d+)(days|months)$/.exec(range);
+    const count = match ? parseInt(match[1], 10) : 12;
+    const byDay = match?.[2] === "days";
 
-    // For now, distribute activities across the week
-    // This can be enhanced based on actual date data from the API
-    return Array.from({ length: 7 }, (_, i) => ({
-      day: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i],
-      activities:
-        Math.floor(totalActivities / 7) + (i < totalActivities % 7 ? 1 : 0),
-    }));
+    const bucketKey = (d: Date) =>
+      byDay
+        ? `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+        : `${d.getFullYear()}-${d.getMonth()}`;
+
+    const buckets = Array.from({ length: count }, (_, i) => {
+      const offset = count - 1 - i;
+      const d = byDay
+        ? new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset)
+        : new Date(now.getFullYear(), now.getMonth() - offset, 1);
+      return {
+        key: bucketKey(d),
+        day: byDay
+          ? d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+          : d.toLocaleDateString("en-US", { month: "short" }),
+        activities: 0,
+      };
+    });
+    const index = new Map(buckets.map((b, i) => [b.key, i]));
+
+    const items = [...(data?.solicitations ?? []), ...(data?.evaluations ?? [])];
+    for (const item of items) {
+      const raw = item?.createdAt ?? item?.updatedAt ?? item?.date;
+      if (!raw) continue;
+      const d = new Date(raw);
+      if (isNaN(d.getTime())) continue;
+      const i = index.get(bucketKey(d));
+      if (i !== undefined) buckets[i].activities += 1;
+    }
+
+    return buckets.map(({ day, activities }) => ({ day, activities }));
   }
 
   /**
@@ -977,18 +1172,54 @@ export class DashboardDataTransformer {
       data.distribution.length === 0
     ) {
       return applyConsistentColors([
-        { name: "Basic", value: 0 },
-        { name: "Pro", value: 0 },
-        { name: "Enterprise", value: 0 },
+        { name: "Basic", value: 0, percentage: 0 },
+        { name: "Pro", value: 0, percentage: 0 },
+        { name: "Enterprise", value: 0, percentage: 0 },
       ]);
     }
 
-    const chartData = data.distribution.map((item) => ({
+    const total = data.distribution.reduce(
+      (sum, item) => sum + (item.count || 0),
+      0,
+    );
+
+    const percentages = this.apportionPercentages(
+      data.distribution.map((item) => item.count || 0),
+      total,
+    );
+
+    const chartData = data.distribution.map((item, index) => ({
       name: item.plan,
       value: item.count,
+      percentage: percentages[index],
     }));
 
     return applyConsistentColors(chartData);
+  }
+
+  /**
+   * Split 100% across the given counts using largest-remainder apportionment.
+   * Rounding each share independently lets the slices drift off 100 (three equal
+   * thirds render as 33+33+33=99); this always sums to exactly 100.
+   */
+  private static apportionPercentages(counts: number[], total: number) {
+    if (total <= 0) return counts.map(() => 0);
+
+    const exact = counts.map((count) => (count / total) * 100);
+    const percentages = exact.map(Math.floor);
+    let remaining = 100 - percentages.reduce((sum, value) => sum + value, 0);
+
+    const byLargestRemainder = exact
+      .map((value, index) => ({ index, remainder: value - Math.floor(value) }))
+      .sort((a, b) => b.remainder - a.remainder);
+
+    for (const { index } of byLargestRemainder) {
+      if (remaining <= 0) break;
+      percentages[index] += 1;
+      remaining -= 1;
+    }
+
+    return percentages;
   }
 
   /**
@@ -1084,6 +1315,10 @@ export class DashboardDataTransformer {
         { name: "Admin", value: 0 },
         { name: "Procurement Lead", value: 0 },
         { name: "Vendor", value: 0 },
+        { name: "Project Manager", value: 0 },
+        { name: "View Only", value: 0 },
+        { name: "Contract Manager", value: 0 },
+        { name: "Approver", value: 0 },
       ]);
     }
 
@@ -1093,12 +1328,25 @@ export class DashboardDataTransformer {
       company_admin: "Company Admin",
       evaluator: "Evaluator",
       vendor: "Vendor",
+      project_manager: "Project Manager",
+      view_only: "View Only",
+      contract_manager: "Contract Manager",
+      approver: "Approver",
     };
 
-    const chartData = data.map((item) => ({
+    // Attach percentages via largest-remainder apportionment so the donut
+    // legend sums to exactly 100% instead of showing raw counts as "%" (QA
+    // #48). The legend renders `percentage ?? value`, so without this the
+    // super-admin role distribution never totalled 100.
+    const counts = data.map((item) => parseInt(item.count) || 0);
+    const total = counts.reduce((sum, value) => sum + value, 0);
+    const percentages = this.apportionPercentages(counts, total);
+
+    const chartData = data.map((item, index) => ({
       name:
         roleTitle[item.roleName as keyof typeof roleTitle] || "Unknown Role",
-      value: parseInt(item.count) || 0,
+      value: counts[index],
+      percentage: percentages[index],
     }));
 
     return applyConsistentColors(chartData);
@@ -1186,31 +1434,35 @@ export class DashboardDataTransformer {
       ];
     }
 
+    // The endpoint returns decimal percentages for active/closed/awarded
+    // alongside integer counts in activeSol/closedSol/awardedSol. The
+    // stats cards must show integer counts, not percentages — prefer the
+    // *Sol fields and fall back to a floored decimal if they're missing.
     return [
       {
         title: "Total Solicitations",
-        value: data.total || 0,
+        value: Math.trunc(data.total || 0),
         icon: "file-text",
         color: "text-blue-800",
         bgColor: "bg-blue-500/20",
       },
       {
         title: "Active Solicitations",
-        value: data.active || 0,
+        value: Math.trunc(data.activeSol ?? data.active ?? 0),
         icon: "activity",
         color: "text-green-800",
         bgColor: "bg-green-500/20",
       },
       {
         title: "Awarded Solicitations",
-        value: data.awarded || 0,
+        value: Math.trunc(data.awardedSol ?? data.awarded ?? 0),
         icon: "award",
         color: "text-yellow-800",
         bgColor: "bg-yellow-500/20",
       },
       {
         title: "Closed Solicitations",
-        value: data.closed || 0,
+        value: Math.trunc(data.closedSol ?? data.closed ?? 0),
         icon: "x-circle",
         color: "text-red-800",
         bgColor: "bg-red-500/20",
@@ -1464,10 +1716,17 @@ export class DashboardDataTransformer {
       company_admin: "Admin",
     };
 
-    return data.map((item: any) => ({
+    // Largest-remainder apportionment keeps the legend at exactly 100%;
+    // rounding each share independently drifts off (33+33+33=99) (QA #48).
+    const percentages = this.apportionPercentages(
+      data.map((item: any) => item.count || 0),
+      total
+    );
+
+    return data.map((item: any, index: number) => ({
       name: roleNameMap[item.roleName] || item.roleName || "Unknown",
       value: item.count || 0,
-      percentage: total > 0 ? Math.round((item.count / total) * 100) : 0,
+      percentage: percentages[index],
     }));
   }
 
@@ -1884,7 +2143,11 @@ export class DashboardDataTransformer {
       ),
       type: action.type || "unknown",
       date: action.createdAt
-        ? formatDateTZ(action.createdAt, "MMM d, yyyy h:mm a 'GMT'xxx", action.solicitation?.timezone || "")
+        ? formatDateInZoneAbbrev(
+            action.createdAt,
+            "MMM d, yyyy h:mm a",
+            action?.evaluation?.solicitation?.timezone ?? action?.solicitation?.timezone
+          )
         : undefined,
     }));
   }
@@ -1915,10 +2178,11 @@ export class DashboardDataTransformer {
       ),
       type: update.type || "evaluation",
       date: update.createdAt
-        ? formatDateTZ(
+        ? formatDateInZoneAbbrev(
             update.date || update.updatedAt || update.createdAt,
-            "MMM d, yyyy h:mm a "
-          ) +" " + update.evaluation?.timezone || ""
+            "MMM d, yyyy h:mm a",
+            update.evaluation?.timezone
+          )
         : undefined,
     }));
   }
@@ -2066,7 +2330,11 @@ export class DashboardDataTransformer {
           evaId: action?.evaluation?._id,
         }),
         date: action.createdAt
-          ? formatDateTZ(action.createdAt, "MMM d, yyyy h:mm a", action.solicitation?.timezone || "")
+          ? formatDateInZoneAbbrev(
+              action.createdAt,
+              "MMM d, yyyy h:mm a",
+              action?.solicitation?.timezone
+            )
           : null,
         title: action?.solicitation?.name ?? "Unknown Solicitation",
       };
@@ -2119,11 +2387,11 @@ export class DashboardDataTransformer {
           time:
             update?.time ||
             (campaign.createdAt
-              ? `${formatDateTZ(
+              ? formatDateInZoneAbbrev(
                   campaign.createdAt,
-                  "MMM d, yyyy",
+                  "MMM d, yyyy • h:mm a",
                   campaign?.timezone
-                )} • ${formatDateTZ(campaign.createdAt, "h:mm a", campaign?.timezone || "")}`
+                )
               : `${formatDateTZ(new Date(), "MMM d, yyyy")} • ${formatDateTZ(
                   new Date(),
                   "h:mm a",
@@ -2145,9 +2413,11 @@ export class DashboardDataTransformer {
         ),
         title: update?.solicitation?.name ?? "Unknown",
         time: update?.createdAt
-          ? `${formatDateTZ(update.createdAt, "MMM d, yyyy h:mm a", update?.solicitation?.timezone || "")} ${
-              update.timezone || update?.solicitation?.timezone || "UTC"
-            }`
+          ? formatDateInZoneAbbrev(
+              update.createdAt,
+              "MMM d, yyyy h:mm a",
+              update.timezone || update?.solicitation?.timezone
+            )
           : undefined,
       };
     });
@@ -2162,31 +2432,39 @@ export class DashboardDataTransformer {
     }
 
     console.log({ data })
-    return data.map((action: any, index: number) => ({
-      id: action?.solicitation?._id || `action-${index}`,
+    return data.map((action: any, index: number) => {
+      const solicitation = action?.solicitation ?? action?.evaluation?.solicitation;
+
+      return {
+      id: solicitation?._id || `action-${index}`,
       text: applyDynamicStatusTextReplacement(
         action.statusText,
         "procurement",
         "myActions",
         {
-          name: action?.solicitation?.name,
-          solId: action?.solicitation?._id,
+          name: solicitation?.name,
+          solId: solicitation?._id,
           evaId: action?.evaluation?._id,
           evaGroupId: action?.evaluationGroup?._id,
         }
       ),
       type: action?.replace?.("_", " ") || "",
-      title: action?.solicitation?.name ?? "Unknown",
-      date: 
-        action?.solicitation?.createdAt
-          ? formatDateTZ(
-              action?.solicitation?.createdAt,
-              "MMM d, yyyy h:mm a 'GMT'xxx",
-              action?.solicitation?.timezone
+      title: solicitation?.name ?? "Unknown",
+      date:
+        action?.createdAt ?? solicitation?.createdAt
+          ? formatDateInZoneAbbrev(
+              // The action's own createdAt/timezone are the reliable source —
+              // the nested solicitation object often omits createdAt (so the
+              // My Action rendered with no time). Fall back to the solicitation
+              // only if the action-level fields are absent.
+              action?.createdAt ?? solicitation?.createdAt,
+              "MMM d, yyyy h:mm a",
+              action?.timezone ?? solicitation?.timezone
             )
           : null,
       status: action.status || "active",
-    }));
+      };
+    });
   }
 
   /**
@@ -2235,15 +2513,21 @@ export class DashboardDataTransformer {
               ? `<strong>${campaign.subject}</strong> — ${campaign.subtitle}`
               : `<strong>${campaign.subject}</strong>`),
           date: campaign.createdAt
-            ? `${formatDateTZ(campaign.createdAt, "MMM d, yyyy h:mm a", campaign.timezone || "")} `
+            ? formatDateInZoneAbbrev(campaign.createdAt, "MMM d, yyyy h:mm a", campaign.timezone)
             : formatDateTZ(new Date(), "MMM d, yyyy h:mm a 'GMT'xxx", campaign.timezone || ""),
           status: update?.status || "active",
           campaign,
         };
       }
 
-      const sol = update?.solicitation ?? null;
-      const evaluation = update?.solicitation?.evaluation ?? null;
+      // A group-release update carries the solicitation either at the top level
+      // or nested under `evaluation` (evaluation.solicitation). Resolve from both
+      // shapes so every release row links its solicitation name — not just the
+      // ones with a top-level solicitation (QA #257).
+      const sol =
+        update?.solicitation ?? update?.evaluation?.solicitation ?? null;
+      const evaluation =
+        update?.solicitation?.evaluation ?? update?.evaluation ?? null;
 
       const title = sol?.name ?? evaluation?.name ?? "Unknown";
       const entityName = sol?.name ?? evaluation?.name ?? "Unknown";
@@ -2262,9 +2546,15 @@ export class DashboardDataTransformer {
           }
         ),
         date: update?.createdAt
-          ? `${formatDateTZ(update.createdAt, "MMM d, yyyy h:mm a")} ${
-              update.solicitation.timezone || ""
-            }`
+          ? formatDateInZoneAbbrev(
+              update.createdAt,
+              "MMM d, yyyy h:mm a",
+              // #194: render in the actor's zone. The item-level `timezone` is
+              // the actor's zone (correct — same field My Actions uses); the
+              // nested solicitation carries its own zone (e.g. "EST"), so only
+              // fall back to it when the item omits one.
+              update?.timezone ?? update?.solicitation?.timezone
+            )
           : undefined,
         status: update?.status || "active",
       };
@@ -2276,22 +2566,124 @@ export class DashboardDataTransformer {
       return [];
     }
 
+    // Map a My-Action entry's detailType/type to the contract detail tab it belongs to,
+    // so the link lands on the relevant tab instead of the contract overview.
+    const DETAIL_TYPE_TO_TAB: Record<string, string> = {
+      Deliverable: "deliverables",
+      ContractInvoice: "invoice",
+      ContractKPI: "kpi",
+      ContractInsurance: "compliance",
+      ContractChange: "change",
+      ContractRfi: "rfi",
+      ContractNcr: "ncr-log",
+      ContractNCR: "ncr-log",
+      ContractClaim: "claims",
+      ContractAmendment: "amendments",
+      ContractLem: "lem",
+      ContractHoldBack: "payment-summary",
+      ContractSaving: "payment-summary",
+    };
+
     return data.map((item: any, index: number) => {
+      // BE-authored copy sometimes emits "coi"/"Coi" — display it as "COI" (#266).
+      const statusText: string = capitalizeCoi(item?.statusText ?? "");
+      const actionText: string = capitalizeCoi(item?.actionText ?? "");
+      const activityName = String(item?.name ?? item?.action ?? "");
+      // Activity kind. Projects carry type/entityType "Project"; contracts/MSAs
+      // carry contractDef.
+      const kind = String(
+        item?.contractDef ?? item?.type ?? item?.entityType ?? "Contract",
+      );
+      const isProject = /project/i.test(kind);
+      const isMSA = !isProject && /msa/i.test(kind);
+      // Detail pages load by Mongo _id — NEVER the human code (contractId /
+      // entityId), which 404s (QA #85: the project code "PJTMC7918" was sent to
+      // /contract/manager/contracts/PJTMC7918). Fall back only through _id refs:
+      // `contractRef`/`detailRef` for contracts & MSAs (action-log uses
+      // detailRef), `entityRef` for projects.
+      const contractRef = isProject
+        ? "" // project list route takes no id (there is no project detail route)
+        : (item?.contractRef ?? item?.detailRef ?? item?.entityRef ?? "");
+      const detailBase = isProject
+        ? "/dashboard/project-management"
+        : isMSA
+          ? "/dashboard/msa"
+          : "/dashboard/contract-management";
+      const dateValue = item?.date ?? item?.createdAt;
+      // Deep-link to the specific tab (contract detail only; the MSA page tabs differ).
+      const deepLinkTab =
+        !isMSA && !isProject
+          ? DETAIL_TYPE_TO_TAB[String(item?.detailType ?? item?.type ?? "")]
+          : undefined;
+      // Projects open via a slideover on the list (no ":id" detail route), so
+      // link to the list to avoid the 404 (QA #85).
+      const contractUrl = isProject
+        ? "/dashboard/project-management"
+        : contractRef
+          ? `${detailBase}/${contractRef}${deepLinkTab ? `?tab=${deepLinkTab}` : ""}`
+          : "";
+      const linkClass = "underline underline-offset-4 text-blue-600";
+
+      // Action-log shape (260528): { actionText, statusText, action, detailRef, detailType, ... }.
+      // Keep the action label plain to match General Updates, and wrap the
+      // descriptive body in the contract deep link.
+      if (actionText) {
+        const body = contractUrl && statusText
+          ? `<a href="${contractUrl}" class="${linkClass}">${statusText}</a>`
+          : statusText;
+        return {
+          id: item?.id ?? `cm-${index}`,
+          title: statusText || "Action",
+          text: body ? `${actionText} — ${body}` : actionText,
+          date: dateValue ? formatDateInZoneAbbrev(dateValue, "MMM d, yyyy h:mm a", item?.timezone) : undefined,
+          status: item?.status ?? undefined,
+          type: item?.type ?? undefined,
+        };
+      }
+
+      // General-update shape (260528): { statusText, date, contractRef, contractDef, type, status, id }.
+      // statusText contains the contract title in quotes — wrap that span in an <a>.
+      if (statusText) {
+        const quotedTitleMatch = statusText.match(/"([^"]+)"/);
+        const contractTitle = quotedTitleMatch?.[1] ?? "";
+        const linkedText = contractUrl && quotedTitleMatch
+          ? statusText.replace(
+              quotedTitleMatch[0],
+              `"<a href="${contractUrl}" class="${linkClass}">${contractTitle}</a>"`,
+            )
+          : contractUrl && LINKABLE_DASHBOARD_ACTIVITY_NAMES.has(activityName)
+            ? `<a href="${contractUrl}" class="${linkClass}">${statusText}</a>`
+          : statusText;
+
+        return {
+          id: item?.id ?? `cm-${index}`,
+          title: contractTitle || "Contract",
+          text: linkedText,
+          date: dateValue ? formatDateInZoneAbbrev(dateValue, "MMM d, yyyy h:mm a", item?.timezone) : undefined,
+          status: item?.status ?? undefined,
+          type: item?.type ?? undefined,
+        };
+      }
+
+      // Legacy shape fallback: { title, description, contractTitle, requestedBy, createdAt, ... }
       const title = item?.title ?? "";
       const description = item?.description ?? "";
-      const createdAt = item?.createdAt ?? "";
       const contractTitle = item?.contractTitle ?? "";
       const requestedBy = item?.requestedBy ?? "";
-
-      const strongTitle = title ? `<strong>${title}</strong>` : "<strong>Update</strong>";
-      const suffixParts = [description, contractTitle, requestedBy].filter(Boolean);
+      const linkedContractTitle =
+        contractRef && contractTitle
+          ? `<a href="${detailBase}/${contractRef}" class="underline underline-offset-4 text-blue-600">${contractTitle}</a>`
+          : contractTitle;
+      // Plain text (no bold) to match the General Updates styling — QA #225.
+      const plainTitle = title || "Update";
+      const suffixParts = [description, linkedContractTitle, requestedBy].filter(Boolean);
       const suffix = suffixParts.length > 0 ? ` — ${suffixParts.join(" • ")}` : "";
 
       return {
         id: item?.id ?? `cm-${index}`,
         title: contractTitle || title || "Contract",
-        text: `${strongTitle}${suffix}`,
-        date: createdAt ? formatDateTZ(createdAt, "MMM d, yyyy h:mm a") : undefined,
+        text: `${plainTitle}${suffix}`,
+        date: dateValue ? formatDateInZoneAbbrev(dateValue, "MMM d, yyyy h:mm a", item?.timezone) : undefined,
         status: item?.status ?? undefined,
         type: item?.type ?? undefined,
       };
@@ -2345,15 +2737,20 @@ export class DashboardDataTransformer {
               ? `<strong>${campaign.subject}</strong> — ${campaign.subtitle}`
               : `<strong>${campaign.subject}</strong>`),
           date: campaign.createdAt
-            ? `${formatDateTZ(campaign.createdAt, "MMM d, yyyy h:mm a", campaign.timezone || "")} `
+            ? formatDateInZoneAbbrev(campaign.createdAt, "MMM d, yyyy h:mm a", campaign.timezone)
             : formatDateTZ(new Date(), "MMM d, yyyy h:mm a 'GMT'xxx", campaign.timezone || ""),
           status: update?.status || "active",
           campaign,
         };
       }
 
-      const sol = update?.solicitation ?? null;
-      const evaluation = update?.evaluation ?? null;
+      // See transformProcurementGeneralUpdates: resolve the solicitation from
+      // the top-level field or the one nested under `evaluation`, so every
+      // group-release update is linked consistently (QA #257).
+      const sol =
+        update?.solicitation ?? update?.evaluation?.solicitation ?? null;
+      const evaluation =
+        update?.evaluation ?? update?.solicitation?.evaluation ?? null;
 
       const title = sol?.name ?? evaluation?.name ?? "Unknown";
       const entityName = sol?.name ?? evaluation?.name ?? "Unknown";
@@ -2373,11 +2770,14 @@ export class DashboardDataTransformer {
         ),
         date:
           update?.updatedAt || update?.date || update?.createdAt
-            ? `${formatDateTZ(
+            ? formatDateInZoneAbbrev(
                 update.updatedAt || update.date || update.createdAt,
-                "MMM d, yyyy h:mm a"
-              )} ${update.solicitation?.timezone || ""}`
-            : formatDateTZ(new Date(), "MMM d, yyyy h:mm a 'GMT'xxx", update.solicitation?.timezone || ""),
+                "MMM d, yyyy h:mm a",
+                // #194: prefer the actor's item-level zone over the
+                // solicitation's own zone (see transformProcurementGeneralUpdates).
+                update?.timezone ?? update.solicitation?.timezone
+              )
+            : formatDateTZ(new Date(), "MMM d, yyyy h:mm a 'GMT'xxx", (update?.timezone ?? update.solicitation?.timezone) || ""),
         status: update?.status || "active",
       };
     });

@@ -16,7 +16,7 @@ import {
   useEffect,
   InputHTMLAttributes,
 } from "react";
-import { ForgerSlotProps } from "@/lib/forge/types";
+import { ForgerSlotProps } from "@adexdsamson/forge";
 import { Tag, TagInput } from "emblor";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
@@ -117,7 +117,7 @@ export const TextInput = (props: TextInputProps & Partial<ForgerSlotProps>) => {
       }`}
     >
       {label && (
-        <Label className="text-sm font-medium text-gray-700  mb-2">
+        <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           {label}
         </Label>
       )}
@@ -175,7 +175,7 @@ export const TextArea = (props: TextAreaProps & Partial<ForgerSlotProps>) => {
       }`}
     >
       {label && (
-        <Label className="text-sm font-medium text-gray-700 mb-2">
+        <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           {label}
         </Label>
       )}
@@ -396,6 +396,12 @@ export const TextTagInput = (
                     "w-full min-w-[80px] shadow-none px-2 h-10 dark:text-slate-50 dark:placeholder:text-slate-400",
                     inputClassName,
                   ),
+                  autoComplete: {
+                    popoverContent:
+                      "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700",
+                    commandGroup: "dark:text-slate-100",
+                    commandItem: "dark:text-slate-100 dark:hover:bg-slate-800",
+                  },
                   tag: {
                     body: cn(
                       "h-7 relative bg-background border border-input hover:bg-background !rounded-lg font-medium text-xs ps-3 pe-7 dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 dark:text-slate-50",
@@ -429,17 +435,17 @@ export const TextTagInput = (
             </div>
           </PopoverTrigger>
           <PopoverContent
-            className="z-[60] w-[360px] lg:w-[420px] p-4 bg-white border shadow-xl"
+            className="z-[60] w-[360px] lg:w-[420px] p-4 bg-white dark:bg-slate-900 border dark:border-slate-700 shadow-xl"
             align="start"
           >
             <div className="space-y-3">
-              <p className="text-sm font-medium text-slate-700">
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-100">
                 Add Key Personnel Details
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs">Name</Label>
+                  <Label className="text-xs text-slate-700 dark:text-slate-300">Name</Label>
                   <Input
                     value={formData.name}
                     onChange={(e) =>
@@ -449,7 +455,7 @@ export const TextTagInput = (
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Email</Label>
+                  <Label className="text-xs text-slate-700 dark:text-slate-300">Email</Label>
                   <Input
                     value={formData.email}
                     onChange={(e) =>
@@ -460,7 +466,7 @@ export const TextTagInput = (
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Role</Label>
+                  <Label className="text-xs text-slate-700 dark:text-slate-300">Role</Label>
                   <Input
                     value={formData.role}
                     onChange={(e) =>
@@ -470,7 +476,7 @@ export const TextTagInput = (
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Phone Number</Label>
+                  <Label className="text-xs text-slate-700 dark:text-slate-300">Phone Number</Label>
                   <Input
                     value={formData.phone}
                     onChange={(e) =>
@@ -531,7 +537,10 @@ export const TextTagInput = (
             ),
 
             autoComplete: {
-              popoverContent: "bg-white"
+              popoverContent:
+                "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700",
+              commandGroup: "dark:text-slate-100",
+              commandItem: "dark:text-slate-100 dark:hover:bg-slate-800",
             },
 
             tag: {
@@ -577,22 +586,31 @@ export const TextDatePicker = (
     disabled
   } = props;
   const id = useId();
-  const [timeValue, setTimeValue] = useState<string>("");
-
-  useEffect(() => {
-    if (value) {
-      const val =
-        typeof value === "string"
-          ? value?.includes("T")
-            ? value?.split("T")?.[1]?.split?.(".")?.[0]
-            : ""
-          : format(value, "HH:mm");
-
-      setTimeValue(val);
-    } else {
-      setTimeValue("");
+  // timeValue tracks both the parent-driven `value` prop (a Date or ISO string)
+  // and the user's in-progress typing. Pattern A from react-doctor's
+  // no-adjust-state-on-prop-change recipe: store which `value` produced the
+  // current local string so the read auto-evicts to the prop-derived default
+  // when the parent changes — no prop-mirroring effect, no flash.
+  const computeTimeFromValue = (val: typeof value): string => {
+    if (!val) return "";
+    if (typeof val === "string") {
+      return val?.includes("T")
+        ? (val?.split("T")?.[1]?.split?.(".")?.[0] ?? "")
+        : "";
     }
-  }, [value]);
+    return format(val, "HH:mm");
+  };
+  const [timeState, setTimeState] = useState<{
+    forValue: typeof value;
+    time: string;
+  }>(() => ({ forValue: value, time: computeTimeFromValue(value) }));
+  const timeValue =
+    timeState.forValue === value
+      ? timeState.time
+      : computeTimeFromValue(value);
+  const setTimeValue = (next: string) => {
+    setTimeState({ forValue: value, time: next });
+  };
 
   const combineDateTime = (date: Date | undefined, time: string) => {
     if (!date) return undefined;
@@ -749,6 +767,7 @@ export const TextTimeInput = (
 
 type TextCurrencyInputProps = Omit<TextInputProps, "onChange"> & {
   onChange: (value: number | string) => void;
+  currency?: string;
 };
 
 export const TextCurrencyInput = (props: TextCurrencyInputProps) => {
@@ -766,7 +785,23 @@ export const TextCurrencyInput = (props: TextCurrencyInputProps) => {
     placeholder,
     className,
     id,
+    currency,
   } = props;
+  const currencyPrefix = (() => {
+    if (!currency) return "$";
+    try {
+      const parts = new Intl.NumberFormat("en", {
+        style: "currency",
+        currency,
+        currencyDisplay: "narrowSymbol",
+      }).formatToParts(0);
+      const symbol = parts.find((p) => p.type === "currency")?.value;
+      return symbol ? `${symbol} ` : `${currency} `;
+    } catch (err) {
+      void err;
+      return "$";
+    }
+  })();
 
   return (
     <div
@@ -795,11 +830,11 @@ export const TextCurrencyInput = (props: TextCurrencyInputProps) => {
           value={value}
           onBlur={onBlur}
           decimalsLimit={2}
-          prefix="$"
+          prefix={currencyPrefix}
           defaultValue={1000}
           onValueChange={(value) => onChange?.(value ?? "")}
           placeholder={placeholder}
-          className={`w-full h-12 border border-gray-300 rounded-lg px-4 pr-10 focus:border-[#2A4467] focus:ring-[#2A4467] ${
+          className={`w-full h-12 border border-gray-300 rounded-lg px-4 pr-10 bg-white text-slate-900 placeholder:text-slate-400 focus:border-[#2A4467] focus:ring-[#2A4467] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-indigo-400 dark:focus:ring-indigo-400 ${
             error ? "border-red-500" : ""
           } ${className}`}
         />

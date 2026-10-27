@@ -1,3 +1,4 @@
+import React from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,8 +11,9 @@ import {
   TextInput,
   TextTagInput,
 } from "@/components/layouts/FormInputs/TextInput";
+import { TextSelectWithSearch } from "@/components/layouts/FormInputs/TextSelectWithSearch";
 // import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
-import { useForge, Forger, Forge } from "@/lib/forge";
+import { useForge, Forger, Forge } from "@adexdsamson/forge";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -28,12 +30,16 @@ import * as yup from "yup";
 const schema = yup.object().shape({
   name: yup.string().required("Company name is required"),
   // planName: yup.string().required("Subscription plan is required"),
-  duration: yup
-    .number()
-    .positive()
-    .integer()
-    .required("Subscription duration is required"),
+  currency: yup.string().required("Currency is required"),
   adminEmails: yup
+    .array()
+    .of(
+      yup.object().shape({
+        id: yup.string().required(),
+        text: yup.string().email().required(),
+      })
+    ).optional(),
+  apEmails: yup
     .array()
     .of(
       yup.object().shape({
@@ -53,11 +59,12 @@ type Company = {
   industry?: string;
   sizeCategory: string;
   status: "active" | "inactive" | "suspended";
-  maxUsers: number;
+  maxUsers?: number;
   admins: Admin[];
   domain?: string;
   planName?: string;
   duration?: number;
+  apEmails?: string[];
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -85,6 +92,7 @@ const EditCompanyDialog = ({
       // planName: "",
       // duration: 1,
       adminEmails: [],
+      apEmails: [],
     },
   });
 
@@ -104,6 +112,7 @@ const EditCompanyDialog = ({
       setValue("name", company.name || "");
       // setValue("planName", company.planName || "");
       // setValue("duration", company.duration || 1);
+      setValue("currency", (company as any).currency || "");
 
       // Transform admin emails to the expected format
       const adminEmailTags =
@@ -112,6 +121,14 @@ const EditCompanyDialog = ({
           text: admin.email,
         })) || [];
       setValue("adminEmails", adminEmailTags);
+
+      // AP emails come back as plain strings on CompanyDetails — map to tag objects
+      const apEmailTags =
+        company.apEmails?.map((email, index) => ({
+          id: `${index}-${email}`,
+          text: email,
+        })) || [];
+      setValue("apEmails", apEmailTags);
     }
   }, [isOpen, company, setValue]);
 
@@ -127,7 +144,9 @@ const EditCompanyDialog = ({
         name: data.name,
         // planName: data.planName,
         // duration: data.duration,
+        currency: data.currency,
         adminEmails: data.adminEmails?.map((admin) => admin.text), // Extract email addresses
+        apEmails: data.apEmails?.map((ap) => ap.text), // AP recipients for invoice-lifecycle emails
       };
       return await putRequest({
         url: `/companies/${company._id}`,
@@ -168,6 +187,60 @@ const EditCompanyDialog = ({
   //   { label: "5 years", value: 5 },
   // ];
 
+  const currencyOptions = React.useMemo(() => {
+    const supportedValuesOf = (Intl as any).supportedValuesOf as
+      | undefined
+      | ((type: string) => string[]);
+
+    const supportedCurrencies =
+      typeof supportedValuesOf === "function" ? supportedValuesOf("currency") : [];
+
+    const fallbackCurrencies = ["CAD", "USD", "EUR", "GBP"];
+
+    const codes =
+      Array.isArray(supportedCurrencies) && supportedCurrencies.length > 0
+        ? supportedCurrencies
+        : fallbackCurrencies;
+
+    const displayNames =
+      typeof (Intl as any).DisplayNames === "function"
+        ? new (Intl as any).DisplayNames(["en"], { type: "currency" })
+        : null;
+
+    const getCurrencyName = (code: string) => {
+      try {
+        const name = displayNames?.of(code);
+        if (typeof name === "string" && name.trim() && name !== code) return name;
+      } catch (err) {
+        void err;
+      }
+
+      try {
+        const parts = new Intl.NumberFormat("en", {
+          style: "currency",
+          currency: code,
+          currencyDisplay: "name",
+        }).formatToParts(0);
+        const name = parts.find((p) => p.type === "currency")?.value;
+        if (typeof name === "string" && name.trim() && name !== code) return name;
+      } catch (err) {
+        void err;
+      }
+
+      return undefined;
+    };
+
+    return Array.from(new Set(codes))
+      .map((code) => {
+        const name = getCurrencyName(code);
+        return {
+          value: code,
+          label: name ? `${code} — ${name}` : code,
+        };
+      })
+      .sort((a, b) => a.value.localeCompare(b.value));
+  }, []);
+
   const dialogContent = (
     <>
       <DialogTrigger asChild>{children}</DialogTrigger>
@@ -204,6 +277,16 @@ const EditCompanyDialog = ({
           /> */}
 
           <Forger
+            name="currency"
+            label="Currency"
+            placeholder="Select currency"
+            searchPlaceholder="Search currency..."
+            emptyMessage="No currency found."
+            component={TextSelectWithSearch}
+            options={currencyOptions}
+          />
+
+          <Forger
             name="adminEmails"
             component={TextTagInput}
             label="Assign Admins (Multi-Select)"
@@ -212,6 +295,13 @@ const EditCompanyDialog = ({
           <div className="text-sm text-gray-500 dark:text-gray-400 mt-2 transition-colors duration-200">
             Add up to 3 admins.
           </div>
+
+          <Forger
+            name="apEmails"
+            component={TextTagInput}
+            label="Accounts Payable Email(s)"
+            helperText="Invoice emails (submitted, approved, rejected) are sent here. Separate each email with a comma or enter button."
+          />
 
           <div className="flex justify-between pt-6 mt-6">
             <Button

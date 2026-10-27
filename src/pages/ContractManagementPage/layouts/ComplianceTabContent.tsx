@@ -7,17 +7,42 @@ import { getRequest } from "@/lib/axiosInstance";
 import { useUserRole } from "@/hooks/useUserRole";
 import { SEOWrapper } from "@/components/SEO";
 
-type Props = { isActive?: boolean };
+type Props = {
+  isActive?: boolean;
+  currency?: string;
+  actionsDisabled?: boolean;
+  owner?: boolean;
+};
 
-const ComplianceTabContent: React.FC<Props> = ({ isActive }) => {
+const ComplianceTabContent: React.FC<Props> = ({
+  isActive,
+  currency,
+  actionsDisabled,
+  owner,
+}) => {
   const { id: contractId } = useParams<{ id: string }>();
-  const { isVendor, isManager, isAdmin, isApprover, isViewOnly } = useUserRole();
+  const {
+    isVendor,
+    isProjectManager,
+    isManager,
+    isAdmin,
+    isApprover,
+    isViewOnly,
+  } = useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
 
   const getBasePath = () => {
-    if (isVendor) return `/contract/vendor/contracts/${contractId}/compliance`;
-    if (isApprover) return `/contract/approver/contracts/${contractId}/compliance`;
-    if (isManager) return `/contract/manager/contracts/${contractId}/compliance`;
-    if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/compliance`;
+    if (isContractVendorLike)
+      return `/contract/vendor/contracts/${contractId}/compliance`;
+    if (isApprover)
+      return `/contract/approver/contracts/${contractId}/compliance`;
+    // QA #298: company/super admins read via the manager (org-scoped) endpoint,
+    // like the main contract fetch. The /contract/user endpoint is
+    // participant-scoped and returns empty for admins.
+    if (isManager || isAdmin)
+      return `/contract/manager/contracts/${contractId}/compliance`;
+    if (isViewOnly)
+      return `/contract/user/contracts/${contractId}/compliance`;
     return `/contract/user/contracts/${contractId}/compliance`;
   };
 
@@ -43,11 +68,14 @@ const ComplianceTabContent: React.FC<Props> = ({ isActive }) => {
         description="Manage contract compliance, insurance coverage, and security requirements."
         robots="noindex, nofollow"
       />
-      
-      <ComplianceSecurityTab 
+
+      <ComplianceSecurityTab
         isLoading={isLoading}
         data={complianceData?.data}
         basePath={basePath}
+        currency={currency}
+        actionsDisabled={actionsDisabled}
+        owner={owner}
       />
     </TabsContent>
   );

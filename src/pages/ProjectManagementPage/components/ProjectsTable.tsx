@@ -20,6 +20,12 @@ export type Project = {
 
 type Props = {
   projects: Project[];
+  searchQuery: string;
+  dateFilter: string;
+  statusFilter: string;
+  onSearchQueryChange: (value: string) => void;
+  onDateFilterChange: (value: string) => void;
+  onStatusFilterChange: (value: string) => void;
   detailsProjectId: string | null;
   detailsOpen: boolean;
   onDetailsProjectIdChange: (projectId: string | null) => void;
@@ -28,16 +34,17 @@ type Props = {
 
 const ProjectsTable: React.FC<Props> = ({
   projects,
+  searchQuery,
+  dateFilter,
+  statusFilter,
+  onSearchQueryChange,
+  onDateFilterChange,
+  onStatusFilterChange,
   detailsProjectId,
   detailsOpen,
   onDetailsOpenChange,
   onDetailsProjectIdChange,
 }) => {
-  const [searchQuery, setSearchQuery] = React.useState("");
-  const [dateFilter, setDateFilter] = React.useState("all");
-  const [statusFilter, setStatusFilter] = React.useState("");
-  const [categoryFilter, setCategoryFilter] = React.useState("");
-
   const openDetails = React.useCallback(
     (projectId: string) => {
       onDetailsProjectIdChange(projectId);
@@ -53,15 +60,16 @@ const ProjectsTable: React.FC<Props> = ({
         header: "Projects Name",
         cell: ({ row }) => (
           <div className="flex flex-col">
-            <a
-              href={`/dashboard/project-management/${row.original.id ?? ""}`}
+            <button
+              type="button"
+              onClick={() => openDetails(row.original.id)}
               data-testid="project-name-link"
-              className="font-medium text-slate-900 underline-offset-2 hover:underline"
+              className="text-left font-medium text-slate-900 dark:text-slate-100 underline-offset-2 hover:underline"
             >
               {row.original.name ?? ""}
-            </a>
+            </button>
             {row.original.code && (
-              <span className="text-xs text-slate-500">{row.original.code}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{row.original.code}</span>
             )}
           </div>
         ),
@@ -73,7 +81,7 @@ const ProjectsTable: React.FC<Props> = ({
         id: "date",
         header: "Date",
         cell: ({ row }) => (
-          <div className="text-xs text-slate-500">
+          <div className="text-xs text-slate-500 dark:text-slate-400">
             {row.original.startDate && (
               <div>
                 Start Date:{" "}
@@ -99,7 +107,11 @@ const ProjectsTable: React.FC<Props> = ({
                 ? "bg-green-100 text-green-700 font-semibold capitalize px-4"
                 : row.original.status === "completed"
                   ? "bg-blue-100 text-blue-700 font-semibold capitalize px-4"
-                  : "bg-red-100 text-red-700 font-semibold capitalize px-4"
+                  : row.original.status === "pending"
+                    ? "bg-yellow-100 text-yellow-700 font-semibold capitalize px-4"
+                    : row.original.status === "cancelled"
+                      ? "bg-red-100 text-red-700 font-semibold capitalize px-4"
+                      : "bg-slate-100 text-slate-700 font-semibold capitalize px-4"
             }
           >
             {row.original.status?.replace(/_/g, " ")}
@@ -124,11 +136,15 @@ const ProjectsTable: React.FC<Props> = ({
     [openDetails]
   );
 
-  const filtered = projects.filter((p) =>
-    searchQuery
-      ? p.name?.toLowerCase?.().includes(searchQuery.toLowerCase())
-      : true
-  );
+  const filtered = projects.filter((p) => {
+    if (searchQuery && !p.name?.toLowerCase?.().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+    if (statusFilter && p.status !== statusFilter) {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <div className="space-y-4" data-testid="projects-table">
@@ -137,26 +153,24 @@ const ProjectsTable: React.FC<Props> = ({
           <ProjectsHeader
             title="Projects"
             searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
+            setSearchQuery={onSearchQueryChange}
             dateFilter={dateFilter}
             statusFilter={statusFilter}
-            categoryFilter={categoryFilter}
-            onDateFilterChange={setDateFilter}
-            onStatusFilterChange={setStatusFilter}
-            onCategoryFilterChange={setCategoryFilter}
+            onDateFilterChange={onDateFilterChange}
+            onStatusFilterChange={onStatusFilterChange}
           />
         )}
         classNames={{
           container:
             "bg-white dark:bg-slate-950 rounded-xl px-3 border border-gray-300 dark:border-slate-600",
-          tHeadRow: "bg-gray-300",
+          tHeadRow: "bg-gray-300 dark:bg-slate-800",
         }}
         data={filtered}
         columns={columns}
         options={{ disableSelection: true }}
         emptyPlaceholder={
           <div className="p-10 text-center">
-            <div data-testid="empty-state" className="text-slate-600">
+            <div data-testid="empty-state" className="text-slate-600 dark:text-slate-400">
               No projects found
             </div>
           </div>

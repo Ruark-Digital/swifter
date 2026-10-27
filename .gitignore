@@ -2,6 +2,7 @@ node_modules
 api_documentation
 
 .env*
+!.env.example
 .figma
 /dist
 
@@ -9,3 +10,11 @@ api_documentation
 playwright-report
 /test-results
 .tmp_docx_extract
+.worktrees
+Test-credentials.md
+# QA output (screenshots + reports)
+.qa/screenshots/
+.qa/reports/
+.qa/auto-browser
+.worktrees
+.claude/worktrees

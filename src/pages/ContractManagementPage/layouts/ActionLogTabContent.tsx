@@ -2,15 +2,19 @@ import React, { useMemo, useState } from "react";
 import { TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Download, Search } from "lucide-react";
+import * as XLSX from "xlsx";
 import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
+import type { PaginationState } from "@tanstack/react-table";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { contractManagerApi, LogModule } from "../api/contractManagerApi";
 import { format } from "date-fns";
 import ActionLogDetailsSheet from "../components/ActionLogDetailsSheet";
 import { useUserRole } from "@/hooks/useUserRole";
+import { formatDateInZoneAbbrev, formatModuleLabel } from "@/lib/utils";
 
 type Props = { isActive?: boolean };
 
@@ -24,59 +28,155 @@ type ActionLogRow = {
   dateLine1: string;
   dateLine2: string;
   rawDate: Date; // For sorting
+  rawReference?: any;
 };
+
+// Map raw BE logs to table rows (newest first). Shared by the paginated table
+// and the Export handler so the exported sheet matches the on-screen columns.
+const mapLogsToRows = (logs: any[]): ActionLogRow[] => {
+  return (logs ?? [])
+    .map((log: any) => {
+      const sourceDate = log.date ?? new Date().toISOString();
+      const date = new Date(sourceDate);
+      let refStr = "Unknown";
+      if (log.reference) {
+        if (typeof log.reference === "string") {
+          refStr = log.reference;
+        } else if (typeof log.reference === "object") {
+          refStr = log.reference.changeId || log.reference.reportId || log.reference.ncrId || log.reference.rfiId || log.reference.claimId || log.reference._id || "Unknown";
+        }
+      }
+      let modStr = "Unknown";
+      if (typeof log.module === "string") {
+        modStr = log.module;
+      } else if (typeof log.module === "object" && log.module !== null) {
+        modStr = (Object.values(log.module)[0] as string) || "Unknown";
+      }
+
+      let userName = "Unknown User";
+      if (typeof log.user === "string") userName = log.user;
+      else if (log.user?.name) userName = log.user.name;
+
+      let roleName = "Unknown Role";
+      if (typeof log.actor === "string") roleName = log.actor;
+      else if (log.actor?.name) roleName = log.actor.name;
+
+      return {
+        actionId: log.logId || log.actionId || log._id || "Unknown",
+        id: log._id || "Unknown",
+        module: modStr,
+        description: log.description || "No description",
+        actorName: userName,
+        actorRole: roleName,
+        reference: refStr,
+        // Render in the record's own timezone (with the zone label on the
+        // time), matching the General Updates feed. The old viewer-local
+        // formatDateTZ showed a different clock time than General Updates for
+        // the same event when the viewer's browser zone differed from the
+        // actor's (QA #60). Falls back to viewer-local when the log carries no
+        // timezone.
+        dateLine1: formatDateInZoneAbbrev(sourceDate, "dd MMM yyyy", log.timezone),
+        dateLine2: formatDateInZoneAbbrev(sourceDate, "hh:mm a", log.timezone),
+        rawDate: date,
+        rawReference: log.reference,
+      };
+    })
+    .sort((a: any, b: any) => b.rawDate.getTime() - a.rawDate.getTime());
+};
+
+const toExportRow = (r: ActionLogRow) => ({
+  "Action ID": r.actionId,
+  Module: formatModuleLabel(r.module),
+  Description: r.description,
+  User: r.actorName,
+  Role: r.actorRole ?? "",
+  Reference: r.reference,
+  Date: r.dateLine1,
+  Time: r.dateLine2,
+});
 
 const ActionLogTabContent: React.FC<Props> = () => {
   const { id: contractId } = useParams<{ id: string }>();
   const [selectedAction, setSelectedAction] = useState<ActionLogRow | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const { isManager, isProcurement } = useUserRole()
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 20,
+  });
+  const { isManager, isProcurement, isAdmin } = useUserRole()
+
+  const listQuery = React.useMemo(() => {
+    const query = searchQuery.trim();
+    const isLogIdQuery = /^ACT-\d+/i.test(query);
+
+    return {
+      page: pagination.pageIndex + 1,
+      limit: pagination.pageSize,
+      logId: query && isLogIdQuery ? query : undefined,
+      module: query && !isLogIdQuery ? query : undefined,
+    };
+  }, [pagination, searchQuery]);
 
   // 1. Fetch action logs
   const { data: logsData, isLoading } = useQuery({
-    queryKey: ["contractLogs", contractId],
-    queryFn: () => contractManagerApi.listLogs(contractId!, { limit: 100 }), // Fetch more items
-    enabled: !!contractId && (isManager || isProcurement),
+    queryKey: ["contractLogs", contractId, listQuery],
+    queryFn: () => contractManagerApi.listLogs(contractId!, listQuery),
+    // QA #298: company/super admins are manager-equivalent readers, so they
+    // must fetch the (manager) action log too — otherwise the tab is empty.
+    enabled: !!contractId && (isManager || isProcurement || isAdmin),
   });
 
-  const rows = useMemo(() => {
-    if (!logsData?.data?.logs) return [];
+  const rows = useMemo(
+    () => mapLogsToRows(logsData?.data?.logs ?? []),
+    [logsData],
+  );
 
-    return logsData.data.logs.map((log) => {
-      const date = log.date ? new Date(log.date) : new Date();
-      return {
-        actionId: log.actionId || "Unknown",
-        module: log.module?.["stripe out contract"] || "Unknown",
-        description: "No description",
-        actorName: log.user || "Unknown User",
-        actorRole: log.actor || "Unknown Role",
-        reference: log.reference || "Unknown",
-        dateLine1: format(date, "MM-dd-yyyy"),
-        dateLine2: format(date, "hh:mm a"),
-        rawDate: date,
-      };
-    }).sort((a, b) => b.rawDate.getTime() - a.rawDate.getTime());
-  }, [logsData]);
+  const totalCount = logsData?.data?.total ?? rows.length;
+  const [isExporting, setIsExporting] = useState(false);
 
-  const filteredRows = useMemo(() => {
-    if (!searchQuery) return rows;
-    const lowerQuery = searchQuery.toLowerCase();
-    return rows.filter(
-      (row) =>
-        row.description.toLowerCase().includes(lowerQuery) ||
-        row.module.toLowerCase().includes(lowerQuery) ||
-        row.actorName.toLowerCase().includes(lowerQuery) ||
-        row.reference.toLowerCase().includes(lowerQuery)
-    );
-  }, [rows, searchQuery]);
+  const writeLogsWorkbook = React.useCallback(
+    (exportRows: ActionLogRow[]) => {
+      const worksheet = XLSX.utils.json_to_sheet(exportRows.map(toExportRow));
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Action Log");
+      const filename = `action-log-${contractId ?? "contract"}-${format(
+        new Date(),
+        "yyyy-MM-dd",
+      )}.xlsx`;
+      XLSX.writeFile(workbook, filename);
+    },
+    [contractId],
+  );
+
+  // QA #135: the table is paginated, so exporting `rows` only wrote the current
+  // page. Pull the full set in one request (BE: "call the api with the total
+  // limit") honouring the active search filter, then export all of it. If the
+  // full fetch fails, fall back to the current page so Export never dead-ends.
+  const handleExport = React.useCallback(async () => {
+    if (!contractId || !rows.length || isExporting) return;
+    setIsExporting(true);
+    try {
+      const res = await contractManagerApi.listLogs(contractId, {
+        ...listQuery,
+        page: 1,
+        limit: totalCount > 0 ? totalCount : rows.length,
+      });
+      const allRows = mapLogsToRows(res?.data?.logs ?? []);
+      writeLogsWorkbook(allRows.length ? allRows : rows);
+    } catch {
+      writeLogsWorkbook(rows);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [contractId, rows, isExporting, listQuery, totalCount, writeLogsWorkbook]);
 
   const columns: ColumnDef<ActionLogRow>[] = [
     {
       accessorKey: "actionId",
       header: "Action ID",
       cell: ({ getValue }) => (
-        <span className="font-medium text-slate-700 truncate block max-w-[100px]" title={getValue<string>()}>
+        <span className="font-medium text-slate-700 dark:text-slate-300 truncate block max-w-[100px]" title={getValue<string>()}>
           {getValue<string>()}
         </span>
       ),
@@ -85,7 +185,7 @@ const ActionLogTabContent: React.FC<Props> = () => {
         accessorKey: "module", 
         header: "Module",
         cell: ({ getValue }) => (
-            <span className="capitalize">{getValue<string>()}</span>
+            <span>{formatModuleLabel(getValue<string>())}</span>
         )
     },
     { accessorKey: "description", header: "Description" },
@@ -97,7 +197,7 @@ const ActionLogTabContent: React.FC<Props> = () => {
         return (
           <div className="flex flex-col">
             <span className="font-medium">{row.original.actorName}</span>
-            <span className="text-xs text-slate-400">{row.original.actorRole}</span>
+            <span className="text-xs text-slate-400 dark:text-slate-500">{row.original.actorRole}</span>
           </div>
         );
       },
@@ -106,7 +206,7 @@ const ActionLogTabContent: React.FC<Props> = () => {
       accessorKey: "reference",
       header: "Reference",
       cell: ({ getValue }) => (
-        <span className="font-medium text-slate-700 truncate block max-w-[120px]" title={getValue<string>()}>
+        <span className="font-medium text-slate-700 dark:text-slate-300 truncate block max-w-[120px]" title={getValue<string>()}>
           {getValue<string>()}
         </span>
       ),
@@ -115,7 +215,7 @@ const ActionLogTabContent: React.FC<Props> = () => {
       id: "date",
       header: "Date",
       cell: ({ row }) => (
-        <div className="text-xs text-slate-500">
+        <div className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500">
           <div>{row.original.dateLine1}</div>
           <div>{row.original.dateLine2}</div>
         </div>
@@ -143,40 +243,58 @@ const ActionLogTabContent: React.FC<Props> = () => {
 
   return (
     <TabsContent value="action-log" className="space-y-6">
-      <h2 className="text-lg font-semibold text-slate-900">Action Log</h2>
+      <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Action Log</h2>
 
       <Card className="overflow-hidden rounded-xl">
         <div className="flex items-center gap-6 border-b border-slate-200 px-6 py-4">
-          <div className="text-sm font-medium text-slate-900">Action Log</div>
+          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">Action Log</div>
 
           <div className="relative w-full max-w-[320px]">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
             <Input
               placeholder="Search log"
-              className="h-10 pl-9 text-sm placeholder:text-slate-400"
+              className="h-10 pl-9 text-sm placeholder:text-slate-400 dark:text-slate-500"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+              }}
             />
+          </div>
+
+          <div className="ml-auto">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              disabled={!rows.length || isExporting}
+              data-testid="action-log-export"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              {isExporting ? "Exporting..." : "Export"}
+            </Button>
           </div>
         </div>
 
         <div className="p-0">
           <DataTable<ActionLogRow>
-            data={filteredRows}
+            data={rows}
             columns={columns}
             classNames={{
-              container: "[&>div:last-child]:hidden",
               table: "border-collapse border-spacing-0",
               tHeader: "bg-transparent",
               tHeadRow: "bg-slate-50/50 hover:bg-slate-50/50",
-              tHead: "text-[#2A4467] font-medium",
-              tCell: "p-4 text-slate-700",
+              tHead: "text-[#2A4467] dark:text-blue-300 font-medium",
+              tCell: "p-4 text-slate-700 dark:text-slate-300",
             }}
             options={{
-              disablePagination: false, // Enabled pagination as list might grow
+              disablePagination: false,
               disableSelection: true,
               isLoading: isLoading,
-              totalCounts: filteredRows.length,
+              totalCounts: totalCount,
+              pagination,
+              setPagination: setPagination,
             }}
           />
         </div>

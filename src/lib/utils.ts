@@ -1,9 +1,24 @@
 import { type ClassValue, clsx } from "clsx";
-import { format } from "date-fns";
+import { differenceInCalendarDays, format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+/**
+ * Whole calendar days from now until `due` (negative once `due` has passed).
+ *
+ * Uses `differenceInCalendarDays`, NOT `differenceInDays`: the latter counts
+ * full 24h periods and truncates the partial day, so "due on the 30th" while
+ * today is the 28th reads as 1 day left instead of 2 (QA #120/#30/#39). Calendar
+ * days compare the local date components, matching how the due date is displayed.
+ */
+export function daysUntilCalendar(due?: string | Date | null): number | null {
+  if (!due) return null;
+  const dueDate = due instanceof Date ? due : new Date(due);
+  if (Number.isNaN(dueDate.getTime())) return null;
+  return differenceInCalendarDays(dueDate, new Date());
 }
 
 /**
@@ -15,18 +30,101 @@ export function cn(...inputs: ClassValue[]) {
  */
 export function formatCurrency(
   amount: number,
-  locale: Intl.LocaleOptions["region"],
-  currency: Intl.NumberFormatOptions["currency"]
+  locale?: Intl.LocaleOptions["region"],
+  currency?: Intl.NumberFormatOptions["currency"]
 ) {
+  // Currency display MUST be deterministic across users: `Intl.NumberFormat`
+  // renders the same currency differently per locale (USD is "$" in en-US but
+  // "US$" in en-CA; CAD is "CA$" vs "$"), so an omitted/undefined locale falls
+  // back to the viewer's own locale and the same contract value looks different
+  // for different logged-in users (QA #299). Always render in a fixed locale.
+  let resolvedLocale = locale;
+  let resolvedCurrency = currency;
+  // Tolerate the common two-arg misuse `formatCurrency(amount, currencyCode)`:
+  // when no currency is given but the locale slot holds an ISO 4217 code
+  // (three letters), treat it as the currency.
+  if (
+    resolvedCurrency == null &&
+    typeof resolvedLocale === "string" &&
+    /^[A-Za-z]{3}$/.test(resolvedLocale)
+  ) {
+    resolvedCurrency = resolvedLocale as Intl.NumberFormatOptions["currency"];
+    resolvedLocale = undefined;
+  }
   try {
-    return new Intl.NumberFormat(locale, {
+    return new Intl.NumberFormat(resolvedLocale || "en-US", {
       style: "currency",
-      currency: currency,
+      currency: resolvedCurrency,
     }).format(amount);
   } catch (error) {
     console.error("Error formatting currency:", error);
     return amount.toString();
   }
+}
+
+export function resolveCurrency(
+  localCurrency?: string | null,
+  profileCurrency?: string | null,
+) {
+  return (
+    [localCurrency, profileCurrency].find(
+      (currency) => typeof currency === "string" && currency.trim(),
+    ) ?? "USD"
+  );
+}
+
+// Compact currency: one decimal with K/M/B/T (e.g. $527.5M, $358.3K) per the
+// dashboard figma. Used where large spend/value figures would otherwise overflow.
+export function formatCompactCurrency(
+  amount: number,
+  currency: Intl.NumberFormatOptions["currency"] = "USD",
+  locale: string = "en-US"
+) {
+  const safe = Number.isFinite(amount) ? amount : 0;
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency,
+      notation: "compact",
+      compactDisplay: "short",
+      maximumFractionDigits: 1,
+    }).format(safe);
+  } catch (error) {
+    console.error("Error formatting currency:", error);
+    return safe.toString();
+  }
+}
+
+const OBJECT_ID_RE = /^[a-f0-9]{24}$/i;
+
+/**
+ * Resolve a milestone's linked deliverable to a display name.
+ *
+ * The backend returns `milestone[].deliverable` inconsistently: a populated
+ * `{ name }` object, the deliverable's `_id` string, or a legacy name string.
+ * Pass a `_id -> name` map (built from the contract/MSA `deliverables` list)
+ * to resolve id references. Returns "" — caller renders "-" — when nothing
+ * resolves, and never the milestone's own name (QA #47).
+ */
+export function resolveMilestoneDeliverableName(
+  raw: unknown,
+  nameById?: Map<string, string>,
+): string {
+  if (raw && typeof raw === "object") {
+    const name = (raw as { name?: unknown }).name;
+    return typeof name === "string" ? name.trim() : "";
+  }
+  if (typeof raw === "string") {
+    const val = raw.trim();
+    if (!val) return "";
+    const mapped = nameById?.get(val);
+    if (mapped) return mapped;
+    // An unresolved ObjectId isn't a human-readable name → show blank, not
+    // the raw id (and never the milestone title).
+    if (OBJECT_ID_RE.test(val)) return "";
+    return val; // legacy name string
+  }
+  return "";
 }
 
 const getFileNameFromUrl = (url: string) => {
@@ -51,6 +149,81 @@ export const downloadFile = async (fileUrl: string) => {
   document.body.removeChild(link);
 };
 
+/**
+ * Decode a base64 string and trigger a browser download.
+ *
+ * Used for binary payloads that arrive inline (not as a URL) — e.g. the MCP
+ * chat's `document_ready` SSE event, which streams an exported contract PDF/DOCX
+ * as base64. Decodes to raw bytes via `atob`, wraps them in a Blob, and clicks a
+ * temporary anchor. Throws if the base64 is malformed (caller surfaces the error).
+ */
+export const downloadBase64File = (
+  base64: string,
+  filename: string,
+  mimeType: string
+) => {
+  const byteChars = atob(base64);
+  const bytes = new Uint8Array(byteChars.length);
+  for (let i = 0; i < byteChars.length; i++) {
+    bytes[i] = byteChars.charCodeAt(i);
+  }
+  const blob = new Blob([bytes], { type: mimeType });
+  const downloadUrl = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = downloadUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  // Revoke after a tick so the download has started.
+  setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+};
+
+export const formatSecurityType = (raw: unknown): string => {
+  if (typeof raw !== "string") return "-";
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed === "-") return "-";
+  return trimmed
+    .split(/[\s_]+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+};
+
+const MODULE_ACRONYMS = new Set(["RFI", "NCR", "LEM", "CAPA", "MSA", "KPI"]);
+
+/**
+ * Format an action-log module/entity string for display.
+ * Splits camelCase into words, upper-cases known acronyms (RFI, NCR, ...),
+ * and title-cases everything else. e.g. "rfi" -> "RFI", "ContractSavings" -> "Contract Savings".
+ */
+export const formatModuleLabel = (raw: unknown): string => {
+  if (typeof raw !== "string") return "-";
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed === "-") return trimmed || "-";
+  return trimmed
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .split(/[\s_]+/)
+    .filter(Boolean)
+    .map((w) =>
+      MODULE_ACRONYMS.has(w.toUpperCase())
+        ? w.toUpperCase()
+        : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+    )
+    .join(" ");
+};
+
+/**
+ * Upper-case the acronym "COI" (Certificate of Insurance) for display in
+ * free-text activity / general-update lines. The backend authors those strings
+ * and sometimes emits it lower- or title-cased ("coi" / "Coi"). Whole-word only
+ * (`\bcoi\b`), so ordinary words are never touched (QA #266).
+ */
+export const capitalizeCoi = (text: string): string =>
+  typeof text === "string" ? text.replace(/\bcoi\b/gi, "COI") : text;
+
 export const createFormData = (body: Record<string, any>) => {
   const formData = new FormData();
 
@@ -61,8 +234,21 @@ export const createFormData = (body: Record<string, any>) => {
 };
 
 /**
- * Safely format dates with optional IANA timezone support.
- * Falls back to local formatting when timezone is not provided.
+ * Format a date/time in the VIEWER's local browser timezone.
+ *
+ * The source value is interpreted as an absolute instant (an ISO string with a
+ * `Z`/offset suffix, or a `Date`) and rendered with `date-fns` `format`, whose
+ * tokens read the Date's local getters — so every user sees the same instant in
+ * their own timezone. This is the app-wide model (QA #23/#41a/#44/#49/#59b):
+ * one consistent, viewer-relative clock instead of raw source digits.
+ *
+ * Correctness depends on the backend emitting real instants (`…Z` or an
+ * explicit offset). A naive datetime with no offset is parsed as the viewer's
+ * local time by the JS engine, i.e. shown unconverted — that is a backend
+ * contract gap, not something the display layer can recover.
+ *
+ * The third argument is retained for call-site compatibility but ignored: the
+ * viewer's timezone is always used, never a passed-in zone.
  */
 export function formatDateTZ(
   dateInput: string | Date | undefined | null,
@@ -72,56 +258,325 @@ export function formatDateTZ(
   // Guard: undefined/null -> safe string
   if (!dateInput) return "N/A";
 
-  // If a timezone is requested, we'll interpret the input as an actual instant (Date)
-  // and then render it for that timezone using formatInTimeZone.
-  // if (timezone && timezone.trim().length > 0) {
-  //   let instant: Date;
-
-  //   if (typeof dateInput === "string") {
-  //     // If plain YYYY-MM-DD (no time part) -> construct a UTC midnight for that date
-  //     if (/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
-  //       const [y, m, d] = dateInput.split("-").map(Number);
-  //       // create a UTC midnight instant for that date
-  //       instant = new Date(Date.UTC(y, m - 1, d, 0, 0, 0));
-  //     } else {
-  //       // For ISO-like strings (with 'T' or timezone suffix) parse as ISO -> real instant
-  //       instant = parseISO(dateInput);
-  //     }
-  //   } else {
-  //     instant = dateInput;
-  //   }
-
-  //   if (isNaN(instant.getTime())) return "N/A";
-
-  //   return formatInTimeZone(instant, timezone, formatStr || "MMM dd, yyyy hh:mm a");
-  // }
+  const pattern = formatStr || "MMM dd, yyyy hh:mm a";
 
   try {
-    let date: Date;
+    let instant: Date;
 
     if (typeof dateInput === "string") {
-      const [fullDate, fullTime] = dateInput.split("T");
-      const [year, month, day] = fullDate.split("-").map(Number);
-
-      const [timePart] = fullTime.split("."); // remove .000Z
-      const [hour, minute, second] = timePart.split(":").map(Number);
-
-      date = new Date(year, month - 1, day, hour, minute, second || 0);
+      // Date-only strings (YYYY-MM-DD) carry no instant. Parsing them via
+      // `new Date` would assume UTC midnight and can roll back a day for
+      // west-of-UTC viewers, so build a local-midnight date and render as-is.
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+        const [y, m, d] = dateInput.split("-").map(Number);
+        instant = new Date(y, m - 1, d);
+      } else {
+        // ISO datetime with a Z/offset suffix -> a real instant. `format`
+        // reads local getters, so this renders in the viewer's timezone.
+        instant = new Date(dateInput);
+      }
     } else {
-      // For already-created Date objects
-      date = new Date(
-        dateInput.getFullYear(),
-        dateInput.getMonth(),
-        dateInput.getDate(),
-        dateInput.getHours(),
-        dateInput.getMinutes(),
-        dateInput.getSeconds()
-      );
+      instant = dateInput;
     }
 
-    return format(date, formatStr || "MMM dd, yyyy hh:mm a");
+    if (isNaN(instant.getTime())) return "N/A";
+
+    return format(instant, pattern);
   } catch {
     return "N/A";
+  }
+}
+
+/**
+ * Render a stored value as a calendar date, immune to timezone shifting.
+ *
+ * A contract's effective/end dates are calendar dates, not instants, but the BE
+ * serializes them as midnight-ish ISO datetimes (often `…T00:00:00.000Z`).
+ * Formatting that instant in the viewer's own zone rolls the day back for
+ * viewers west of UTC — e.g. `2026-09-03T00:00:00Z` shows as "02 Sep 2026" in
+ * the Americas (QA #277). Take the date portion (`YYYY-MM-DD`) and render that
+ * via `formatDateTZ`'s date-only path (local midnight), so the day never shifts.
+ * Non-ISO strings and `Date` inputs fall back to `formatDateTZ` unchanged.
+ */
+export function formatCalendarDate(
+  dateInput: string | Date | undefined | null,
+  formatStr = "dd MMM yyyy"
+): string {
+  if (!dateInput) return "N/A";
+  if (typeof dateInput === "string") {
+    const match = dateInput.trim().match(/^(\d{4}-\d{2}-\d{2})/);
+    if (match) return formatDateTZ(match[1], formatStr);
+  }
+  return formatDateTZ(dateInput, formatStr);
+}
+
+/**
+ * Coerce a possibly-naive datetime STRING to an absolute instant by assuming
+ * UTC when it carries no timezone designator.
+ *
+ * `formatDateTZ` renders a real instant (a `…Z`/offset string, or a `Date`) in
+ * the viewer's timezone, but a naive datetime string with no offset is a backend
+ * contract gap it cannot recover — the JS engine reads it as local time and it
+ * shows unconverted. When a field is known to be stored in UTC yet may serialize
+ * without the `Z` (e.g. the proposal pricing timestamp, which arrives naive while
+ * sibling file `uploadedAt` values carry the `Z`), pass it through here first so
+ * it converts to the viewer's zone consistently with those siblings.
+ *
+ * Values that already carry a `Z`/±offset, date-only strings (`YYYY-MM-DD`), and
+ * non-strings (already-parsed `Date`s) are returned unchanged.
+ */
+export const ensureUtcInstant = (
+  value: string | Date | undefined | null
+): string | Date | undefined | null => {
+  if (typeof value !== "string") return value;
+  const v = value.trim();
+  // Date-only — no time component to anchor; leave to formatDateTZ's handling.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  // Already an absolute instant (trailing Z or ±HH:MM / ±HHMM offset).
+  if (/([zZ]|[+-]\d{2}:?\d{2})$/.test(v)) return v;
+  // Datetime lacking an offset — treat as UTC (normalize the space form too).
+  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(v)) return `${v.replace(" ", "T")}Z`;
+  return v;
+};
+
+/**
+ * Render a datetime as the wall-clock time it was entered in, plus its zone
+ * label — never shifted into the viewer's own timezone.
+ *
+ * Solicitation datetimes are wall-clock times in the solicitation's declared
+ * `timezone` (the picker stores abbreviations like "EST"). The BE serializes
+ * them as that same wall clock stamped UTC — e.g. 1 PM EST arrives as
+ * `2026-10-05T13:00:00.000Z`. `formatDateTZ` reads that instant with local
+ * getters and so shifts it into the viewer's zone (QA: a 1 PM EST event showed
+ * as 3 PM for a UTC+2 viewer, and its `_timezone` arg was ignored). Echo the
+ * stored wall-clock digits (via UTC getters) and append the zone label, so
+ * every viewer sees the time exactly as it was entered.
+ */
+export function formatWallClockWithZone(
+  dateInput: string | Date | undefined | null,
+  formatStr?: string,
+  zoneAbbrev?: string
+): string {
+  if (!dateInput) return "N/A";
+  const pattern = formatStr || "MMM dd, yyyy hh:mm a";
+  const label = (zoneAbbrev ?? "").trim();
+  const suffix = label ? ` ${label}` : "";
+
+  try {
+    // Date-only strings carry no time; render the calendar date as-is.
+    if (
+      typeof dateInput === "string" &&
+      /^\d{4}-\d{2}-\d{2}$/.test(dateInput.trim())
+    ) {
+      const [y, m, d] = dateInput.trim().split("-").map(Number);
+      return `${format(new Date(y, m - 1, d), pattern)}${suffix}`;
+    }
+
+    // Coerce to a UTC instant: naive datetimes (no Z/offset) are stored as UTC
+    // by the BE, so treat them as such; Z/offset strings already are one.
+    const normalized =
+      typeof dateInput === "string" ? ensureUtcInstant(dateInput) : dateInput;
+    const instant =
+      typeof normalized === "string" ? new Date(normalized) : normalized;
+    if (!(instant instanceof Date) || isNaN(instant.getTime())) return "N/A";
+
+    // Rebuild a local Date from the instant's UTC fields, so date-fns `format`
+    // echoes the stored wall-clock digits regardless of the viewer's zone.
+    const local = new Date(
+      instant.getUTCFullYear(),
+      instant.getUTCMonth(),
+      instant.getUTCDate(),
+      instant.getUTCHours(),
+      instant.getUTCMinutes(),
+      instant.getUTCSeconds()
+    );
+    return `${format(local, pattern)}${suffix}`;
+  } catch {
+    return "N/A";
+  }
+}
+
+// One format for the question acceptance deadline, so the Timeline tab and the
+// Questions tab banner render it identically (QA #190).
+export const QUESTION_DEADLINE_FORMAT = "MMM d, yyyy h:mm a";
+
+/** The question acceptance deadline as entered, with the solicitation's zone. */
+export function formatQuestionDeadline(
+  dateInput: string | Date | undefined | null,
+  zoneAbbrev?: string
+): string {
+  return formatWallClockWithZone(dateInput, QUESTION_DEADLINE_FORMAT, zoneAbbrev);
+}
+
+/**
+ * The real instant of a solicitation wall-clock datetime (see
+ * `formatWallClockWithZone`): the stored UTC digits are read as a wall clock in
+ * `zoneAbbrev` and converted to UTC — e.g. `2026-10-09T09:00:00.000Z` with "CST"
+ * is 9 AM Chicago time (14:00Z in October). Use this for deadline comparisons
+ * against `Date.now()`. An unknown/absent zone falls back to the stored instant.
+ */
+export function wallClockInZoneToInstant(
+  dateInput: string | Date | undefined | null,
+  zoneAbbrev?: string
+): Date | null {
+  if (!dateInput) return null;
+  const normalized =
+    typeof dateInput === "string" ? ensureUtcInstant(dateInput) : dateInput;
+  const wall =
+    typeof normalized === "string" ? new Date(normalized) : normalized;
+  if (!(wall instanceof Date) || isNaN(wall.getTime())) return null;
+
+  const abbr = (zoneAbbrev ?? "").trim().toUpperCase();
+  const iana = ZONE_ABBREV_IANA[abbr];
+  const offsetMin = iana
+    ? getTimeZoneOffset(wall, iana)
+    : ZONE_ABBREV_OFFSET_MINUTES[abbr] ?? 0;
+  return new Date(wall.getTime() - offsetMin * 60000);
+}
+
+// Fixed UTC offsets (minutes east of UTC) for the timezone abbreviations in
+// `src/assets/timezones.json` — the same labels the app's timezone pickers store
+// and the BE returns on the dashboard activity feeds. Used only for zones that
+// do NOT observe daylight saving; DST-observing labels are resolved per-instant
+// via `ZONE_ABBREV_IANA` instead (a fixed offset would be an hour off for half
+// the year). Two labels collide in that JSON; we resolve each to its more common
+// meaning: `CST` → US Central (−360, not China +480) and `AST` → Atlantic (−240,
+// not Arabia +180). Unknown/absent abbreviations fall back to viewer-local
+// formatting (see `formatDateInZoneAbbrev`).
+const ZONE_ABBREV_OFFSET_MINUTES: Record<string, number> = {
+  UTC: 0, GMT: 0, WET: 0,
+  AZOT: -60, CVT: -60,
+  BRT: -180, ART: -180,
+  AST: -240, CLT: -240, VET: -240,
+  EST: -300, COT: -300, PET: -300,
+  CST: -360, MST: -420, PST: -480, HST: -600,
+  CET: 60, BST: 60, WAT: 60,
+  EET: 120, CAT: 120,
+  MSK: 180, EAT: 180,
+  GST: 240,
+  IST: 330, PKT: 300, YEKT: 300,
+  NPT: 345,
+  BTT: 360, ALMT: 360, OMST: 360,
+  MMT: 390,
+  ICT: 420, WIB: 420, KRAT: 420,
+  AWST: 480, WITA: 480, PHT: 480, SGT: 480, MYT: 480, IRKT: 480,
+  ACST: 570,
+  JST: 540, KST: 540, WIT: 540, YAKT: 540,
+  AEST: 600, VLAT: 600,
+  MAGT: 660,
+  NZST: 720, PETT: 720, FIJI: 720,
+  CHAST: 765,
+  TON: 780,
+  LINT: 840,
+};
+
+// Abbreviations of DST-observing zones -> a representative IANA zone. For these,
+// the correct offset (and the correct seasonal label, e.g. EDT vs EST) is
+// resolved for the specific instant via `Intl`, so a summer timestamp is not an
+// hour behind. Both the standard and daylight labels map to the same zone. GMT
+// is intentionally excluded (it is widely used as a fixed UTC alias); UTC/WAT/GST
+// etc. observe no DST and stay on the fixed table above.
+const ZONE_ABBREV_IANA: Record<string, string> = {
+  EST: "America/New_York", EDT: "America/New_York",
+  CST: "America/Chicago", CDT: "America/Chicago",
+  MST: "America/Denver", MDT: "America/Denver",
+  PST: "America/Los_Angeles", PDT: "America/Los_Angeles",
+  CET: "Europe/Paris", CEST: "Europe/Paris",
+  EET: "Europe/Athens", EEST: "Europe/Athens",
+  BST: "Europe/London",
+  AEST: "Australia/Sydney", AEDT: "Australia/Sydney",
+  ACST: "Australia/Adelaide", ACDT: "Australia/Adelaide",
+  NZST: "Pacific/Auckland", NZDT: "Pacific/Auckland",
+};
+
+/**
+ * Format a UTC instant as the wall-clock time in a named standard-time zone
+ * abbreviation (e.g. `"EST"`), with the abbreviation appended:
+ *   ("2026-08-12T09:49:32Z", "MMM d, yyyy h:mm a", "EST") -> "Aug 12, 2026 4:49 AM EST"
+ *
+ * Unlike `formatDateTZ` (which always renders in the viewer's own zone), this
+ * converts the instant into the record's own zone so each activity shows the
+ * time in the actor's zone. Falls back to `formatDateTZ` (viewer-local, no
+ * label) when the abbreviation is absent or unrecognized, so items without a
+ * timezone keep the existing behavior.
+ */
+export function formatDateInZoneAbbrev(
+  dateInput: string | Date | undefined | null,
+  formatStr?: string,
+  zoneAbbrev?: string | null
+): string {
+  if (!dateInput) return "N/A";
+  const abbr = (zoneAbbrev ?? "").trim();
+
+  // A naive datetime string (no Z/offset) is stored by the BE as UTC; append a
+  // `Z` so it parses as the correct instant instead of the viewer's local wall
+  // clock. Date-only and already-zoned strings pass through unchanged.
+  let normalizedInput: string | Date = dateInput;
+  if (typeof dateInput === "string") {
+    const s = dateInput.trim();
+    const naive =
+      !/^\d{4}-\d{2}-\d{2}$/.test(s) &&
+      !/([zZ]|[+-]\d{2}:?\d{2})$/.test(s) &&
+      /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(s);
+    normalizedInput = naive ? `${s.replace(" ", "T")}Z` : s;
+  }
+  const instant =
+    typeof normalizedInput === "string"
+      ? new Date(normalizedInput)
+      : normalizedInput;
+  if (!(instant instanceof Date) || isNaN(instant.getTime())) return "N/A";
+
+  // Prefer a real IANA zone for DST-observing abbreviations: resolve the offset
+  // for THIS instant (so summer timestamps aren't an hour behind) and use the
+  // instant's own seasonal label (EDT vs EST). Fall back to the fixed
+  // standard-offset table for non-DST zones, then to viewer-local.
+  const iana = ZONE_ABBREV_IANA[abbr.toUpperCase()];
+  let offsetMin: number | undefined;
+  let label = abbr;
+  if (iana) {
+    offsetMin = getTimeZoneOffset(instant, iana);
+    label = zoneShortName(instant, iana) ?? abbr;
+  } else {
+    offsetMin = ZONE_ABBREV_OFFSET_MINUTES[abbr];
+  }
+  // Fall back to viewer-local, but pass the NORMALIZED input: a naive datetime
+  // (BE stores it as UTC) must keep its `Z` suffix here, otherwise formatDateTZ
+  // reparses it as the viewer's local wall clock and echoes the raw UTC digits
+  // instead of converting the real instant to local time (action-log times
+  // showed UTC, e.g. 03:15 instead of the actor's local 08:15).
+  if (offsetMin === undefined) return formatDateTZ(normalizedInput, formatStr);
+
+  // Shift the instant so its UTC fields equal the target zone's wall clock, then
+  // rebuild via the local `Date` constructor — `format` reads local getters, so
+  // it echoes those exact digits regardless of the viewer's own timezone.
+  const shifted = new Date(instant.getTime() + offsetMin * 60000);
+  const local = new Date(
+    shifted.getUTCFullYear(),
+    shifted.getUTCMonth(),
+    shifted.getUTCDate(),
+    shifted.getUTCHours(),
+    shifted.getUTCMinutes(),
+    shifted.getUTCSeconds()
+  );
+  const pattern = formatStr || "MMM dd, yyyy hh:mm a";
+  return `${format(local, pattern)} ${label}`;
+}
+
+// The zone's short name (e.g. "EST"/"EDT") for a given instant, via Intl.
+// Returns undefined when the platform yields a numeric name (e.g. "GMT-5") or
+// on any failure, so callers keep the BE-supplied abbreviation.
+function zoneShortName(instant: Date, timeZone: string): string | undefined {
+  try {
+    const name = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      timeZoneName: "short",
+    })
+      .formatToParts(instant)
+      .find((p) => p.type === "timeZoneName")?.value;
+    if (!name || /[+-]?\d/.test(name)) return undefined;
+    return name;
+  } catch {
+    return undefined;
   }
 }
 
@@ -203,4 +658,17 @@ export const formatDateForInput = (dateString: string) => {
   if (!dateString) return "";
   const date = new Date(dateString);
   return date.toISOString().split("T")[0];
+};
+
+export const parseFileSize = (size: string | number): number => {
+  if (typeof size === "number") return size;
+  const match = size.match(/^([\d.]+)\s*(KB|MB|GB|TB)?$/i);
+  if (!match) return 0;
+  const value = parseFloat(match[1]);
+  const unit = match[2]?.toUpperCase();
+  if (unit === "KB") return value * 1024;
+  if (unit === "MB") return value * 1024 * 1024;
+  if (unit === "GB") return value * 1024 * 1024 * 1024;
+  if (unit === "TB") return value * 1024 * 1024 * 1024 * 1024;
+  return value;
 };

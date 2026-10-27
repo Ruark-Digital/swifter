@@ -6,8 +6,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Edit } from "lucide-react";
-import { Forge, useForge } from "@/lib/forge";
+import { Edit, X } from "lucide-react";
+import { Forge, useForge } from "@adexdsamson/forge";
 import * as yup from "yup";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { postRequest, getRequest, putRequest } from "@/lib/axiosInstance";
@@ -179,17 +179,24 @@ type Solicitation = {
 interface EditSolicitationDialogProps {
   solicitation: Solicitation;
   isLink?: boolean;
+  /** Controlled open state. When provided (with `onOpenChange`), the dialog is
+   *  driven by the parent — used to render it OUTSIDE a dropdown menu so the
+   *  menu closing (e.g. when the native file picker steals focus) can't unmount
+   *  it. Omit for the self-contained, trigger-driven usage. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Render the built-in "Edit Solicitation" trigger button. Default true; set
+   *  false when the parent opens the dialog itself (controlled mode). */
+  showTrigger?: boolean;
 }
 
 const EditSolicitationDialog = ({
   solicitation,
   isLink,
+  open,
+  onOpenChange,
+  showTrigger,
 }: EditSolicitationDialogProps) => {
-  const toast = useToastHandler();
-  const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1);
-  const clearSession = useClearSession();
   const { isCompanyAdmin } = useUserRole();
 
   // Hide edit button for non-company admin when solicitation is closed or awarded
@@ -199,6 +206,36 @@ const EditSolicitationDialog = ({
   ) {
     return null;
   }
+  return (
+    <EditSolicitationDialogContent
+      solicitation={solicitation}
+      isLink={isLink}
+      open={open}
+      onOpenChange={onOpenChange}
+      showTrigger={showTrigger}
+    />
+  );
+};
+
+const EditSolicitationDialogContent = ({
+  solicitation,
+  isLink,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+  showTrigger = true,
+}: EditSolicitationDialogProps) => {
+  const toast = useToastHandler();
+  const queryClient = useQueryClient();
+  const [internalOpen, setInternalOpen] = useState(false);
+  // Support both self-contained (internal state) and parent-controlled open.
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (value: boolean) => {
+    if (!isControlled) setInternalOpen(value);
+    controlledOnOpenChange?.(value);
+  };
+  const [currentStep, setCurrentStep] = useState(1);
+  const clearSession = useClearSession();
 
   // Types for category API
   type VendorCategory = {
@@ -300,7 +337,10 @@ const EditSolicitationDialog = ({
     const categoryId = categories.length > 0 ? categories[0]._id : "";
     const vendors =
       s.vendors?.map((vendor: any) => ({
-        value: vendor._id,
+        // Use the real vendor id (`vendor.id._id`), not the solicitation-vendor
+        // row `_id`, so the selected tags match the vendor dropdown options
+        // (whose value is the vendor id) and the correct id is submitted.
+        value: vendor?.id?._id,
         label: vendor?.id?.name || vendor.email || vendor?.id?.invite?.email,
         name: vendor?.id?.name || vendor.email || vendor?.id?.invite?.email,
       })) || [];
@@ -354,6 +394,23 @@ const EditSolicitationDialog = ({
     forge.reset(getDefaultValues());
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveSolicitation, open]);
+
+  // While the multi-step editor is open, neutralise the browser's default
+  // file-drop behaviour for drops that miss the dropzone. Without this, a file
+  // dropped on the header, padding, or backdrop makes the browser navigate away
+  // to open that file — unloading the SPA, so the dialog appears to "close"
+  // whenever the user drags a file in. The Step 4 dropzone stops propagation on
+  // its own drops, so a real upload is unaffected.
+  useEffect(() => {
+    if (!open) return;
+    const prevent = (e: DragEvent) => e.preventDefault();
+    window.addEventListener("dragover", prevent);
+    window.addEventListener("drop", prevent);
+    return () => {
+      window.removeEventListener("dragover", prevent);
+      window.removeEventListener("drop", prevent);
+    };
+  }, [open]);
 
   // File upload mutation
   const { mutateAsync: uploadFiles } = useMutation<
@@ -573,7 +630,8 @@ const EditSolicitationDialog = ({
 
   const handleBack = () => {
     if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
+      const isPublic = forge.getValues().visibility === "public";
+      setCurrentStep(currentStep === 6 && isPublic ? 4 : currentStep - 1);
     }
   };
 
@@ -728,7 +786,8 @@ const EditSolicitationDialog = ({
           formData.vendor && formData.vendor.length > 0
             ? formData.vendor.map((item: any) => ({ id: item.value }))
             : effectiveSolicitation.vendors?.map((vendor: any) => ({
-                id: vendor._id,
+                // Real vendor id, not the solicitation-vendor row `_id`.
+                id: vendor?.id?._id,
               })),
       };
 
@@ -793,8 +852,13 @@ const EditSolicitationDialog = ({
           break;
       }
 
-      // If we reach here, validation passed, proceed to next step
-      setCurrentStep((prev) => prev + 1);
+      // If we reach here, validation passed, proceed to next step.
+      // Public solicitations are broadcast to all vendors and do not need an
+      // explicit invitation step, so skip step 5 (Invite Vendors).
+      setCurrentStep((prev) => {
+        const isPublic = forge.getValues().visibility === "public";
+        return prev === 4 && isPublic ? 6 : prev + 1;
+      });
     } catch (error) {
       // Handle validation errors
       if (error instanceof yup.ValidationError) {
@@ -831,49 +895,74 @@ const EditSolicitationDialog = ({
   };
 
   const getStepTitle = () => {
+    const isPublic = forge.getValues().visibility === "public";
+    const totalSteps = isPublic ? 5 : 6;
+    const displayStep = currentStep === 6 && isPublic ? 5 : currentStep;
     switch (currentStep) {
       case 1:
-        return "Step 1 of 6: Basic Information";
+        return `Step ${displayStep} of ${totalSteps}: Basic Information`;
       case 2:
-        return "Step 2 of 6: Timeline & Bid Details";
+        return `Step ${displayStep} of ${totalSteps}: Timeline & Bid Details`;
       case 3:
-        return "Step 3 of 6: Create Event";
+        return `Step ${displayStep} of ${totalSteps}: Create Event`;
       case 4:
-        return "Step 4 of 6: Documents";
+        return `Step ${displayStep} of ${totalSteps}: Documents`;
       case 5:
-        return "Step 5 of 6: Invite Vendors";
+        return `Step ${displayStep} of ${totalSteps}: Invite Vendors`;
       case 6:
-        return "Step 6 of 6: Review & Publish";
+        return `Step ${displayStep} of ${totalSteps}: Review & Publish`;
       default:
         return "Step 1 of 6: Basic Information";
     }
   };
 
+  // Explicit close — the only way this editor dismisses. Clears the file
+  // session and resets to step 1.
+  const handleClose = () => {
+    clearSession();
+    setOpen(false);
+    setCurrentStep(1);
+  };
+
+  // Radix asks to close on outside clicks, Escape, AND — the actual bug here —
+  // when the native file picker opens (Chrome fires a focus/pointer change that
+  // Radix reads as a dismiss), which made the whole multi-step editor vanish
+  // the moment the user clicked "choose file". Ignore every auto-close request
+  // and only honour an explicit open. Closing is driven solely by the header ✕,
+  // Escape, or the footer actions — none of which involve the file dialog.
   const handleDialogOpenChange = (isOpen: boolean) => {
-    if (!isOpen) {
-      // Clear file session when dialog is closed (user exits)
-      clearSession();
-    }
-    setOpen(isOpen);
+    if (isOpen) setOpen(true);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
-      <DialogTrigger asChild>
-        <Button
-          // variant={isLink ? "link" : "default"}
-          className={cn(
-            "flex items-center gap-2 bg-gray-300 text-gray-800 hover:bg-gray-400",
-            {
-              "!bg-transparent !text-gray-600": isLink,
-            }
-          )}
-        >
-          {!isLink && <Edit className="h-4 w-4" />}
-          Edit Solicitation
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+      {showTrigger && (
+        <DialogTrigger asChild>
+          <Button
+            // variant={isLink ? "link" : "default"}
+            className={cn(
+              "flex items-center gap-2 bg-gray-300 text-gray-800 hover:bg-gray-400",
+              {
+                "!bg-transparent !text-gray-600": isLink,
+              }
+            )}
+          >
+            {!isLink && <Edit className="h-4 w-4" />}
+            Edit Solicitation
+          </Button>
+        </DialogTrigger>
+      )}
+      <DialogContent
+        className="max-w-2xl max-h-[90vh] overflow-y-auto p-0"
+        // Since onOpenChange ignores auto-close, the built-in close button
+        // (which routes through it) would be inert — render our own ✕ below and
+        // keep Escape working via an explicit handler.
+        showCloseButton={false}
+        onEscapeKeyDown={(e) => {
+          e.preventDefault();
+          handleClose();
+        }}
+      >
         {/* Custom Header with Close Button */}
         <div className="flex items-center justify-between p-6">
           <div>
@@ -882,6 +971,14 @@ const EditSolicitationDialog = ({
             </DialogTitle>
             <p className="text-sm text-gray-500 mt-1">{getStepTitle()}</p>
           </div>
+          <button
+            type="button"
+            onClick={handleClose}
+            aria-label="Close"
+            className="rounded-sm p-1 text-gray-500 opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
         {/* Form Content */}
@@ -963,9 +1060,18 @@ const EditSolicitationDialog = ({
               >
                 Back
               </Button>
+              {/* Always type="button". Letting the type flip to "submit" on the
+                  final step hands the browser control of when the form fires,
+                  so arriving at step 6 could publish/update before the user
+                  pressed anything. Submit is driven explicitly by this click
+                  via forge.handleSubmit and nothing else. */}
               <Button
-                type={currentStep === 6 ? "submit" : "button"}
-                onClick={currentStep === 6 ? undefined : validateAndProceed}
+                type="button"
+                onClick={
+                  currentStep === 6
+                    ? forge.handleSubmit(onSubmit)
+                    : validateAndProceed
+                }
                 disabled={isPending}
                 className="px-8 py-2 bg-[#2A4467] hover:bg-[#1e3147] text-white rounded-lg"
               >

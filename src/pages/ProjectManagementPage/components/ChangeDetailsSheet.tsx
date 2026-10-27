@@ -6,28 +6,48 @@ import {
   SheetHeader,
   SheetTitle,
   SheetFooter,
+  SheetClose,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ArrowLeft, Share2, Eye, Download } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { ArrowLeft, Share2, Eye, Download, Pencil, Loader2 } from "lucide-react";
 import { formatFileSize, getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import { DataTable } from "@/components/layouts/DataTable";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef, PaginationState } from "@tanstack/react-table";
+import { format, subDays } from "date-fns";
+import { useDebounceValue } from "usehooks-ts";
 import LinkedContractsHeader from "./LinkedContractsHeader";
 import {
   useProjectDetail,
+  useProjectContracts,
   useCompleteProject,
+  useUpdateProject,
+  useExportProject,
   type Project,
+  type ProjectExportType,
 } from "../hooks/useProjectApi";
 import { useToastHandler } from "@/hooks/useToaster";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState as GenericEmptyState } from "@/components/ui/empty-state";
 import { ApiResponseError } from "@/types";
 import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
-import { formatDateTZ } from "@/lib/utils";
+import { formatDateTZ, resolveCurrency } from "@/lib/utils";
+import { useUser } from "@/store/authSlice";
+import {
+  ContractStatusBadge,
+  type Status,
+} from "@/pages/ContractManagementPage/components/StatusBadge";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import CreateProjectDialog from "./CreateProjectDialog";
+import UpdateEacDialog from "./UpdateEacDialog";
 
 type Props = {
   trigger?: React.ReactNode;
@@ -46,10 +66,14 @@ const LabelRow = ({
   highlight?: boolean;
 }) => (
   <div className="space-y-3 py-2">
-    <span className="text-sm text-slate-500 block">{label}</span>
+    <span className="text-sm text-slate-500 dark:text-slate-400 block">
+      {label}
+    </span>
     <span
       className={`text-sm block ${
-        highlight ? "font-semibold text-slate-900" : "text-slate-800 font-bold"
+        highlight
+          ? "font-semibold text-slate-900 dark:text-slate-100"
+          : "text-slate-800 dark:text-slate-200 font-bold"
       }`}
     >
       {value}
@@ -99,15 +123,20 @@ const DocCard = ({
       ? "text-orange-700"
       : "text-slate-700";
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-slate-200 p-4">
+    <div className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
       <div
         className={`flex items-center justify-center h-12 w-12 rounded ${bg}`}
       >
         {iconEl}
       </div>
-      <div className="flex-1">
-        <p className="text-sm font-medium text-slate-900">{name}</p>
-        <p className="text-xs text-slate-500">
+      <div className="flex-1 min-w-0">
+        <p
+          className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate"
+          title={name}
+        >
+          {name}
+        </p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           <span className={tone}>{ext}</span> • {sizeLabel}
         </p>
       </div>
@@ -115,18 +144,18 @@ const DocCard = ({
         <button
           type="button"
           aria-label="Preview"
-          className="h-9 w-9 rounded-full bg-slate-100 grid place-items-center"
+          className="h-9 w-9 rounded-full bg-slate-100 dark:bg-slate-800 grid place-items-center"
           onClick={onPreview}
         >
-          <Eye className="h-4 w-4 text-slate-600" />
+          <Eye className="h-4 w-4 text-slate-600 dark:text-slate-300" />
         </button>
         <button
           type="button"
           aria-label="Download"
-          className="h-9 w-9 rounded-full bg-slate-100 grid place-items-center"
+          className="h-9 w-9 rounded-full bg-slate-100 dark:bg-slate-800 grid place-items-center"
           onClick={onDownload}
         >
-          <Download className="h-4 w-4 text-slate-600" />
+          <Download className="h-4 w-4 text-slate-600 dark:text-slate-300" />
         </button>
       </div>
     </div>
@@ -144,7 +173,7 @@ type ContractRow = {
   owner: string;
   published?: string;
   endDate?: string;
-  status: "Active" | "Draft" | "Expired" | "Terminated" | "Suspended";
+  status?: Status;
 };
 
 const linkedColumns: ColumnDef<ContractRow>[] = [
@@ -152,15 +181,18 @@ const linkedColumns: ColumnDef<ContractRow>[] = [
     accessorKey: "title",
     header: "Contracts",
     cell: ({ row }) => (
-      <div className="flex flex-col">
+      <div className="flex flex-col max-w-[320px] min-w-0">
         <a
           href={`/dashboard/contract-management/${row.original.id}`}
           data-testid="project-name-link"
-          className="font-medium text-slate-900 underline-offset-2 hover:underline"
+          title={row.original.title}
+          className="block truncate font-medium text-slate-900 dark:text-slate-100 underline-offset-2 hover:underline"
         >
           {row.original.title}
         </a>
-        <span className="text-xs text-slate-500">{row.original.code}</span>
+        <span className="truncate text-xs text-slate-500 dark:text-slate-400">
+          {row.original.code}
+        </span>
       </div>
     ),
   },
@@ -170,7 +202,11 @@ const linkedColumns: ColumnDef<ContractRow>[] = [
     header: "Value",
     cell: ({ getValue }) => {
       const v = getValue<string | undefined>();
-      return <span className="font-semibold text-slate-900">{v ?? "-"}</span>;
+      return (
+        <span className="font-semibold text-slate-900 dark:text-slate-100">
+          {v ?? "-"}
+        </span>
+      );
     },
   },
   { accessorKey: "owner", header: "Owner" },
@@ -178,7 +214,7 @@ const linkedColumns: ColumnDef<ContractRow>[] = [
     id: "date",
     header: "Date",
     cell: ({ row }) => (
-      <div className="text-xs text-slate-500">
+      <div className="text-xs text-slate-500 dark:text-slate-400">
         {row.original.published && (
           <div>Published: {row.original.published}</div>
         )}
@@ -189,23 +225,9 @@ const linkedColumns: ColumnDef<ContractRow>[] = [
   {
     accessorKey: "status",
     header: "Status",
-    cell: ({ getValue }) => {
-      const s = getValue<ContractRow["status"]>();
-      const tone =
-        s === "Active"
-          ? "bg-green-100 text-green-700"
-          : s === "Draft"
-          ? "bg-slate-100 text-slate-700"
-          : "bg-red-100 text-red-700";
-      return (
-        <span
-          data-testid="contract-status-badge"
-          className={`px-2 py-1 rounded-full text-xs font-medium ${tone}`}
-        >
-          {s}
-        </span>
-      );
-    },
+    cell: ({ getValue }) => (
+      <ContractStatusBadge status={getValue<ContractRow["status"]>()} />
+    ),
   },
   {
     id: "actions",
@@ -222,12 +244,31 @@ const linkedColumns: ColumnDef<ContractRow>[] = [
   },
 ];
 
+/** Maps the Date dropdown to the API's `yyyy/MM/dd-yyyy/MM/dd` range param.
+ *  "all"/"custom" don't constrain — there's no custom-range picker yet. */
+const toDateRangeParam = (dateFilter: string) => {
+  const days =
+    dateFilter === "today"
+      ? 0
+      : dateFilter === "last7days"
+        ? 7
+        : dateFilter === "last30days"
+          ? 30
+          : null;
+  if (days === null) return undefined;
+  const now = new Date();
+  return `${format(subDays(now, days), "yyyy/MM/dd")}-${format(now, "yyyy/MM/dd")}`;
+};
+
 const ChangeDetailsSheet: React.FC<Props> = ({
   trigger,
   projectId,
   open,
   onOpenChange,
 }) => {
+  const profileCurrency = useUser()?.currency;
+  // View-only users get a read-only sheet: no export/edit/complete/EAC actions.
+  const { isViewOnly } = useUserRole();
   const toast = useToastHandler();
   const [searchQuery, setSearchQuery] = React.useState("");
   const [dateFilter, setDateFilter] = React.useState("all");
@@ -238,6 +279,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   );
   const [completeConfirmOpen, setCompleteConfirmOpen] = React.useState(false);
   const [editProjectOpen, setEditProjectOpen] = React.useState(false);
+  const [eacDialogOpen, setEacDialogOpen] = React.useState(false);
 
   const {
     data: projectRes,
@@ -246,10 +288,105 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     refetch: refetchProject,
   } = useProjectDetail(projectId);
 
+  // Linked contracts come from the dedicated endpoint, not the project-detail
+  // response (whose `contract` array is not populated) — QA #136.
+  // QA #42: search, Date and Status all filter. The endpoint is paginated, so
+  // they're sent as query params rather than applied to the current page.
+  const [debouncedSearch] = useDebounceValue(searchQuery.trim(), 300);
+  const [contractsPagination, setContractsPagination] =
+    React.useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
+
+  // Any filter change starts again from the first page.
+  React.useEffect(() => {
+    setContractsPagination((p) => ({ ...p, pageIndex: 0 }));
+  }, [debouncedSearch, statusFilter, dateFilter, projectId]);
+
+  const { data: contractsRes, isLoading: isContractsLoading } =
+    useProjectContracts(projectId, {
+      title: debouncedSearch || undefined,
+      status: statusFilter || undefined,
+      date: toDateRangeParam(dateFilter),
+      page: contractsPagination.pageIndex + 1,
+      limit: contractsPagination.pageSize,
+    });
+  const contractsData = contractsRes?.data?.data;
+  const linkedContracts = React.useMemo(
+    () =>
+      Array.isArray(contractsData)
+        ? contractsData
+        : (contractsData?.contracts ?? []),
+    [contractsData]
+  );
+  const totalLinkedContracts = Array.isArray(contractsData)
+    ? contractsData.length
+    : (contractsData?.totalContracts ?? linkedContracts.length);
+
+  const linkedRows = React.useMemo<ContractRow[]>(
+    () =>
+      linkedContracts.map((c) => ({
+        id: c._id,
+        title: c.title,
+        code: "",
+        vendor: c.vendor?.name ?? "-",
+        value:
+          c.contractValue != null
+            ? new Intl.NumberFormat(undefined, {
+                style: "currency",
+                currency: resolveCurrency(c.currency, profileCurrency),
+                maximumFractionDigits: 0,
+              }).format(c.contractValue)
+            : undefined,
+        owner: c.creator?.name ?? "-",
+        published: c.startDate
+          ? formatDateTZ(c.startDate, "MMM d, yyyy")
+          : undefined,
+        endDate: c.endDate ? formatDateTZ(c.endDate, "MMM d, yyyy") : undefined,
+        status: c.status,
+      })),
+    [linkedContracts, profileCurrency]
+  );
+
   const completeMutation = useCompleteProject(projectId);
+  const updateMutation = useUpdateProject(projectId);
+  const exportMutation = useExportProject(projectId);
 
   const project = projectRes?.data?.data;
   const isCompleted = project?.status === "completed";
+
+  // QA #294 — export the project via the BE endpoint (PDF or DOCX). The
+  // response is a binary stream; save it with the project name + extension.
+  const handleExport = React.useCallback(
+    async (exportType: ProjectExportType) => {
+      if (!projectId || exportMutation.isPending) return;
+      try {
+        const data = await exportMutation.mutateAsync(exportType);
+        const mime =
+          exportType === "pdf"
+            ? "application/pdf"
+            : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        const blob = new Blob([data], { type: mime });
+        const objectUrl = window.URL.createObjectURL(blob);
+        const safeName = (project?.name ?? "project")
+          .trim()
+          .replace(/[^\w.-]+/g, "-")
+          .replace(/^-+|-+$/g, "") || "project";
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = `${safeName}.${exportType}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(objectUrl);
+        toast.success(
+          "Export complete",
+          `Project exported as ${exportType.toUpperCase()}`
+        );
+      } catch (err) {
+        toast.error("Export failed", err as ApiResponseError);
+      }
+    },
+    [projectId, exportMutation, project?.name, toast]
+  );
 
   const sheetProps =
     typeof open === "boolean" ? { open, onOpenChange } : undefined;
@@ -308,23 +445,52 @@ const ChangeDetailsSheet: React.FC<Props> = ({
           <SheetHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <ArrowLeft
-                  className="h-4 w-4 text-slate-500"
-                  aria-hidden="true"
-                />
-                <SheetTitle className="text-[#2A4467]">
+                <SheetClose asChild>
+                  <button
+                    type="button"
+                    aria-label="Go back"
+                    className="flex items-center justify-center text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                </SheetClose>
+                <SheetTitle className="text-[#2A4467] dark:text-slate-100">
                   Project Details
                 </SheetTitle>
               </div>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm">
-                  <Share2 className="mr-2 h-4 w-4" /> Export
-                </Button>
-              </div>
+              {!isViewOnly && (
+                <div className="flex items-center gap-2 mr-10">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        aria-label="Export project"
+                        disabled={!projectId || exportMutation.isPending}
+                      >
+                        {exportMutation.isPending ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Share2 className="mr-2 h-4 w-4" />
+                        )}{" "}
+                        Export
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onSelect={() => handleExport("pdf")}>
+                        Export as PDF
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => handleExport("docx")}>
+                        Export as Word (DOCX)
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
             </div>
           </SheetHeader>
 
-          <h3 className="text-lg font-semibold text-slate-900">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
             {projectRes?.data?.data?.name ?? ""}
           </h3>
 
@@ -366,7 +532,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                           projectRes?.data?.data?.budget != null
                             ? new Intl.NumberFormat(undefined, {
                                 style: "currency",
-                                currency: "USD",
+                                currency: resolveCurrency(undefined, profileCurrency),
                                 maximumFractionDigits: 0,
                               }).format(projectRes.data.data.budget)
                             : ""
@@ -398,14 +564,23 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                       <LabelRow
                         label="Created by"
                         value={
-                          <a
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline font-normal"
-                            href={`mailto:${projectRes?.data?.data?.creator?.email}`}
-                          >
-                            {projectRes?.data?.data?.creator?.email ?? ""}
-                          </a>
+                          <div className="flex flex-col gap-1">
+                            <span>
+                              {projectRes?.data?.data?.creator?.name ??
+                                projectRes?.data?.data?.creator?.email ??
+                                "-"}
+                            </span>
+                            {projectRes?.data?.data?.creator?.email ? (
+                              <a
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline font-normal"
+                                href={`mailto:${projectRes?.data?.data?.creator?.email}`}
+                              >
+                                {projectRes?.data?.data?.creator?.email}
+                              </a>
+                            ) : null}
+                          </div>
                         }
                       />
                     </>
@@ -422,21 +597,47 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                     <>
                       <LabelRow
                         label="Project Category"
-                        value={projectRes?.data?.data?.category ?? ""}
+                        value={(projectRes?.data?.data?.category ?? "").replace(/_/g, " ")}
                         highlight
                       />
                       <LabelRow
                         label="EAC"
-                        value={
-                          projectRes?.data?.data?.budget != null
-                            ? new Intl.NumberFormat(undefined, {
-                                style: "currency",
-                                currency: "USD",
-                                maximumFractionDigits: 0,
-                              }).format(projectRes.data.data.budget)
-                            : ""
-                        }
                         highlight
+                        value={
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                              <span>
+                                {project?.eac != null
+                                  ? new Intl.NumberFormat(undefined, {
+                                      style: "currency",
+                                      currency: resolveCurrency(undefined, profileCurrency),
+                                      maximumFractionDigits: 0,
+                                    }).format(project.eac)
+                                  : "Not set"}
+                              </span>
+                              {!isViewOnly && !isCompleted && projectId ? (
+                                <button
+                                  type="button"
+                                  aria-label="Update EAC"
+                                  data-testid="update-eac-button"
+                                  onClick={() => setEacDialogOpen(true)}
+                                  className="inline-flex items-center justify-center text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                              ) : null}
+                            </div>
+                            {project?.lastEacUpdate ? (
+                              <span className="text-xs font-normal text-slate-400 dark:text-slate-500">
+                                Last updated{" "}
+                                {formatDateTZ(
+                                  project.lastEacUpdate,
+                                  "MMM d, yyyy"
+                                )}
+                              </span>
+                            ) : null}
+                          </div>
+                        }
                       />
                       <LabelRow
                         label="End Date"
@@ -472,18 +673,20 @@ const ChangeDetailsSheet: React.FC<Props> = ({
               </div>
 
               <div className="space-y-2">
-                <span className="text-sm text-slate-500">Description</span>
+                <span className="text-sm text-slate-500 dark:text-slate-400">
+                  Description
+                </span>
                 {isProjectLoading ? (
                   <Skeleton className="h-16 w-full" />
                 ) : (
-                  <p className="text-sm text-slate-800">
+                  <p className="text-sm text-slate-800 dark:text-slate-200">
                     {projectRes?.data?.data?.description ?? ""}
                   </p>
                 )}
               </div>
 
               <div className="space-y-4">
-                <span className="text-sm text-slate-800 block font-semibold">
+                <span className="text-sm text-slate-800 dark:text-slate-200 block font-semibold">
                   Attached Documents
                 </span>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -518,47 +721,16 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                   container:
                     "bg-white dark:bg-slate-950 rounded-xl px-3 border border-gray-300 dark:border-slate-600",
                 }}
-                data={(projectRes?.data?.data?.contract ?? [])
-                  .filter((c) =>
-                    searchQuery
-                      ? c.title
-                          ?.toLowerCase?.()
-                          .includes(searchQuery.toLowerCase())
-                      : true
-                  )
-                  .map((c) => ({
-                    id: c._id,
-                    title: c.title,
-                    code: "",
-                    vendor: c.vendor,
-                    value:
-                      c.totalAmount != null
-                        ? new Intl.NumberFormat(undefined, {
-                            style: "currency",
-                            currency: c.currency ?? "USD",
-                            maximumFractionDigits: 0,
-                          }).format(c.totalAmount)
-                        : undefined,
-                    owner: c.creator,
-                    published: c.startDate
-                      ? formatDateTZ(c.startDate, "MMM d, yyyy")
-                      : undefined,
-                    endDate: c.endDate
-                      ? formatDateTZ(c.endDate, "MMM d, yyyy")
-                      : undefined,
-                    status: (c.status === "active"
-                      ? "Active"
-                      : c.status === "draft"
-                      ? "Draft"
-                      : c.status === "completed"
-                      ? "Expired"
-                      : "Suspended") as ContractRow["status"],
-                  }))}
+                data={linkedRows}
                 columns={linkedColumns}
                 options={{
                   disableSelection: true,
-                  disablePagination: true,
-                  isLoading: isProjectLoading,
+                  disablePagination: totalLinkedContracts <= contractsPagination.pageSize,
+                  manualPagination: true,
+                  pagination: contractsPagination,
+                  setPagination: setContractsPagination,
+                  totalCounts: totalLinkedContracts,
+                  isLoading: isContractsLoading,
                 }}
                 emptyPlaceholder={
                   <GenericEmptyState
@@ -591,6 +763,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
             />
           )}
 
+          {!isViewOnly && (
           <SheetFooter>
             <div className="flex w-full gap-3 pt-2">
               <Button
@@ -638,6 +811,14 @@ const ChangeDetailsSheet: React.FC<Props> = ({
               />
             </div>
           </SheetFooter>
+          )}
+
+          <UpdateEacDialog
+            open={eacDialogOpen}
+            onOpenChange={setEacDialogOpen}
+            projectId={projectId}
+            currentEac={project?.eac}
+          />
 
           <CreateProjectDialog
             open={editProjectOpen}
@@ -656,14 +837,31 @@ const ChangeDetailsSheet: React.FC<Props> = ({
               startDate: project?.startDate ? new Date(project.startDate) : undefined,
               endDate: project?.endDate ? new Date(project.endDate) : undefined,
               allowMultipleContracts: !!project?.allowMultiple,
+              businessDivision: project?.businessDivision,
+              existingFiles: project?.files ?? [],
             }}
-            isSubmitting={false}
-            onSubmit={async () => {
-              toast.error(
-                "Project",
-                "Project update endpoint is not documented in API docs"
-              );
-              throw new Error("Project update endpoint is not documented");
+            isSubmitting={updateMutation.isPending}
+            onSubmit={async (payload) => {
+              try {
+                const result = await updateMutation.mutateAsync({
+                  name: payload.name,
+                  category: payload.category,
+                  description: payload.description,
+                  budget: payload.budget,
+                  startDate: payload.startDate,
+                  endDate: payload.endDate,
+                  allowMultiple: payload.allowMultipleContracts,
+                  files: payload.files,
+                  businessDivision: payload.businessDivision,
+                });
+                toast.success(
+                  "Project",
+                  result?.data?.message ?? "Project updated successfully"
+                );
+              } catch (error) {
+                toast.error("Project", error as ApiResponseError);
+                throw error;
+              }
             }}
           />
         </div>

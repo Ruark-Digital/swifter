@@ -52,7 +52,7 @@ export const createViewOnlyApi = (
 ) => ({
   getContract: async (contractId: string) => {
     const res = (await client.get({
-      url: `/user/contract/${contractId}`,
+      url: `/contract/user/contracts/${contractId}`,
     })) as ApiResponse<ViewOnlyContractDTO>;
     return {
       ...res,
@@ -64,7 +64,7 @@ export const createViewOnlyApi = (
   },
   listRfis: async (contractId: string, query?: ManagerListRfisQuery) => {
     const res = await client.get({
-      url: `/user/contracts/${contractId}/rfi`,
+      url: `/contract/user/contracts/${contractId}/rfi`,
       config: query ? { params: query } : undefined,
     });
     return res as ApiResponse<{
@@ -75,6 +75,20 @@ export const createViewOnlyApi = (
         skip?: number;
       };
     }>;
+  },
+  // Contract list + stats for the View Only role. The manager list endpoints
+  // (`/contract/manager/contracts`, `/me`) 403 for a view-only user — which is
+  // why they saw no contracts (QA #102) — and there is no `/user/contracts/me`
+  // (view-only has no "My Contracts" concept, QA #103). Use the read-only
+  // `/contract/user/contracts` surface instead.
+  listContracts: async (query?: { page?: number; limit?: number }) => {
+    return client.get({
+      url: `/contract/user/contracts`,
+      config: query ? { params: query } : undefined,
+    });
+  },
+  getStats: async () => {
+    return client.get({ url: `/contract/user/contracts/stats` });
   },
 });
 

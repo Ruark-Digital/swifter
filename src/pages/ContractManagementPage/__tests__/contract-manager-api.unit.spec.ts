@@ -1,12 +1,13 @@
 import { test, expect } from "@playwright/test";
 import { createContractManagerApi } from "../api/contractManagerApi";
+import { createVendorApi } from "../api/vendorApi";
 
 type Spy<TArgs> = {
   calls: TArgs[];
   fn: (args: TArgs) => Promise<{ data: unknown }>;
 };
 
-const createAsyncSpy = <TArgs,>(impl?: (args: TArgs) => unknown): Spy<TArgs> => {
+const createAsyncSpy = <TArgs>(impl?: (args: TArgs) => unknown): Spy<TArgs> => {
   const calls: TArgs[] = [];
   const fn = async (args: TArgs) => {
     calls.push(args);
@@ -18,15 +19,33 @@ const createAsyncSpy = <TArgs,>(impl?: (args: TArgs) => unknown): Spy<TArgs> => 
 test.describe("contractManagerApi (unit)", () => {
   test("validates request payloads before sending", async () => {
     const getSpy = createAsyncSpy<{ url: string; config?: unknown }>();
-    const postSpy = createAsyncSpy<{ url: string; payload: unknown; config?: unknown }>();
-    const putSpy = createAsyncSpy<{ url: string; payload: unknown; config?: unknown }>();
-    const deleteSpy = createAsyncSpy<{ url: string; payload?: unknown; config?: unknown }>();
+    const postSpy = createAsyncSpy<{
+      url: string;
+      payload: unknown;
+      config?: unknown;
+    }>();
+    const putSpy = createAsyncSpy<{
+      url: string;
+      payload: unknown;
+      config?: unknown;
+    }>();
+    const deleteSpy = createAsyncSpy<{
+      url: string;
+      payload?: unknown;
+      config?: unknown;
+    }>();
+    const patchSpy = createAsyncSpy<{
+      url: string;
+      payload: unknown;
+      config?: unknown;
+    }>();
 
     const api = createContractManagerApi({
       get: getSpy.fn,
       post: postSpy.fn,
       put: putSpy.fn,
       delete: deleteSpy.fn,
+      patch: patchSpy.fn,
     });
 
     let createContractFailed = false;
@@ -50,15 +69,33 @@ test.describe("contractManagerApi (unit)", () => {
 
   test("calls correct endpoints and passes payload/params", async () => {
     const getSpy = createAsyncSpy<{ url: string; config?: unknown }>();
-    const postSpy = createAsyncSpy<{ url: string; payload: unknown; config?: unknown }>();
-    const putSpy = createAsyncSpy<{ url: string; payload: unknown; config?: unknown }>();
-    const deleteSpy = createAsyncSpy<{ url: string; payload?: unknown; config?: unknown }>();
+    const postSpy = createAsyncSpy<{
+      url: string;
+      payload: unknown;
+      config?: unknown;
+    }>();
+    const putSpy = createAsyncSpy<{
+      url: string;
+      payload: unknown;
+      config?: unknown;
+    }>();
+    const deleteSpy = createAsyncSpy<{
+      url: string;
+      payload?: unknown;
+      config?: unknown;
+    }>();
+    const patchSpy = createAsyncSpy<{
+      url: string;
+      payload: unknown;
+      config?: unknown;
+    }>();
 
     const api = createContractManagerApi({
       get: getSpy.fn,
       post: postSpy.fn,
       put: putSpy.fn,
       delete: deleteSpy.fn,
+      patch: patchSpy.fn,
     });
 
     await api.listContracts();
@@ -91,9 +128,9 @@ test.describe("contractManagerApi (unit)", () => {
       payload: holdbackPayload,
     });
 
-    await api.getPaymentHoldbackById("hb1");
+    await api.getPaymentHoldbackById("c1", "hb1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/payment-holdbacks/hb1",
+      url: "/contract/manager/contracts/c1/payment-holdbacks/hb1",
     });
 
     await api.listPaymentSavings("c2");
@@ -108,9 +145,9 @@ test.describe("contractManagerApi (unit)", () => {
       payload: savingPayload,
     });
 
-    await api.getPaymentSavingById("s1");
+    await api.getPaymentSavingById("c2", "s1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/payment-savings/s1",
+      url: "/contract/manager/contracts/c2/payment-savings/s1",
     });
 
     await api.getChangeStats("c3");
@@ -118,7 +155,12 @@ test.describe("contractManagerApi (unit)", () => {
       url: "/contract/manager/contracts/c3/changes/stats",
     });
 
-    await api.listChanges("c3", { title: "x", type: "order", page: 2, limit: 10 });
+    await api.listChanges("c3", {
+      title: "x",
+      type: "order",
+      page: 2,
+      limit: 10,
+    });
     expect(getSpy.calls.at(-1)).toEqual({
       url: "/contract/manager/contracts/c3/changes",
       config: { params: { title: "x", type: "order", page: 2, limit: 10 } },
@@ -130,27 +172,31 @@ test.describe("contractManagerApi (unit)", () => {
     });
 
     const changeCreatePayload = { title: "Change" };
-    await api.createChangeRequest("d1", "Contract", changeCreatePayload as never);
+    await api.createChangeRequest(
+      "d1",
+      "Contract",
+      changeCreatePayload as never,
+    );
     expect(postSpy.calls.at(-1)).toEqual({
       url: "/contract/manager/contracts/d1/change/Contract",
       payload: changeCreatePayload,
     });
 
-    const approvalPayload = { action: "approved" };
-    await api.approveChange("chg1", approvalPayload as never);
+    const approvalPayload = { action: "approved", comment: "ok" };
+    await api.approveChange("c1", "chg1", approvalPayload as never);
     expect(postSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/changes/chg1/approve",
+      url: "/contract/manager/contracts/c1/changes/chg1/approve",
       payload: approvalPayload,
     });
 
-    await api.getChangeApproveStatus("chg1");
+    await api.getChangeApproveStatus("c1", "chg1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/changes/chg1/approve/status",
+      url: "/contract/manager/contracts/c1/changes/chg1/approve/status",
     });
 
-    await api.listChangeApprovers("chg1");
+    await api.listChangeApprovers("c1", "chg1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/changes/chg1/approvers",
+      url: "/contract/manager/contracts/c1/changes/chg1/approvers",
     });
 
     await api.listChangeComments("c2", "chg1");
@@ -177,54 +223,59 @@ test.describe("contractManagerApi (unit)", () => {
       url: "/contract/manager/contracts/c4/claims/stats",
     });
 
-    await api.listClaims("c4", { title: "t", type: "dispute", page: 1, limit: 5 });
+    await api.listClaims("c4", {
+      title: "t",
+      type: "dispute",
+      page: 1,
+      limit: 5,
+    });
     expect(getSpy.calls.at(-1)).toEqual({
       url: "/contract/manager/contracts/c4/claims",
       config: { params: { title: "t", type: "dispute", page: 1, limit: 5 } },
     });
 
-    await api.getClaimDetail("cl1");
+    await api.getClaimDetail("c4", "cl1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/claims/cl1",
+      url: "/contract/manager/contracts/c4/claims/cl1",
     });
 
-    await api.approveClaim("cl1", approvalPayload as never);
+    await api.approveClaim("c4", "cl1", approvalPayload as never);
     expect(postSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/claims/cl1/approve",
+      url: "/contract/manager/contracts/c4/claims/cl1/approve",
       payload: approvalPayload,
     });
 
-    await api.getClaimApproveStatus("cl1");
+    await api.getClaimApproveStatus("c4", "cl1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/claims/cl1/approve/status",
+      url: "/contract/manager/contracts/c4/claims/cl1/approve/status",
     });
 
-    await api.listClaimComments("cl1");
+    await api.listClaimComments("c4", "cl1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/claims/cl1/comments",
+      url: "/contract/manager/contracts/c4/claims/cl1/comments",
     });
 
-    await api.addClaimComment("cl1", "c4", commentPayload as never);
+    await api.addClaimComment("c4", "cl1", commentPayload as never);
     expect(postSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/claims/cl1/comments/c4",
+      url: "/contract/manager/contracts/c4/claims/cl1/comments",
       payload: commentPayload,
     });
 
-    await api.replyClaimComment("cl1", "cm2", replyPayload as never);
+    await api.replyClaimComment("c4", "cl1", "cm2", replyPayload as never);
     expect(postSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/claims/cl1/comments/cm2/reply",
+      url: "/contract/manager/contracts/c4/claims/cl1/comments/cm2/reply",
       payload: replyPayload,
     });
 
-    await api.listClaimApprovers("cl1");
+    await api.listClaimApprovers("c4", "cl1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/claims/cl1/approvers",
+      url: "/contract/manager/contracts/c4/claims/cl1/approvers",
     });
 
     const approversPayload = { userIds: ["u1", "u2"] };
-    await api.sendClaimToApprovers("cl1", approversPayload);
+    await api.sendClaimToApprovers("c4", "cl1", approversPayload);
     expect(postSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/claims/cl1/approvers",
+      url: "/contract/manager/contracts/c4/claims/cl1/approvers",
       payload: approversPayload,
     });
 
@@ -239,9 +290,9 @@ test.describe("contractManagerApi (unit)", () => {
       config: { params: { invoiceId: "inv", page: 2, limit: 20 } },
     });
 
-    await api.getInvoiceDetail("inv1");
+    await api.getInvoiceDetail("c5", "inv1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/invoice/inv1",
+      url: "/contract/manager/contracts/c5/invoice/inv1",
     });
 
     await api.getAmendmentStats("c6");
@@ -261,21 +312,28 @@ test.describe("contractManagerApi (unit)", () => {
       payload: amendmentPayload,
     });
 
-    await api.getAmendmentDetail("a1");
+    await api.getAmendmentDetail("c6", "a1");
     expect(getSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/amendments/a1",
+      url: "/contract/manager/contracts/c6/amendments/a1",
     });
 
     const addApproversPayload = { approvers: ["u1"] };
-    await api.addAmendmentApprovers("a1", addApproversPayload as never);
+    await api.addAmendmentApprovers("c6", "a1", addApproversPayload as never);
     expect(postSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/amendments/a1/approvers",
+      url: "/contract/manager/contracts/c6/amendments/a1/approvers",
       payload: addApproversPayload,
     });
 
-    await api.approveAmendment("a1", approvalPayload as never);
+    const updateAmendmentPayload = { title: "updated amendment" };
+    await api.updateAmendment("c6", "a1", updateAmendmentPayload as never);
+    expect(putSpy.calls.at(-1)).toEqual({
+      url: "/contract/manager/contracts/c6/amendments/a1",
+      payload: updateAmendmentPayload,
+    });
+
+    await api.approveAmendment("c6", "a1", approvalPayload as never);
     expect(postSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/amendments/a1/approve",
+      url: "/contract/manager/contracts/c6/amendments/a1/approve",
       payload: approvalPayload,
     });
 
@@ -286,7 +344,12 @@ test.describe("contractManagerApi (unit)", () => {
       payload: rfiPayload,
     });
 
-    await api.listRfis("c7", { title: "q", status: "open", page: 1, limit: 10 });
+    await api.listRfis("c7", {
+      title: "q",
+      status: "open",
+      page: 1,
+      limit: 10,
+    });
     expect(getSpy.calls.at(-1)).toEqual({
       url: "/contract/manager/contracts/c7/rfis",
       config: { params: { title: "q", status: "open", page: 1, limit: 10 } },
@@ -298,9 +361,9 @@ test.describe("contractManagerApi (unit)", () => {
     });
 
     const rfiRespPayload = { response: "ok" };
-    await api.createRfiResponse("rfi1", rfiRespPayload as never);
+    await api.createRfiResponse("c7", "rfi1", rfiRespPayload as never);
     expect(postSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/rfis/rfi1/response",
+      url: "/contract/manager/contracts/c7/rfis/rfi1/response",
       payload: rfiRespPayload,
     });
 
@@ -322,10 +385,29 @@ test.describe("contractManagerApi (unit)", () => {
     });
 
     const rfiReplyPayload = { content: "r" };
-    await api.replyRfiComment("rfi1", "cm1", rfiReplyPayload as never);
+    await api.replyRfiComment("c4", "rfi1", "cm1", rfiReplyPayload as never);
     expect(postSpy.calls.at(-1)).toEqual({
-      url: "/contract/manager/contracts/rfis/rfi1/comment/cm1/reply",
+      url: "/contract/manager/contracts/c4/rfis/rfi1/comment/cm1/reply",
       payload: rfiReplyPayload,
+    });
+
+    const addApproverGroups = {
+      approvers: [{ user: ["u1"], groupName: "Finance", level: 1, amount: 5000 }],
+    };
+    await api.addContractApprovers("c10", addApproverGroups);
+    expect(postSpy.calls.at(-1)).toEqual({
+      url: "/contract/manager/contracts/c10/approvers/add",
+      payload: addApproverGroups,
+    });
+
+    const manageApproverPayload = {
+      status: "deleted" as const,
+      approverId: "u1",
+    };
+    await api.manageContractApprover("c10", "g1", manageApproverPayload);
+    expect(patchSpy.calls.at(-1)).toEqual({
+      url: "/contract/manager/contracts/c10/approvers/g1/manage",
+      payload: manageApproverPayload,
     });
 
     await api.getContractCompliance("c9");
@@ -333,8 +415,16 @@ test.describe("contractManagerApi (unit)", () => {
       url: "/contract/manager/contracts/c9/compliance",
     });
 
-    const complianceApprovalPayload = { action: "approved", comment: "Looks good" };
-    await api.approveComplianceItem("c9", "policy", "pol1", complianceApprovalPayload as never);
+    const complianceApprovalPayload = {
+      action: "approved",
+      comment: "Looks good",
+    };
+    await api.approveComplianceItem(
+      "c9",
+      "policy",
+      "pol1",
+      complianceApprovalPayload as never,
+    );
     expect(postSpy.calls.at(-1)).toEqual({
       url: "/contract/manager/contracts/c9/compliance/policy/pol1/approve",
       payload: complianceApprovalPayload,
@@ -348,5 +438,43 @@ test.describe("contractManagerApi (unit)", () => {
       complianceApproveFailed = true;
     }
     expect(complianceApproveFailed).toBe(true);
+  });
+});
+
+test.describe("vendorApi (unit)", () => {
+  test("calls correct change endpoints", async () => {
+    const getSpy = createAsyncSpy<{ url: string; config?: unknown }>();
+    const postSpy = createAsyncSpy<{
+      url: string;
+      payload: unknown;
+      config?: unknown;
+    }>();
+    const api = createVendorApi({ get: getSpy.fn, post: postSpy.fn });
+
+    await api.getChangeStats("c3");
+    expect(getSpy.calls.at(-1)).toEqual({
+      url: "/contract/vendor/contracts/c3/changes/stats",
+    });
+
+    await api.listChanges("c3", {
+      title: "x",
+      type: "request",
+      page: 2,
+      limit: 10,
+    });
+    expect(getSpy.calls.at(-1)).toEqual({
+      url: "/contract/vendor/contracts/c3/changes?title=x&type=request&page=2&limit=10",
+    });
+
+    const createPayload = {
+      title: "t",
+      description: "d",
+      type: "request",
+    };
+    await api.createChange("c3", createPayload as never);
+    expect(postSpy.calls.at(-1)).toEqual({
+      url: "/contract/vendor/contracts/c3/changes",
+      payload: createPayload,
+    });
   });
 });

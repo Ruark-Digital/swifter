@@ -1,9 +1,11 @@
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { PaginationState } from "@tanstack/react-table";
 import { SEOWrapper } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Share2, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
+import { ExportContractsButton } from "@/components/layouts/ExportContractsButton";
 import StatsCards from "./components/StatsCards";
 import ContractsTable, { ContractRow } from "./components/ContractsTable";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -12,17 +14,23 @@ import { getRequest } from "@/lib/axiosInstance";
 import type { ApiResponseError } from "@/types";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useUser } from "@/store/authSlice";
+import { useToastHandler } from "@/hooks/useToaster";
+import { vendorApi } from "./api/vendorApi";
+import { viewOnlyApi } from "./api/viewOnlyApi";
 import VendorStatsCards from "./components/VendorStatsCards";
 import VendorContractsTable, {
   VendorContractRow,
 } from "./components/VendorContractsTable";
 import { formatDate } from "date-fns";
+import { resolveCurrency } from "@/lib/utils";
 
 type ContractApi = {
   _id: string;
   contractId: string;
   title: string;
   category?: string;
+  contractRelationship?: string;
   status:
     | "draft"
     | "pending_approval"
@@ -37,20 +45,24 @@ type ContractApi = {
   startDate?: string;
   endDate?: string;
   createdAt?: string;
+  datePublished?: string;
   vendor?: { name?: string; id?: string };
   creator?: { name?: string; email?: string; _id?: string };
+  projectManager?: { name?: string };
   contractValue?: number;
+  /** BE-computed ownership for the current user (preferred over id-matching). */
+  owner?: boolean;
 };
 
 type ContractStats = {
   all: number;
   draft: number;
-  pending_approval: number;
+  pending: number;
   active: number;
   completed: number;
   suspended: number;
   expired: number;
-  terminated: number;
+  cancelled: number;
 };
 
 type ContractStatsResponse = {
@@ -62,7 +74,7 @@ type ContractStatsResponse = {
 type ContractListResponse = {
   status: number;
   message: string;
-  data: { contracts: ContractApi[]; totalContracts: 0 };
+  data: { contracts: ContractApi[]; totalContracts: number };
 };
 
 type ApproverContractListResponse = {
@@ -78,7 +90,9 @@ type VendorContractApi = {
   id: string;
   title: string;
   contractId: string;
+  contractRelationship?: "standalone" | "project" | "msa_project" | "msa";
   contractValue?: number;
+  currency?: string;
   status:
     | "active"
     | "completed"
@@ -92,7 +106,31 @@ type VendorContractApi = {
   startDate?: string;
   endDate?: string;
   createdAt?: string;
+  datePublished?: string;
+  company?: string | { name?: string };
   vendor?: { name?: string };
+  owner?: boolean;
+};
+
+const mapContractRelationshipLabel = (
+  relationship?: "standalone" | "project" | "msa_project" | "msa",
+): string => {
+  if (relationship === "standalone") return "Stand-Alone Project";
+  if (relationship === "project") return "Linked to Project";
+  if (relationship === "msa_project" || relationship === "msa") {
+    return "Linked to MSA";
+  }
+  return "-";
+};
+
+const mapCompanyLabel = (
+  company?: string | { name?: string },
+  vendor?: { name?: string },
+): string => {
+  if (typeof company === "string" && company.trim()) return company;
+  if (company && typeof company === "object" && company.name) return company.name;
+  if (vendor?.name) return vendor.name;
+  return "-";
 };
 
 type VendorStatsResponse = {
@@ -114,6 +152,13 @@ type VendorContractListResponse = {
   data: { contracts: VendorContractApi[]; totalContracts: number };
 };
 
+type VendorCompany = { _id: string; name: string };
+
+type VendorCompaniesResponse = {
+  message: string;
+  data: VendorCompany[];
+};
+
 const useContractsStats = (enabled = true) => {
   const queryKey = useUserQueryKey(["contracts-stats"]);
   return useQuery<ContractStatsResponse, ApiResponseError>({
@@ -129,12 +174,30 @@ const useContractsStats = (enabled = true) => {
   });
 };
 
-const useAllContracts = (enabled = true) => {
-  const queryKey = useUserQueryKey(["contracts-all"]);
+const useAllContracts = (
+  pagination: PaginationState,
+  enabled = true,
+  search = "",
+) => {
+  const queryKey = useUserQueryKey([
+    "contracts-all",
+    pagination.pageIndex,
+    pagination.pageSize,
+    search,
+  ]);
   return useQuery<ContractListResponse, ApiResponseError>({
     queryKey,
     queryFn: async () => {
-      const res = await getRequest({ url: "/contract/manager/contracts" });
+      const res = await getRequest({
+        url: "/contract/manager/contracts",
+        config: {
+          params: {
+            page: pagination.pageIndex + 1,
+            limit: pagination.pageSize,
+            ...(search ? { search } : {}),
+          },
+        },
+      });
       return res.data as ContractListResponse;
     },
     enabled,
@@ -142,13 +205,67 @@ const useAllContracts = (enabled = true) => {
   });
 };
 
-const useMyContracts = (enabled = true) => {
-  const queryKey = useUserQueryKey(["contracts-me"]);
+const useMyContracts = (
+  pagination: PaginationState,
+  enabled = true,
+  search = "",
+) => {
+  const queryKey = useUserQueryKey([
+    "contracts-me",
+    pagination.pageIndex,
+    pagination.pageSize,
+    search,
+  ]);
   return useQuery<ContractListResponse, ApiResponseError>({
     queryKey,
     queryFn: async () => {
-      const res = await getRequest({ url: "/contract/manager/contracts/me" });
+      const res = await getRequest({
+        url: "/contract/manager/contracts/me",
+        config: {
+          params: {
+            page: pagination.pageIndex + 1,
+            limit: pagination.pageSize,
+            ...(search ? { search } : {}),
+          },
+        },
+      });
       return res.data as ContractListResponse;
+    },
+    enabled,
+    staleTime: 60000,
+  });
+};
+
+// View Only contract list + stats. Hits the read-only `/contract/user/contracts`
+// surface (QA #102/#103) — the manager endpoints 403 for this role and there is
+// no `/me` variant, so there is no "My Contracts" tab for view-only.
+const useViewOnlyContracts = (pagination: PaginationState, enabled = true) => {
+  const queryKey = useUserQueryKey([
+    "contracts-view-only",
+    pagination.pageIndex,
+    pagination.pageSize,
+  ]);
+  return useQuery<ContractListResponse, ApiResponseError>({
+    queryKey,
+    queryFn: async () => {
+      const res = await viewOnlyApi.listContracts({
+        page: pagination.pageIndex + 1,
+        limit: pagination.pageSize,
+      });
+      return (res as { data: ContractListResponse }).data;
+    },
+    enabled,
+    staleTime: 60000,
+  });
+};
+
+const useViewOnlyContractsStats = (enabled = true) => {
+  const queryKey = useUserQueryKey(["contracts-view-only-stats"]);
+  return useQuery<ContractStatsResponse, ApiResponseError>({
+    queryKey,
+    queryFn: async () => {
+      const res = await viewOnlyApi.getStats();
+      return (res as { data: ContractStatsResponse }).data;
     },
     enabled,
     staleTime: 60000,
@@ -170,12 +287,30 @@ const useApproverContractsStats = (enabled = true) => {
   });
 };
 
-const useApproverContracts = (enabled = true) => {
-  const queryKey = useUserQueryKey(["approver-contracts"]);
+const useApproverContracts = (
+  pagination: PaginationState,
+  enabled = true,
+  search = "",
+) => {
+  const queryKey = useUserQueryKey([
+    "approver-contracts",
+    pagination.pageIndex,
+    pagination.pageSize,
+    search,
+  ]);
   return useQuery<ApproverContractListResponse, ApiResponseError>({
     queryKey,
     queryFn: async () => {
-      const res = await getRequest({ url: "/contract/approver/contracts" });
+      const res = await getRequest({
+        url: "/contract/approver/contracts",
+        config: {
+          params: {
+            page: pagination.pageIndex + 1,
+            limit: pagination.pageSize,
+            ...(search ? { search } : {}),
+          },
+        },
+      });
       return res.data as ApproverContractListResponse;
     },
     enabled,
@@ -196,13 +331,77 @@ const useVendorContractsStats = (enabled = true) => {
   });
 };
 
-const useVendorContracts = (enabled = true) => {
-  const queryKey = useUserQueryKey(["vendor-contracts"]);
+// Status values the BE `status` query param accepts. The vendor Status
+// dropdown is aligned to this enum so a selection maps 1:1 to the API; the
+// stats-card "closed" aggregate has no BE equivalent and stays client-side.
+const VENDOR_BE_STATUSES = [
+  "active",
+  "completed",
+  "suspended",
+  "terminated",
+  "expired",
+] as const;
+
+const useVendorContracts = (
+  pagination: PaginationState,
+  enabled = true,
+  asPM = false,
+  company = "all",
+  status = "all",
+  date = "",
+) => {
+  // Only forward a status the BE understands; "all"/"closed"/etc. are omitted.
+  const beStatus = (VENDOR_BE_STATUSES as readonly string[]).includes(status)
+    ? status
+    : "";
+  const queryKey = useUserQueryKey([
+    asPM ? "pm-contracts" : "vendor-contracts",
+    pagination.pageIndex,
+    pagination.pageSize,
+    company,
+    beStatus,
+    date,
+  ]);
+  const url = asPM
+    ? "/contract/vendor/contracts/me"
+    : "/contract/vendor/contracts";
   return useQuery<VendorContractListResponse, ApiResponseError>({
     queryKey,
     queryFn: async () => {
-      const res = await getRequest({ url: "/contract/vendor/contracts" });
+      const res = await getRequest({
+        url,
+        config: {
+          params: {
+            page: pagination.pageIndex + 1,
+            limit: pagination.pageSize,
+            // BE-backed company filter (QA #129): send the selected company's
+            // ObjectId so results are scoped across all pages, not just the
+            // current one. Omitted when "all" is selected.
+            ...(company && company !== "all" ? { company } : {}),
+            // BE-backed status + date filters: scoped server-side across all
+            // pages. date is a single day (YYYY-MM-DD) per the API.
+            ...(beStatus ? { status: beStatus } : {}),
+            ...(date ? { date } : {}),
+          },
+        },
+      });
       return res.data as VendorContractListResponse;
+    },
+    enabled,
+    staleTime: 60000,
+  });
+};
+
+// Companies the authenticated vendor/PM can access, used to populate the
+// Company filter dropdown with the full list (not just companies on the
+// current page). Feeds the `company` query param above.
+const useVendorCompanies = (enabled = true) => {
+  const queryKey = useUserQueryKey(["vendor-companies"]);
+  return useQuery<VendorCompaniesResponse, ApiResponseError>({
+    queryKey,
+    queryFn: async () => {
+      const res = await getRequest({ url: "/contract/vendor/companies" });
+      return res.data as VendorCompaniesResponse;
     },
     enabled,
     staleTime: 60000,
@@ -213,7 +412,7 @@ const mapStatusToLabel = (
   status: ContractApi["status"],
 ): ContractRow["status"] => {
   if (status === "active") return "Active";
-  if (status === "publish") return "Publish";
+  if (status === "publish") return "Published";
   if (status === "draft") return "Draft";
   if (status === "expired") return "Expired";
   if (status === "terminated") return "Terminated";
@@ -223,27 +422,34 @@ const mapStatusToLabel = (
   return "Suspended";
 };
 
-const mapContractsToRows = (contracts?: ContractApi[]): ContractRow[] => {
+const mapContractsToRows = (contracts?: ContractApi[], profileCurrency?: string): ContractRow[] => {
   if (!contracts) return [];
 
   return contracts.map((c) => {
     const value =
       typeof c.contractValue === "number"
-        ? `${c.contractValue.toLocaleString()}`
+        ? new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: resolveCurrency(c.currency, profileCurrency),
+            maximumFractionDigits: 0,
+          }).format(c.contractValue)
         : undefined;
 
     return {
       id: c._id,
       contractId: c.contractId,
       title: c.title,
-      code: c._id,
-      vendor: c.vendor?.name ?? "-",
-      value: `$${value}`,
+      code: c.contractId,
+      vendor: c.vendor?.name ?? c.projectManager?.name ?? "-",
+      value,
       owner: c.creator?.name ?? "-",
-      published: c.createdAt
-        ? formatDate(c.createdAt, "dd MMM yyyy")
+      ownerId: c.creator?._id,
+      isOwner: c.owner,
+      published: c.datePublished
+        ? formatDate(c.datePublished, "dd MMM yyyy")
         : undefined,
       endDate: c.endDate ? formatDate(c.endDate, "dd MMM yyyy") : undefined,
+      createdAtRaw: c.createdAt,
       status: mapStatusToLabel(c.status),
       category: c.category,
     };
@@ -260,17 +466,29 @@ const mapVendorStatusToLabel = (
   if (status === "expired") return "Expired";
   if (status === "suspended") return "Suspended";
   if (status === "terminated") return "Terminated";
+  // Align with the manager/approver mapper so the same backend status reads
+  // the same on the vendor/PM side (QA #124): completed/cancelled were both
+  // collapsing to "Closed", and a rejected contract showed "Closed" here but
+  // "Suspended" on the CM/approver side.
+  if (status === "completed") return "Completed";
+  if (status === "cancelled") return "Cancelled";
+  if (status === "rejection") return "Suspended";
   return "Closed";
 };
 
 const mapVendorContractsToRows = (
   contracts?: VendorContractApi[],
+  profileCurrency?: string,
 ): VendorContractRow[] => {
   if (!contracts) return [];
   return contracts.map((c) => {
     const value =
       typeof c.contractValue === "number"
-        ? c.contractValue.toLocaleString()
+        ? new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: resolveCurrency(c.currency, profileCurrency),
+            maximumFractionDigits: 0,
+          }).format(c.contractValue)
         : undefined;
 
     return {
@@ -278,38 +496,124 @@ const mapVendorContractsToRows = (
       contractId: c.contractId,
       title: c.title,
       code: c.contractId,
-      company: c.vendor?.name ?? "-",
-      contractRelationship: "-",
+      company: mapCompanyLabel(c.company, c.vendor),
+      contractRelationship: mapContractRelationshipLabel(c.contractRelationship),
       value,
-      published: c.createdAt
-        ? formatDate(c.createdAt, "yyyy-MM-dd")
+      published: c.datePublished
+        ? formatDate(c.datePublished, "dd MMM yyyy")
         : undefined,
-      endDate: c.endDate ? formatDate(c.endDate, "yyyy-MM-dd") : undefined,
+      endDate: c.endDate ? formatDate(c.endDate, "dd MMM yyyy") : undefined,
       status: mapVendorStatusToLabel(c.status),
+      isOwner: c.owner,
     };
   });
 };
 
 const ContractManagementPage: React.FC = () => {
-  const { isVendor, isApprover, isViewOnly, isCompanyAdmin } = useUserRole();
-  const managerQueriesEnabled = !isVendor && !isApprover;
+  const { isVendor, isProjectManager, isApprover, isViewOnly, isCompanyAdmin } =
+    useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
+  // View-only uses the read-only `/user/contracts` surface, not the manager one
+  // (QA #102/#103), so keep the manager queries off for this role.
+  const managerQueriesEnabled =
+    !isContractVendorLike && !isApprover && !isViewOnly;
   const approverQueriesEnabled = isApprover;
+  const viewOnlyQueriesEnabled = isViewOnly;
+
+  const [allPagination, setAllPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [myPagination, setMyPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [approverPagination, setApproverPagination] =
+    React.useState<PaginationState>({
+      pageIndex: 0,
+      pageSize: 10,
+    });
+  const [vendorPagination, setVendorPagination] =
+    React.useState<PaginationState>({
+      pageIndex: 0,
+      pageSize: 10,
+    });
+  const [pmAllPagination, setPmAllPagination] =
+    React.useState<PaginationState>({
+      pageIndex: 0,
+      pageSize: 10,
+    });
+  const [statusFilter, setStatusFilter] = React.useState<string>("all");
+  // Selected company filter (QA #129), shared across the vendor/PM tabs and
+  // reset on tab switch like statusFilter. Holds a company ObjectId or "all".
+  const [companyFilter, setCompanyFilter] = React.useState<string>("all");
+  // Selected date filter for the vendor/PM lists — a single day (YYYY-MM-DD)
+  // sent to the BE `date` param, or "" for no date filter. Reset on tab switch.
+  const [dateFilter, setDateFilter] = React.useState<string>("");
+
+  // Contract search is sent to the BE as the raw `search` param, one per list.
+  const [allSearch, setAllSearch] = React.useState("");
+  const [mySearch, setMySearch] = React.useState("");
+  const [approverSearch, setApproverSearch] = React.useState("");
 
   const { data: statsData } = useContractsStats(managerQueriesEnabled);
   const { data: allContractsData, isLoading: isAllContractsLoading } =
-    useAllContracts(managerQueriesEnabled);
+    useAllContracts(allPagination, managerQueriesEnabled, allSearch);
   const { data: myContractsData, isLoading: isMyContractsLoading } =
-    useMyContracts(managerQueriesEnabled);
+    useMyContracts(myPagination, managerQueriesEnabled, mySearch);
   const { data: approverStatsData } = useApproverContractsStats(
     approverQueriesEnabled,
   );
   const { data: approverContractsData, isLoading: isApproverContractsLoading } =
-    useApproverContracts(approverQueriesEnabled);
-  const { data: vendorStatsData } = useVendorContractsStats(isVendor);
+    useApproverContracts(
+      approverPagination,
+      approverQueriesEnabled,
+      approverSearch,
+    );
+  const { data: vendorStatsData } =
+    useVendorContractsStats(isContractVendorLike);
   const { data: vendorContractsData, isLoading: isVendorContractsLoading } =
-    useVendorContracts(isVendor);
+    useVendorContracts(
+      vendorPagination,
+      isContractVendorLike,
+      isProjectManager,
+      companyFilter,
+      statusFilter,
+      dateFilter,
+    );
+  const { data: pmAllContractsData, isLoading: isPmAllContractsLoading } =
+    useVendorContracts(
+      pmAllPagination,
+      isProjectManager,
+      false,
+      companyFilter,
+      statusFilter,
+      dateFilter,
+    );
+  const { data: vendorCompaniesData } =
+    useVendorCompanies(isContractVendorLike);
+  const { data: viewOnlyStatsData } =
+    useViewOnlyContractsStats(viewOnlyQueriesEnabled);
+  const { data: viewOnlyContractsData, isLoading: isViewOnlyContractsLoading } =
+    useViewOnlyContracts(allPagination, viewOnlyQueriesEnabled);
 
-  const stats = isApprover ? approverStatsData?.data : statsData?.data;
+  // Full company list for the filter dropdown; value is the ObjectId the BE
+  // expects on the `company` query param.
+  const companyOptions = React.useMemo(() => {
+    const list = vendorCompaniesData?.data ?? [];
+    return [
+      { label: "All", value: "all" },
+      ...list
+        .filter((c) => c?.name)
+        .map((c) => ({ label: c.name, value: c._id })),
+    ];
+  }, [vendorCompaniesData]);
+
+  const stats = isApprover
+    ? approverStatsData?.data
+    : isViewOnly
+      ? viewOnlyStatsData?.data
+      : statsData?.data;
   const statsCounts = stats
     ? {
         all: stats.all,
@@ -317,22 +621,59 @@ const ContractManagementPage: React.FC = () => {
         draft: stats.draft,
         suspended: stats.suspended,
         expired: stats.expired,
-        terminated: stats.terminated,
-        pending: stats.pending_approval,
+        terminated: stats.cancelled,
+        pending: stats.pending,
       }
     : undefined;
 
-  const allContractsRows = mapContractsToRows(allContractsData?.data.contracts);
-  const myContractsRows = mapContractsToRows(myContractsData?.data.contracts);
+  const user = useUser();
+  const profileCurrency = user?.currency;
+  const allContractsRows = mapContractsToRows(allContractsData?.data.contracts, profileCurrency);
+  const myContractsRows = mapContractsToRows(myContractsData?.data.contracts, profileCurrency);
+  const viewOnlyContractsRows = mapContractsToRows(
+    viewOnlyContractsData?.data.contracts,
+    profileCurrency,
+  );
   const approverContractsRows = mapContractsToRows(
     approverContractsData?.data.contracts,
+    profileCurrency,
   );
   const vendorContractsRows = mapVendorContractsToRows(
     vendorContractsData?.data.contracts,
+    profileCurrency,
+  );
+  const pmAllContractsRows = mapVendorContractsToRows(
+    pmAllContractsData?.data.contracts,
+    profileCurrency,
   );
 
+  const toastHandler = useToastHandler();
+  const queryClient = useQueryClient();
+
+  const takeOverMutation = useMutation({
+    mutationFn: (contractId: string) =>
+      vendorApi.requestContractTakeOver(
+        contractId,
+        user?.projectmanagerId ?? "",
+      ),
+    onSuccess: () => {
+      toastHandler.success(
+        "Request sent",
+        "Take-over request sent for approval",
+      );
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey[0] === "pm-contracts" ||
+          query.queryKey[0] === "vendor-contracts",
+      });
+    },
+    onError: (err: ApiResponseError) => {
+      toastHandler.error("Failed to request take-over", err);
+    },
+  });
+
   return (
-    <div className="space-y-8 pt-10">
+    <div className="space-y-8 pt-10 min-w-0 w-full">
       <SEOWrapper
         title="Contract Management - SwiftPro eProcurement Portal"
         description="Manage contracts efficiently with clear status tracking and quick actions."
@@ -340,7 +681,7 @@ const ContractManagementPage: React.FC = () => {
         robots="noindex, nofollow"
       />
 
-      {isVendor ? (
+      {isContractVendorLike ? (
         <>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -356,6 +697,7 @@ const ContractManagementPage: React.FC = () => {
           </div>
 
           <VendorStatsCards
+            onStatusClick={(status) => setStatusFilter(status)}
             counts={
               vendorStatsData?.data
                 ? {
@@ -372,16 +714,90 @@ const ContractManagementPage: React.FC = () => {
             }
           />
 
-          <VendorContractsTable
-            rows={vendorContractsRows}
-            isLoading={isVendorContractsLoading}
-            totalCount={vendorContractsData?.data.totalContracts}
-            isReadOnly={isViewOnly}
-          />
+          {isProjectManager ? (
+            <Tabs
+              defaultValue="all"
+              className="w-full bg-transparent space-y-4"
+              onValueChange={() => {
+                setStatusFilter("all");
+                setCompanyFilter("all");
+                setDateFilter("");
+              }}
+            >
+              <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
+                <TabsTrigger
+                  value="all"
+                  className="dark:text-slate-400 data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+                >
+                  All Contracts
+                </TabsTrigger>
+                <TabsTrigger
+                  value="mine"
+                  className="dark:text-slate-400 data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+                >
+                  My Contracts
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="all">
+                <VendorContractsTable
+                  rows={pmAllContractsRows}
+                  isLoading={isPmAllContractsLoading}
+                  totalCount={pmAllContractsData?.data.totalContracts}
+                  isReadOnly={isViewOnly}
+                  pagination={pmAllPagination}
+                  setPagination={setPmAllPagination}
+                  statusFilter={statusFilter}
+                  onStatusFilterChange={setStatusFilter}
+                  enableCompanyFilter
+                  onCompanyFilterChange={setCompanyFilter}
+                  companyOptions={companyOptions}
+                  dateFilter={dateFilter}
+                  onDateFilterChange={setDateFilter}
+                  enableTakeOver
+                  onRequestTakeOver={(id) => takeOverMutation.mutate(id)}
+                  isRequestingTakeOver={takeOverMutation.isPending}
+                />
+              </TabsContent>
+              <TabsContent value="mine">
+                <VendorContractsTable
+                  rows={vendorContractsRows}
+                  isLoading={isVendorContractsLoading}
+                  totalCount={vendorContractsData?.data.totalContracts}
+                  isReadOnly={isViewOnly}
+                  pagination={vendorPagination}
+                  setPagination={setVendorPagination}
+                  statusFilter={statusFilter}
+                  onStatusFilterChange={setStatusFilter}
+                  enableCompanyFilter
+                  onCompanyFilterChange={setCompanyFilter}
+                  companyOptions={companyOptions}
+                  dateFilter={dateFilter}
+                  onDateFilterChange={setDateFilter}
+                />
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <VendorContractsTable
+              rows={vendorContractsRows}
+              isLoading={isVendorContractsLoading}
+              totalCount={vendorContractsData?.data.totalContracts}
+              isReadOnly={isViewOnly}
+              pagination={vendorPagination}
+              setPagination={setVendorPagination}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+              enableCompanyFilter
+              onCompanyFilterChange={setCompanyFilter}
+              companyOptions={companyOptions}
+              dateFilter={dateFilter}
+              onDateFilterChange={setDateFilter}
+            />
+          )}
         </>
       ) : (
         <>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <h2 className="text-xl font-semibold text-slate-900">
                 Contracts
@@ -392,11 +808,17 @@ const ContractManagementPage: React.FC = () => {
                 </Badge>
               )}
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
               {!isViewOnly && (
-                <Button variant="outline" className="rounded-xl">
-                  <Share2 className="mr-2 h-4 w-4" /> Export
-                </Button>
+                <ExportContractsButton
+                  endpoint={
+                    isApprover
+                      ? "/contract/approver/contracts/export"
+                      : "/contract/manager/contracts/export"
+                  }
+                  status={statusFilter}
+                  filenameBase="contracts-export"
+                />
               )}
               {!isApprover && !isViewOnly && !isCompanyAdmin && (
                 <CreateContractSheet
@@ -413,31 +835,101 @@ const ContractManagementPage: React.FC = () => {
             </div>
           </div>
 
-          <StatsCards counts={statsCounts} />
+          <StatsCards
+            counts={statsCounts}
+            onStatusClick={(status) => setStatusFilter(status)}
+          />
 
           {isApprover ? (
             <ContractsTable
               rows={approverContractsRows}
               isLoading={isApproverContractsLoading}
               totalCount={approverContractsData?.data.totalContracts}
+              pagination={approverPagination}
+              setPagination={setApproverPagination}
+              search={approverSearch}
+              onSearchChange={setApproverSearch}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
               // isReadOnly={true}
               // disableActions={isApprover}
             />
-          ) : (
+          ) : isViewOnly ? (
+            // View-only: read-only, All Contracts only — no "My Contracts"
+            // (no `/user/contracts/me` endpoint). QA #102/#103.
             <Tabs
               defaultValue="all"
               className="w-full bg-transparent space-y-4"
+              onValueChange={() => setStatusFilter("all")}
             >
               <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
                 <TabsTrigger
                   value="all"
-                  className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+                  className="dark:text-slate-400 data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+                >
+                  All Contracts
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="all">
+                <ContractsTable
+                  rows={viewOnlyContractsRows}
+                  isLoading={isViewOnlyContractsLoading}
+                  totalCount={viewOnlyContractsData?.data.totalContracts}
+                  isReadOnly
+                  pagination={allPagination}
+                  setPagination={setAllPagination}
+                  statusFilter={statusFilter}
+                  onStatusFilterChange={setStatusFilter}
+                />
+              </TabsContent>
+            </Tabs>
+          ) : isCompanyAdmin ? (
+            <Tabs
+              defaultValue="all"
+              className="w-full bg-transparent space-y-4"
+              onValueChange={() => setStatusFilter("all")}
+            >
+              <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
+                <TabsTrigger
+                  value="all"
+                  className="dark:text-slate-400 data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+                >
+                  All Contracts
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="all">
+                <ContractsTable
+                  rows={allContractsRows}
+                  isLoading={isAllContractsLoading}
+                  totalCount={allContractsData?.data.totalContracts}
+                  isReadOnly={isViewOnly}
+                  pagination={allPagination}
+                  setPagination={setAllPagination}
+                  search={allSearch}
+                  onSearchChange={setAllSearch}
+                  statusFilter={statusFilter}
+                  onStatusFilterChange={setStatusFilter}
+                />
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <Tabs
+              defaultValue="all"
+              className="w-full bg-transparent space-y-4"
+              onValueChange={() => setStatusFilter("all")}
+            >
+              <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
+                <TabsTrigger
+                  value="all"
+                  className="dark:text-slate-400 data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
                 >
                   All Contracts
                 </TabsTrigger>
                 <TabsTrigger
                   value="mine"
-                  className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+                  className="dark:text-slate-400 data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
                 >
                   My Contracts
                 </TabsTrigger>
@@ -447,8 +939,14 @@ const ContractManagementPage: React.FC = () => {
                 <ContractsTable
                   rows={allContractsRows}
                   isLoading={isAllContractsLoading}
-                  totalCount={allContractsRows.length}
+                  totalCount={allContractsData?.data.totalContracts}
                   isReadOnly={isViewOnly}
+                  pagination={allPagination}
+                  setPagination={setAllPagination}
+                  search={allSearch}
+                  onSearchChange={setAllSearch}
+                  statusFilter={statusFilter}
+                  onStatusFilterChange={setStatusFilter}
                   // disableActions={isCompanyAdmin}
                 />
               </TabsContent>
@@ -456,8 +954,14 @@ const ContractManagementPage: React.FC = () => {
                 <ContractsTable
                   rows={myContractsRows}
                   isLoading={isMyContractsLoading}
-                  totalCount={myContractsRows.length}
+                  totalCount={myContractsData?.data.totalContracts}
                   isReadOnly={isViewOnly}
+                  pagination={myPagination}
+                  setPagination={setMyPagination}
+                  search={mySearch}
+                  onSearchChange={setMySearch}
+                  statusFilter={statusFilter}
+                  onStatusFilterChange={setStatusFilter}
                   // disableActions={isCompanyAdmin}
                 />
               </TabsContent>

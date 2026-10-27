@@ -11,13 +11,16 @@ import {
   useFieldArray,
   useForge,
   useForgeValues,
-} from "@/lib/forge";
+  type ForgeControl,
+} from "@adexdsamson/forge";
 import {
   TextArea,
+  TextCurrencyInput,
   TextFileUploader,
   TextInput,
   TextSelect,
 } from "@/components/layouts/FormInputs";
+import { useFileUpload } from "@/components/ui/file-upload";
 import { X, Plus, Trash2, FileText, UploadCloud, Edit2 } from "lucide-react";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -30,13 +33,38 @@ import { postRequest } from "@/lib/axiosInstance";
 import type { ApiResponse, ApiResponseError } from "@/types";
 import type { UploadURLs } from "../lib/contractChanges";
 import { vendorApi } from "../api/vendorApi";
+import type { ContractInvoiceDTO } from "../api/contractManagerApi";
 import { useToastHandler } from "@/hooks/useToaster";
 
 type Props = {
   trigger: React.ReactElement;
   contractId: string;
+  /** Contract-level currency so the amount inputs render the right symbol
+   *  instead of defaulting to "$" (QA #202). */
+  currency?: string;
   createPath?: string;
   invalidateQueryKey?: readonly unknown[];
+  mode?: "create" | "edit";
+  /** In edit mode, distinguishes a rejected-item resubmit (labels "Resubmit")
+   *  from a pending-item edit (labels "Edit"). Both hit the same PUT. */
+  isResubmit?: boolean;
+  invoiceId?: string;
+  initialInvoice?: ContractInvoiceDTO & {
+    items?: Array<{
+      component?: string;
+      description?: string;
+      quantity?: number;
+      unitOfmeasurement?: string;
+      unitPrice?: number;
+    }>;
+  };
+};
+
+const TAX_CODE_TO_FORM: Record<string, string> = {
+  HST: "hst",
+  GST: "gst",
+  "PST/QST": "pst_qst",
+  Others: "others",
 };
 
 type InvoiceItem = {
@@ -93,7 +121,7 @@ const INVOICE_TYPES = [
   { label: "Progress Draw", value: "progress draw" },
   { label: "Monthly Payment", value: "monthly payment" },
   { label: "Milestone Payment", value: "milestone payment" },
-  { label: "Holdback", value: "holdback" },
+  { label: "Holdback Release", value: "holdback" },
 ];
 
 const TAX_CODES = [
@@ -121,12 +149,12 @@ type FooterProps = {
 
 const Footer = React.memo(
   ({ onBack, primaryLabel, onPrimary, isSubmitting }: FooterProps) => (
-    <div className="sticky bottom-0 left-0 right-0 z-10 bg-white px-2 py-6 border-t border-[#E5E7EB]">
+    <div className="sticky bottom-0 left-0 right-0 z-10 bg-white dark:bg-slate-900 px-2 py-6 border-t border-[#E5E7EB] dark:border-slate-700">
       <div className="flex items-center gap-4">
         <button
           type="button"
           onClick={onBack}
-          className="h-12 flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F]"
+          className="h-12 flex-1 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F3F4F6] dark:bg-slate-800 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
         >
           Back
         </button>
@@ -148,6 +176,7 @@ type InvoiceInputRowProps = {
   index: number;
   onRemoveRow: (index: number) => void;
   onAddRow: () => void;
+  currency?: string;
 };
 
 const InvoiceInputRow = ({
@@ -155,46 +184,46 @@ const InvoiceInputRow = ({
   index,
   onRemoveRow,
   onAddRow,
+  currency,
 }: InvoiceInputRowProps) => {
   return (
     <div
       key={id}
       className="px-6 py-3 grid grid-cols-[40px_1fr_1fr_100px_160px_120px_120px_100px] gap-4 items-center"
     >
-      <div className="text-sm text-[#6B7280]">{index + 1}</div>
+      <div className="text-sm text-[#6B7280] dark:text-slate-400">{index + 1}</div>
       <Forger
         name={`items.${index}.itemComponent`}
         component="input"
         type="text"
-        className="h-10 rounded-lg border border-[#E5E7EB] px-3 text-sm"
+        className="h-10 rounded-lg border border-[#E5E7EB] dark:border-slate-700 px-3 text-sm dark:bg-slate-800 dark:text-slate-100"
         placeholder="Item 2"
       />
       <Forger
         name={`items.${index}.description`}
         component="input"
         type="text"
-        className="h-10 rounded-lg border border-[#E5E7EB] px-3 text-sm"
+        className="h-10 rounded-lg border border-[#E5E7EB] dark:border-slate-700 px-3 text-sm dark:bg-slate-800 dark:text-slate-100"
         placeholder="Long Input"
       />
       <Forger
         name={`items.${index}.quantity`}
         component="input"
         type="text"
-        className="h-10 rounded-lg border border-[#E5E7EB] px-3 text-sm"
+        className="h-10 rounded-lg border border-[#E5E7EB] dark:border-slate-700 px-3 text-sm dark:bg-slate-800 dark:text-slate-100"
         placeholder="Enter Value"
       />
       <Forger
         name={`items.${index}.unitMeasurement`}
         component="input"
         type="text"
-        className="h-10 rounded-lg border border-[#E5E7EB] px-3 text-sm"
+        className="h-10 rounded-lg border border-[#E5E7EB] dark:border-slate-700 px-3 text-sm dark:bg-slate-800 dark:text-slate-100"
         placeholder="Enter Value"
       />
       <Forger
         name={`items.${index}.unitPrice`}
-        component="input"
-        type="text"
-        className="h-10 rounded-lg border border-[#E5E7EB] px-3 text-sm"
+        component={TextCurrencyInput}
+        currency={currency}
         placeholder="Enter Value"
       />
       <Forger
@@ -202,7 +231,7 @@ const InvoiceInputRow = ({
         component="input"
         type="text"
         readOnly
-        className="h-10 rounded-lg border border-[#E5E7EB] px-3 text-sm text-slate-500"
+        className="h-10 rounded-lg border border-[#E5E7EB] dark:border-slate-700 px-3 text-sm text-slate-500 dark:text-slate-400 dark:bg-slate-800"
         placeholder="Subtotal"
       />
 
@@ -210,7 +239,7 @@ const InvoiceInputRow = ({
         <button
           type="button"
           onClick={onAddRow}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E7EB] text-[#6B7280]"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E7EB] dark:border-slate-700 text-[#6B7280] dark:text-slate-400"
         >
           <Plus className="h-4 w-4" />
         </button>
@@ -218,7 +247,7 @@ const InvoiceInputRow = ({
           <button
             type="button"
             onClick={() => onRemoveRow(index)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E7EB] text-[#EF4444]"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E7EB] dark:border-slate-700 text-[#EF4444]"
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -233,12 +262,19 @@ type CompleteInvoiceDialogProps = {
   onOpenChange: (open: boolean) => void;
   trigger: React.ReactElement;
   onCompleteInvoice: () => void;
+  currency?: string;
 };
 
 const CompleteInvoiceDialog = React.memo(
-  ({ open, onOpenChange, trigger, onCompleteInvoice }: CompleteInvoiceDialogProps) => {
+  ({ open, onOpenChange, trigger, onCompleteInvoice, currency }: CompleteInvoiceDialogProps) => {
     const { control, unregister } = useFormContext<FormValues>();
-    const { setValue } = useForgeValues<FormValues>({ control });
+    // The parent <Forge> wraps this dialog so `control` is in practice a
+    // ForgeControl (useForge mutates it via Object.assign); the RHF type from
+    // useFormContext is the narrower base. Cast for useForgeValues' stricter
+    // signature on the public package.
+    const { setValue } = useForgeValues<FormValues>({
+      control: control as ForgeControl<FormValues>,
+    });
 
     const [totalAmount, setTotalAmount] = React.useState(0);
 
@@ -256,8 +292,11 @@ const CompleteInvoiceDialog = React.memo(
       let total = 0;
 
       watchedItems.forEach((item, index) => {
-        const quantity = parseFloat(item?.quantity ?? "") || 0;
-        const unitPrice = parseFloat(item?.unitPrice ?? "") || 0;
+        // Strip thousands-separator commas and a leading currency symbol so
+        // pasted values like "1,000" or "$1,000" parse correctly instead of
+        // truncating/NaN-ing at the first non-digit character (QA #163, #103).
+        const quantity = parseFloat((item?.quantity ?? "").replace(/[$,]/g, "")) || 0;
+        const unitPrice = parseFloat((item?.unitPrice ?? "").replace(/[$,]/g, "")) || 0;
         const subtotal = quantity * unitPrice;
 
         total += subtotal;
@@ -312,14 +351,14 @@ const CompleteInvoiceDialog = React.memo(
         <DialogTrigger asChild>{trigger}</DialogTrigger>
         <DialogContent className="sm:max-w-7xl max-h-[90vh] overflow-y-auto rounded-2xl p-0">
           <div className="flex items-center justify-between px-8 pt-8">
-            <DialogTitle className="text-xl font-semibold text-[#0F0F0F]">
+            <DialogTitle className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
               Complete Invoice
             </DialogTitle>
           </div>
           <div className="px-8 pb-8 pt-6">
-            <div className="overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white">
-              <div className="flex items-center justify-between border-b border-[#E5E7EB] px-6 py-4">
-                <div className="text-sm font-semibold text-[#6B7280] grid grid-cols-[40px_1fr_1fr_100px_160px_120px_120px_100px] gap-4 w-full">
+            <div className="overflow-hidden rounded-2xl border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-900">
+              <div className="flex items-center justify-between border-b border-[#E5E7EB] dark:border-slate-700 px-6 py-4">
+                <div className="text-sm font-semibold text-[#6B7280] dark:text-slate-400 grid grid-cols-[40px_1fr_1fr_100px_160px_120px_120px_100px] gap-4 w-full">
                   <span>#</span>
                   <span>Item/Component</span>
                   <span>Description</span>
@@ -331,31 +370,31 @@ const CompleteInvoiceDialog = React.memo(
                 </div>
               </div>
 
-              <div className="divide-y divide-[#E5E7EB]">
+              <div className="divide-y divide-[#E5E7EB] dark:divide-slate-700">
                 {fields.map((field, index) => (
                   <InvoiceInputRow
-                    {...{
-                      id: field.id,
-                      index,
-                      onRemoveRow: handleRemoveRow,
-                      onAddRow: handleAddRow,
-                    }}
+                    key={field.id}
+                    id={field.id}
+                    index={index}
+                    onRemoveRow={handleRemoveRow}
+                    onAddRow={handleAddRow}
+                    currency={currency}
                   />
                 ))}
               </div>
 
               {/* Total */}
-              <div className="flex items-center justify-between border-t border-[#E5E7EB] px-6 py-4">
+              <div className="flex items-center justify-between border-t border-[#E5E7EB] dark:border-slate-700 px-6 py-4">
                 <button
                   type="button"
                   onClick={handleAddRow}
-                  className="inline-flex items-center gap-2 text-sm font-semibold text-[#2A4467]"
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-[#2A4467] dark:text-blue-300"
                 >
                   <Plus className="h-4 w-4" /> Add More
                 </button>
                 <div className="flex items-center gap-6">
-                  <span className="text-sm text-[#6B7280]">Total</span>
-                  <span className="text-base font-semibold text-[#0F0F0F]">
+                  <span className="text-sm text-[#6B7280] dark:text-slate-400">Total</span>
+                  <span className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                     {new Intl.NumberFormat("en-US", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
@@ -366,12 +405,12 @@ const CompleteInvoiceDialog = React.memo(
             </div>
 
             {/* Button Footer */}
-            <div className="sticky bottom-0 left-0 right-0 z-10 bg-white px-0 py-6">
+            <div className="sticky bottom-0 left-0 right-0 z-10 bg-white dark:bg-slate-900 px-0 py-6">
               <div className="flex items-center justify-end gap-4">
                 <button
                   type="button"
                   onClick={() => onOpenChange(false)}
-                  className="h-12 px-12 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] text-base font-semibold text-[#0F0F0F]"
+                  className="h-12 px-12 rounded-xl border border-[#E5E7EB] dark:border-slate-700 bg-[#F3F4F6] dark:bg-slate-800 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
                 >
                   Back
                 </button>
@@ -433,11 +472,15 @@ function RadioGroupDemo({
     >
       <div className="flex items-center gap-3">
         <RadioGroupItem value="manual" id="r1" />
-        <Label htmlFor="r1">Manual</Label>
+        <Label htmlFor="r1" className="text-[#0F0F0F] dark:text-slate-100">
+          Manual
+        </Label>
       </div>
       <div className="flex items-center gap-3">
         <RadioGroupItem value="file" id="r2" />
-        <Label htmlFor="r2">Upload File</Label>
+        <Label htmlFor="r2" className="text-[#0F0F0F] dark:text-slate-100">
+          Upload File
+        </Label>
       </div>
     </RadioGroup>
   );
@@ -445,13 +488,13 @@ function RadioGroupDemo({
 
 const UploadElement = () => {
   return (
-    <div className="flex h-40 w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[#9CA3AF] bg-white px-4">
-      <UploadCloud className="h-10 w-10 text-[#2A4467]" />
+    <div className="flex h-40 w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[#9CA3AF] dark:border-slate-600 bg-white dark:bg-slate-800 px-4">
+      <UploadCloud className="h-10 w-10 text-[#2A4467] dark:text-blue-300" />
       <div className="flex flex-col items-center gap-1 text-center">
-        <div className="text-sm font-semibold text-[#2A4467]">
+        <div className="text-sm font-semibold text-[#2A4467] dark:text-blue-300">
           Drag &amp; Drop or Click to choose files
         </div>
-        <div className="text-xs font-medium text-[#9CA3AF]">
+        <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
           Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
         </div>
       </div>
@@ -459,26 +502,30 @@ const UploadElement = () => {
   );
 };
 
-const FilesListItem = ({
-  file,
-  value,
-  onChange,
-}: {
-  file: File;
-  value: File[];
-  onChange: (name: string, files: File[]) => void;
-}) => {
+const FilesListItem = ({ file, index }: { file: File; index?: number }) => {
+  // Remove via the FileUploader's own removeFileFromSet, which routes through
+  // the same onValueChange that drops use — so the controlled list actually
+  // re-renders. (Writing to the field directly with useFormContext().setValue
+  // updates form state but does NOT reliably re-render the Forger controller
+  // under Forge's FormProvider wiring, so the row stayed on screen.)
+  const { removeFileFromSet } = useFileUpload();
+
+  const handleRemove = () => {
+    if (typeof index !== "number") return;
+    removeFileFromSet(index);
+  };
+
   return (
-    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] bg-white p-3">
+    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB]">
-          <FileText className="h-5 w-5 text-[#2A4467]" />
+        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB] dark:bg-slate-700">
+          <FileText className="h-5 w-5 text-[#2A4467] dark:text-blue-300" />
         </div>
         <div className="min-w-0">
-          <div className="truncate text-sm font-medium max-w-xs text-[#0F0F0F]">
+          <div className="truncate text-sm font-medium max-w-xs text-[#0F0F0F] dark:text-slate-100">
             {file.name}
           </div>
-          <div className="text-xs font-medium text-[#9CA3AF]">
+          <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
             {getSimpleFileExtension(file.name).toUpperCase()} •{" "}
             {formatFileSize(file.size)}
           </div>
@@ -486,13 +533,8 @@ const FilesListItem = ({
       </div>
       <button
         type="button"
-        onClick={() =>
-          onChange(
-            "files",
-            (value ?? []).filter((f) => f.name !== file.name),
-          )
-        }
-        className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF] hover:text-red-500 transition-colors"
+        onClick={handleRemove}
+        className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF] dark:text-slate-400 hover:text-red-500 transition-colors"
       >
         <X className="h-4 w-4" />
       </button>
@@ -505,6 +547,7 @@ type InvoiceComponentProps = {
   handleCompleteOpenChange: (nextOpen: boolean) => void;
   invoiceCompleted: boolean;
   onInvoiceCompleted: () => void;
+  currency?: string;
 };
 
 const InvoiceComponent = ({
@@ -512,6 +555,7 @@ const InvoiceComponent = ({
   handleCompleteOpenChange,
   invoiceCompleted,
   onInvoiceCompleted,
+  currency,
 }: InvoiceComponentProps) => {
   const mode = useWatch({ name: "uploadMode" });
 
@@ -529,11 +573,11 @@ const InvoiceComponent = ({
   ) : (
     <button
       type="button"
-      className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#E5E7EB] py-3.5"
+      className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#E5E7EB] dark:border-slate-700 py-3.5"
     >
-      <Plus className="h-4 w-4 text-[#2A4467]" />
-      <span className="text-[#2A4467] text-base font-semibold">
-        Create Invoice
+      <Plus className="h-4 w-4 text-[#2A4467] dark:text-blue-300" />
+      <span className="text-[#2A4467] dark:text-blue-300 text-base font-semibold">
+        Submit Invoice
       </span>
     </button>
   );
@@ -544,6 +588,7 @@ const InvoiceComponent = ({
       onOpenChange={handleCompleteOpenChange}
       onCompleteInvoice={onInvoiceCompleted}
       trigger={trigger}
+      currency={currency}
     />
   ) : (
     <Forger
@@ -573,12 +618,21 @@ const InvoiceComponent = ({
 const CreateInvoiceDialog: React.FC<Props> = ({
   trigger,
   contractId,
+  currency,
   createPath,
   invalidateQueryKey,
+  mode = "create",
+  isResubmit = false,
+  invoiceId,
+  initialInvoice,
 }) => {
+  const isEditMode = mode === "edit" && Boolean(invoiceId);
   const [open, setOpen] = React.useState(false);
   const [completeOpen, setCompleteOpen] = React.useState(false);
-  const [invoiceCompleted, setInvoiceCompleted] = React.useState(false);
+  // In edit mode the invoice already exists, so we don't gate submission
+  // behind the "Complete Invoice" sub-dialog (which is only for new manual
+  // invoices that need their item list populated).
+  const [invoiceCompleted, setInvoiceCompleted] = React.useState(isEditMode);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
@@ -625,46 +679,116 @@ const CreateInvoiceDialog: React.FC<Props> = ({
         unitPrice?: number;
       }>;
     }) => {
+      if (isEditMode && invoiceId) {
+        return await vendorApi.updateInvoice(contractId, invoiceId, payload);
+      }
       if (createPath) {
         const res = await postRequest({
           url: createPath,
           payload,
         });
-        return res.data;
+        const body = res.data as { status?: string; message?: string };
+        // BE may return HTTP 200 with `{status:"fail", message:"..."}` for
+        // business-rule failures (e.g. "Could not determine invoice amount
+        // from the uploaded files"). Surface that message instead of a
+        // generic success. Sibling pattern: MsaReleaseHoldbackDialog.
+        if (body?.status === "fail") {
+          throw new Error(body?.message || "Failed to submit invoice");
+        }
+        return body;
       }
       return await vendorApi.createInvoice(contractId, payload);
     },
     onSuccess: async () => {
-      toastHandler.success("Success", "Invoice submitted successfully");
+      toastHandler.success(
+        "Success",
+        isEditMode
+          ? "Invoice updated successfully"
+          : "Invoice submitted successfully",
+      );
       await queryClient.invalidateQueries({
         queryKey: invalidateQueryKey ?? ["contractInvoices"],
       });
+      if (isEditMode) {
+        await queryClient.invalidateQueries({
+          queryKey: ["contractInvoiceDetail", contractId, invoiceId],
+        });
+      }
       setOpen(false);
       setCompleteOpen(false);
       setInvoiceCompleted(false);
     },
-    onError: (error: ApiResponseError) => {
-      toastHandler.error(
-        "Error",
-        error?.response?.data?.message || "Failed to submit invoice",
-      );
-    },
   });
 
-  const { control, reset, getValues, setValue, handleSubmit } = useForge<FormValues>({
-    resolver: yupResolver(schema),
-    defaultValues: {
-      invoiceTitle: "",
-      invoiceType: undefined,
+  const editDefaults = React.useMemo<FormValues>(() => {
+    if (!isEditMode || !initialInvoice) {
+      return {
+        invoiceTitle: "",
+        invoiceType: undefined,
+        milestonePayment: undefined,
+        taxCode: undefined,
+        otherTaxValue: "",
+        description: "",
+        uploadMode: "manual",
+        total: 0,
+        invoiceAmount: "",
+      };
+    }
+    const mode: "manual" | "file" =
+      initialInvoice.fileType ?? initialInvoice.inputType ?? "manual";
+    return {
+      invoiceTitle: initialInvoice.title ?? "",
+      invoiceType: initialInvoice.type,
       milestonePayment: undefined,
-      taxCode: undefined,
-      otherTaxValue: "",
-      description: "",
-      uploadMode: "manual",
-      total: 0,
-      invoiceAmount: "",
-    },
-  });
+      taxCode: initialInvoice.taxCode
+        ? TAX_CODE_TO_FORM[initialInvoice.taxCode] ?? initialInvoice.taxCode
+        : undefined,
+      otherTaxValue:
+        typeof initialInvoice.taxValue === "number"
+          ? String(initialInvoice.taxValue)
+          : "",
+      description: initialInvoice.description ?? "",
+      uploadMode: mode,
+      total:
+        mode === "manual" && typeof initialInvoice.amount === "number"
+          ? initialInvoice.amount
+          : 0,
+      invoiceAmount:
+        mode === "file" && typeof initialInvoice.amount === "number"
+          ? String(initialInvoice.amount)
+          : "",
+      items:
+        mode === "manual" && Array.isArray(initialInvoice.items)
+          ? initialInvoice.items.map((it) => ({
+              itemComponent: it.component ?? "",
+              description: it.description ?? "",
+              quantity:
+                typeof it.quantity === "number" ? String(it.quantity) : "",
+              unitMeasurement: it.unitOfmeasurement ?? "",
+              unitPrice:
+                typeof it.unitPrice === "number" ? String(it.unitPrice) : "",
+              total:
+                typeof it.quantity === "number" &&
+                typeof it.unitPrice === "number"
+                  ? String(it.quantity * it.unitPrice)
+                  : "",
+            }))
+          : undefined,
+    };
+  }, [isEditMode, initialInvoice]);
+
+  const { control, reset, getValues, setValue, handleSubmit } =
+    useForge<FormValues>({
+      resolver: yupResolver(schema),
+      defaultValues: editDefaults,
+    });
+
+  React.useEffect(() => {
+    if (open && isEditMode) {
+      reset(editDefaults);
+      setInvoiceCompleted(true);
+    }
+  }, [open, isEditMode, editDefaults, reset]);
 
   const onSubmit = React.useCallback(
     async (values: FormValues) => {
@@ -689,6 +813,19 @@ const CreateInvoiceDialog: React.FC<Props> = ({
           toastHandler.error(
             "Missing Tax Code",
             "Please select a tax code before submitting the invoice.",
+          );
+          return;
+        }
+
+        // #203 — the BE requires a tax value for the "Others" tax code; guard
+        // here so the user gets a clear prompt instead of a submit failure.
+        if (
+          taxCodeEnum === "Others" &&
+          !(values.otherTaxValue && values.otherTaxValue.trim())
+        ) {
+          toastHandler.error(
+            "Missing Tax Value",
+            "Please enter a tax value for the 'Others' tax code.",
           );
           return;
         }
@@ -740,8 +877,8 @@ const CreateInvoiceDialog: React.FC<Props> = ({
         if (uploadMode === "manual" && Array.isArray(values.items)) {
           itemsPayload = values.items
             .map((item) => {
-              const quantity = parseFloat(item.quantity ?? "");
-              const unitPrice = parseFloat(item.unitPrice ?? "");
+              const quantity = parseFloat((item.quantity ?? "").replace(/[$,]/g, ""));
+              const unitPrice = parseFloat((item.unitPrice ?? "").replace(/[$,]/g, ""));
               const quantityNum = Number.isFinite(quantity) ? quantity : undefined;
               const unitPriceNum = Number.isFinite(unitPrice) ? unitPrice : undefined;
 
@@ -790,7 +927,9 @@ const CreateInvoiceDialog: React.FC<Props> = ({
               ? values.total
               : undefined
             : (() => {
-                const parsed = Number.parseFloat(values.invoiceAmount ?? "");
+                const parsed = Number.parseFloat(
+                  (values.invoiceAmount ?? "").replace(/[$,]/g, ""),
+                );
                 return Number.isFinite(parsed) ? parsed : undefined;
               })();
 
@@ -870,10 +1009,12 @@ const CreateInvoiceDialog: React.FC<Props> = ({
 
         await createInvoiceMutation.mutateAsync(payload);
         reset();
-      } catch (error) {
+      } catch (error: any) {
         toastHandler.error(
           "Submission Failed",
-          "An error occurred while submitting the invoice. Please try again.",
+          error?.response?.data?.message ||
+            error?.message ||
+            "An error occurred while submitting the invoice. Please try again.",
         );
       } finally {
         setIsSubmitting(false);
@@ -909,8 +1050,12 @@ const CreateInvoiceDialog: React.FC<Props> = ({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-0">
         <div className="flex items-center justify-between px-4 pt-8">
-          <DialogTitle className="text-xl font-semibold text-[#0F0F0F]">
-            Create Invoice
+          <DialogTitle className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
+            {isEditMode
+              ? isResubmit
+                ? "Resubmit Invoice"
+                : "Edit Invoice"
+              : "Submit Invoice"}
           </DialogTitle>
         </div>
 
@@ -919,7 +1064,6 @@ const CreateInvoiceDialog: React.FC<Props> = ({
             control={control}
             onSubmit={onSubmit}
             className="space-y-5"
-            // debug
           >
             <Forger
               name="invoiceTitle"
@@ -941,6 +1085,19 @@ const CreateInvoiceDialog: React.FC<Props> = ({
               options={TAX_CODES}
               component={TextSelect}
             />
+            {/* #203 — the "Others" tax code requires a manually-entered tax
+                value on the BE, but no field existed to capture it, so submit
+                always failed with "Tax value is required for 'Others' tax code".
+                Surface the input only when "Others" is selected. */}
+            {useWatch({ control, name: "taxCode" }) === "others" && (
+              <Forger
+                name="otherTaxValue"
+                label="Tax Value"
+                placeholder="Enter tax value"
+                type="number"
+                component={TextInput}
+              />
+            )}
             <Forger
               name="description"
               label="Description"
@@ -956,7 +1113,8 @@ const CreateInvoiceDialog: React.FC<Props> = ({
                   name="invoiceAmount"
                   label="Invoice Amount"
                   placeholder="Enter invoice amount"
-                  component={TextInput}
+                  component={TextCurrencyInput}
+                  currency={currency}
                 />
               )}
               <InvoiceComponent
@@ -967,6 +1125,7 @@ const CreateInvoiceDialog: React.FC<Props> = ({
                 }}
                 invoiceCompleted={invoiceCompleted}
                 onInvoiceCompleted={() => setInvoiceCompleted(true)}
+                currency={currency}
               />
             </div>
 
@@ -975,7 +1134,13 @@ const CreateInvoiceDialog: React.FC<Props> = ({
             <Footer
               onBack={handleBack}
               onPrimary={handlePrimary}
-              primaryLabel={"Create Invoice"}
+              primaryLabel={
+                isEditMode
+                  ? isResubmit
+                    ? "Resubmit Invoice"
+                    : "Update Invoice"
+                  : "Submit Invoice"
+              }
               isSubmitting={isSubmitting}
             />
           </Forge>

@@ -10,7 +10,13 @@ import { getRequest } from "@/lib/axiosInstance";
 import PaymentSummaryMilestonesTable, {
   type PaymentMilestoneRow,
 } from "@/pages/ContractManagementPage/components/PaymentSummaryMilestonesTable";
+import HoldbackDetailsSheet from "@/pages/ContractManagementPage/components/HoldbackDetailsSheet";
 import { LabelItem } from "../components/LabelItem";
+import MsaReleaseHoldbackDialog from "../components/MsaReleaseHoldbackDialog";
+import MsaUpdateSavingsDialog from "../components/MsaUpdateSavingsDialog";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
+import { resolveCurrency, resolveMilestoneDeliverableName } from "@/lib/utils";
+import { useUser } from "@/store/authSlice";
 
 type PaymentSummaryProps = {
   contractId: string;
@@ -18,6 +24,10 @@ type PaymentSummaryProps = {
   msa?: {
     currency?: string;
     contractValue?: number;
+    /** MSA "Book Balance" (QA #122): BE-computed as the current MSA balance less
+     *  the balance of all linked contracts, plus change orders. Replaces the
+     *  contract-side "Current Balance", which MSAs previously did not surface. */
+    bookBalance?: number;
     holdBackReleased?: number;
     savingAmount?: number;
     holdBackBank?: number;
@@ -80,12 +90,23 @@ const formatShortDate = (value?: string | Date) => {
   });
 };
 
+// #82 — Holdback (amount/released/release action + tab) and Payment Structure
+// are disabled on MSA payment summary across all profiles. Kept as flags rather
+// than deleted so they can be switched back on without re-implementing.
+const SHOW_MSA_HOLDBACK = false;
+const SHOW_MSA_PAYMENT_STRUCTURE = false;
+// #82 — Milestones tab is also disabled on MSA payment summary.
+const SHOW_MSA_MILESTONES = false;
+
 const PaymentSummary: React.FC<PaymentSummaryProps> = ({
   contractId,
   msa,
   isActive,
 }) => {
-  const { isVendor, isApprover, isViewOnly, isManager } = useUserRole();
+  const { isVendor, isProjectManager, isApprover, isViewOnly, isManager } =
+    useUserRole();
+  const isVendorLike = isVendor || isProjectManager;
+  const isPendingApproval = (msa as any)?.status === "pending_approval";
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<{ holdbacks?: unknown; savings?: unknown }>(
@@ -98,12 +119,15 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
   ]);
   const savingsQueryKey = useUserQueryKey(["msa-payment-savings", contractId]);
 
+  // View-only reads the savings realized from /user/msa-contracts/{id}/payment-savings
+  // (QA #106, BE-unblocked in docs.json v2.3.0). Holdbacks stay off for all
+  // profiles via SHOW_MSA_HOLDBACK (#82).
   const apiPrefix = React.useMemo(() => {
-    if (isVendor) return "/contract/vendor";
+    if (isVendor || isProjectManager) return "/contract/vendor";
     if (isApprover) return "/contract/approver";
     if (isViewOnly) return "/contract/user";
     return "/contract/manager";
-  }, [isApprover, isVendor, isViewOnly]);
+  }, [isApprover, isVendor, isProjectManager, isViewOnly]);
 
   const {
     data: holdbacksResponse,
@@ -113,12 +137,32 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
     queryKey: holdbacksQueryKey,
     queryFn: async () => {
       const res = await getRequest({
-        url: `${apiPrefix}/msa-contract/${contractId}/payment-holdbacks`,
+        url: `${apiPrefix}/msa-contracts/${contractId}/payment-holdbacks`,
       });
       return res.data as { message?: string; data?: PaymentHoldbackApi[] };
     },
-    enabled: Boolean(contractId) && !!isActive,
+    // #82 — holdbacks are disabled on MSA (the payment-holdbacks endpoint was
+    // removed on the backend and now 404s). Gate the query on the same flag
+    // that hides the holdback UI so it isn't called and no error toast fires.
+    enabled:
+      Boolean(contractId) && !!isActive && !isViewOnly && SHOW_MSA_HOLDBACK,
     staleTime: 60000,
+    retry: false,
+  });
+
+  const { data: paymentTermsResponse } = useQuery({
+    queryKey: ["msa-payment-terms"],
+    queryFn: async () => {
+      const res = await getRequest({ url: "/contract/manager/payment-terms" });
+      return res.data as {
+        data?: Array<{ _id?: string; name?: string }>;
+      };
+    },
+    enabled:
+      !!isActive &&
+      !!(typeof msa?.paymentTerms === "string" || typeof msa?.paymentTerm === "string") &&
+      isManager,
+    staleTime: 60_000,
     retry: false,
   });
 
@@ -130,11 +174,11 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
     queryKey: savingsQueryKey,
     queryFn: async () => {
       const res = await getRequest({
-        url: `${apiPrefix}/msa-contract/${contractId}/payment-savings`,
+        url: `${apiPrefix}/msa-contracts/${contractId}/payment-savings`,
       });
       return res.data as { message?: string; data?: PaymentSavingApi[] };
     },
-    enabled: Boolean(contractId) && !!isActive,
+    enabled: Boolean(contractId) && !!isActive && !isVendorLike,
     staleTime: 60000,
     retry: false,
   });
@@ -157,15 +201,17 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
     toastErrorRef.current("MSA Payment Savings", savingsError as any);
   }, [savingsError]);
 
-  const currency = msa?.currency || "USD";
+  const currency = resolveCurrency(msa?.currency, useUser()?.currency);
   const formatMoney = React.useCallback(
-    (value?: number) => {
+    (value?: number, withDecimals = false) => {
       if (value == null || !Number.isFinite(value)) return "-";
       try {
         return new Intl.NumberFormat("en-US", {
           style: "currency",
           currency,
-          maximumFractionDigits: 0,
+          ...(withDecimals
+            ? { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+            : { maximumFractionDigits: 0 }),
         }).format(value);
       } catch {
         return `${value}`;
@@ -174,16 +220,34 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
     [currency],
   );
 
+  // Resolve deliverable id/object/legacy-name to a display name; never fall
+  // back to the milestone title (QA #47). Map from the MSA deliverables list
+  // when the detail carries populated {_id, name} entries.
+  const deliverableNameById = React.useMemo(
+    () =>
+      new Map<string, string>(
+        (Array.isArray((msa as any)?.deliverables)
+          ? (msa as any).deliverables
+          : []
+        )
+          .filter((d: any) => d?._id && d?.name)
+          .map((d: any) => [String(d._id), String(d.name)]),
+      ),
+    [msa],
+  );
+
   const milestoneRows = React.useMemo<PaymentMilestoneRow[]>(() => {
     const milestones = Array.isArray(msa?.milestone) ? msa.milestone : [];
     return milestones.map((item, index) => ({
       milestoneId: item?.milestoneId ?? `MIL-${index + 1}`,
       milestoneTitle: item?.name ?? "-",
-      deliverable: item?.deliverable?.name ?? item?.name ?? "-",
+      deliverable:
+        resolveMilestoneDeliverableName(item?.deliverable, deliverableNameById) ||
+        "-",
       amount: formatMoney(item?.amount),
       dueDate: formatShortDate(item?.dueDate),
     }));
-  }, [formatMoney, msa?.milestone]);
+  }, [deliverableNameById, formatMoney, msa?.milestone]);
 
   const holdbackRows = React.useMemo<HoldbackReleaseRow[]>(() => {
     const holdbacks = holdbacksResponse?.data ?? [];
@@ -232,13 +296,36 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
       },
       {
         accessorKey: "dueDate",
-        header: () => <div className="text-center">Due Date</div>,
+        header: () => <div className="text-center">Release Date</div>,
         cell: ({ getValue }) => (
           <div className="text-center">{getValue<string>()}</div>
         ),
       },
+      {
+        id: "action",
+        header: () => <div className="text-center">Action</div>,
+        cell: ({ row }) => (
+          <div className="flex justify-center">
+            <HoldbackDetailsSheet
+              holdBackId={row.getValue<string>("releaseId")}
+              contractId={contractId}
+              contractType="MsaContract"
+              currency={currency}
+              owner={(msa as { owner?: boolean } | undefined)?.owner}
+              trigger={
+                <button
+                  type="button"
+                  className="text-sm font-semibold text-[#16A34A] underline underline-offset-2"
+                >
+                  View
+                </button>
+              }
+            />
+          </div>
+        ),
+      },
     ],
-    [],
+    [contractId, currency, msa],
   );
 
   const savingsColumns = React.useMemo<ColumnDef<SavingRealizedRow>[]>(
@@ -266,9 +353,14 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
 
   const paymentTermValue = React.useMemo(() => {
     const paymentTerm = msa?.paymentTerms ?? msa?.paymentTerm;
-    if (typeof paymentTerm === "string") return paymentTerm;
+    if (typeof paymentTerm === "string") {
+      const matchedTerm = paymentTermsResponse?.data?.find(
+        (term) => term?._id === paymentTerm || term?.name === paymentTerm,
+      );
+      return matchedTerm?.name || paymentTerm;
+    }
     return paymentTerm?.name || "-";
-  }, [msa?.paymentTerm, msa?.paymentTerms]);
+  }, [msa?.paymentTerm, msa?.paymentTerms, paymentTermsResponse?.data]);
 
   const contigencyValue = React.useMemo(() => {
     const value = msa?.contigency ?? msa?.contingency;
@@ -285,39 +377,54 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
 
   return (
     <TabsContent value="payment-summary" className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-[#0F0F0F]">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h3 className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
           Payment Summary
         </h3>
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            className="inline-flex h-12 items-center gap-2 text-sm rounded-xl border border-[#E5E7EB] px-5 font-semibold text-[#0F0F0F]"
-          >
-            <Share2 className="h-5 w-5" />
-            Export Report
-          </button>
-          {isManager && (
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+          <ExportReportSheet contractId={contractId} contractType="MsaContract">
+            <button
+              type="button"
+              className="inline-flex h-10 items-center gap-2 text-sm rounded-xl border border-[#E5E7EB] dark:border-slate-800 px-4 font-semibold text-[#0F0F0F] dark:text-slate-100"
+            >
+              <Share2 className="h-4 w-4" />
+              Export Report
+            </button>
+          </ExportReportSheet>
+          {isManager && !isPendingApproval && (
             <>
-              <button
-                type="button"
-                className="inline-flex h-12 items-center rounded-xl text-sm border border-[#E5E7EB] bg-[#F3F4F6] px-5 font-semibold text-[#0F0F0F]"
-              >
-                Update Saving
-              </button>
-              <button
-                type="button"
-                className="inline-flex h-12 items-center rounded-xl text-sm bg-[#2A4467] px-5 font-semibold text-white"
-              >
-                Release Holdback
-              </button>
+              <MsaUpdateSavingsDialog
+                contractId={contractId}
+                trigger={
+                  <button
+                    type="button"
+                    className="inline-flex h-10 items-center rounded-xl text-sm border border-[#E5E7EB] dark:border-slate-800 bg-[#F3F4F6] dark:bg-slate-800 px-4 font-semibold text-[#0F0F0F] dark:text-slate-100"
+                  >
+                    Update Saving
+                  </button>
+                }
+              />
+              {/* #82 — Release Holdback disabled on MSA (SHOW_MSA_HOLDBACK). */}
+              {SHOW_MSA_HOLDBACK && (
+                <MsaReleaseHoldbackDialog
+                  contractId={contractId}
+                  trigger={
+                    <button
+                      type="button"
+                      className="inline-flex h-10 items-center rounded-xl text-sm bg-[#2A4467] px-4 font-semibold text-white"
+                    >
+                      Release Holdback
+                    </button>
+                  }
+                />
+              )}
             </>
           )}
         </div>
       </div>
 
       {(holdbacksLoading || savingsLoading) && (
-        <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
+        <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-800 bg-[#F9FAFB] dark:bg-slate-800 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
           Loading payment data…
         </div>
       )}
@@ -325,100 +432,129 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
       <div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
         <LabelItem label="Contract Value" value={formatMoney(msa?.contractValue)} />
 
+        <LabelItem label="Book Balance" value={formatMoney(msa?.bookBalance)} />
+
         <LabelItem label="Contigency" value={contigencyValue} />
 
-        <LabelItem label="Holdback" value={holdbackValue} />
+        {/* #82 — Holdback and Payment Structure disabled on MSA. Flip
+            SHOW_MSA_HOLDBACK / SHOW_MSA_PAYMENT_STRUCTURE to re-enable. */}
+        {SHOW_MSA_HOLDBACK && (
+          <>
+            <LabelItem label="Holdback" value={holdbackValue} />
 
-        <LabelItem label="Holdback Amount" value={formatMoney(msa?.holdBackBank)} />
+            <LabelItem label="Holdback Amount" value={formatMoney(msa?.holdBackBank, true)} />
 
-        <LabelItem label="Holdback Released" value={formatMoney(msa?.holdBackReleased)} />
+            <LabelItem label="Holdback Released" value={formatMoney(msa?.holdBackReleased, true)} />
+          </>
+        )}
 
         <LabelItem label="Savings Realized" value={formatMoney(msa?.savingAmount)} />
 
-        <LabelItem label="Payment Structure" value={msa?.paymentStructure || "-"} />
+        {SHOW_MSA_PAYMENT_STRUCTURE && (
+          <LabelItem label="Payment Structure" value={msa?.paymentStructure || "-"} />
+        )}
 
         <LabelItem label="Payment Term" value={paymentTermValue} />
       </div>
 
-      <Tabs defaultValue="milestones" className="w-full space-y-6">
-        <TabsList className="h-auto rounded-full bg-[#F3F4F6] p-2">
-          <TabsTrigger
-            value="milestones"
-            className="rounded-full px-6 py-1.5 text-sm font-semibold text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
-          >
-            MileStones
-          </TabsTrigger>
-          <TabsTrigger
-            value="holdback-release"
-            className="rounded-full px-6 py-1.5 text-sm font-semibold text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
-          >
-            Holdback Release
-          </TabsTrigger>
-          <TabsTrigger
-            value="saving-realized"
-            className="rounded-full px-6 py-1.5 text-sm font-semibold text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
-          >
-            Saving Reaized
-          </TabsTrigger>
+      <Tabs
+        defaultValue={SHOW_MSA_MILESTONES ? "milestones" : "saving-realized"}
+        className="w-full space-y-6"
+      >
+        <TabsList className="h-auto rounded-full bg-[#F3F4F6] dark:bg-slate-800 p-2">
+          {/* #82 — Milestones tab disabled on MSA (SHOW_MSA_MILESTONES). */}
+          {SHOW_MSA_MILESTONES && (
+            <TabsTrigger
+              value="milestones"
+              className="rounded-full px-6 py-1.5 text-sm font-semibold text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            >
+              MileStones
+            </TabsTrigger>
+          )}
+          {/* #82 — Holdback Release tab disabled on MSA (SHOW_MSA_HOLDBACK). */}
+          {SHOW_MSA_HOLDBACK && (
+            <TabsTrigger
+              value="holdback-release"
+              className="rounded-full px-6 py-1.5 text-sm font-semibold text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            >
+              Holdback Release
+            </TabsTrigger>
+          )}
+          {!isVendorLike && (
+            <TabsTrigger
+              value="saving-realized"
+              className="rounded-full px-6 py-1.5 text-sm font-semibold text-[#6B6B6B] dark:text-slate-400 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            >
+              Saving Reaized
+            </TabsTrigger>
+          )}
         </TabsList>
 
-        <TabsContent value="milestones">
-          <PaymentSummaryMilestonesTable
-            rows={milestoneRows}
-            getRowSearchValues={(row) => [
-              row.milestoneId,
-              row.milestoneTitle,
-              row.deliverable,
-              row.amount,
-              row.dueDate,
-            ]}
-          />
-          {milestoneRows.length === 0 && (
-            <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
-              No milestones found.
-            </div>
-          )}
-        </TabsContent>
+        {/* #82 — Milestones content disabled on MSA (SHOW_MSA_MILESTONES). */}
+        {SHOW_MSA_MILESTONES && (
+          <TabsContent value="milestones">
+            <PaymentSummaryMilestonesTable
+              rows={milestoneRows}
+              getRowSearchValues={(row) => [
+                row.milestoneId,
+                row.milestoneTitle,
+                row.deliverable,
+                row.amount,
+                row.dueDate,
+              ]}
+            />
+            {milestoneRows.length === 0 && (
+              <div className="mt-3 rounded-xl border border-[#E5E7EB] dark:border-slate-800 bg-[#F9FAFB] dark:bg-slate-800 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
+                No milestones found.
+              </div>
+            )}
+          </TabsContent>
+        )}
 
-        <TabsContent value="holdback-release">
-          <PaymentSummaryMilestonesTable<HoldbackReleaseRow>
-            title="Holdback Release"
-            rows={holdbackRows}
-            columns={holdbackColumns}
-            getRowSearchValues={(row) => [
-              row.releaseId,
-              row.releasedType,
-              row.releasedAmount,
-              row.status,
-              row.dueDate,
-            ]}
-          />
-          {holdbackRows.length === 0 && (
-            <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
-              No holdback releases available.
-            </div>
-          )}
-        </TabsContent>
+        {/* #82 — Holdback Release content disabled on MSA (SHOW_MSA_HOLDBACK). */}
+        {SHOW_MSA_HOLDBACK && (
+          <TabsContent value="holdback-release">
+            <PaymentSummaryMilestonesTable<HoldbackReleaseRow>
+              title="Holdback Release"
+              rows={holdbackRows}
+              columns={holdbackColumns}
+              getRowSearchValues={(row) => [
+                row.releaseId,
+                row.releasedType,
+                row.releasedAmount,
+                row.status,
+                row.dueDate,
+              ]}
+            />
+            {holdbackRows.length === 0 && (
+              <div className="mt-3 rounded-xl border border-[#E5E7EB] dark:border-slate-800 bg-[#F9FAFB] dark:bg-slate-800 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
+                No holdback releases available.
+              </div>
+            )}
+          </TabsContent>
+        )}
 
-        <TabsContent value="saving-realized">
-          <PaymentSummaryMilestonesTable<SavingRealizedRow>
-            title="Savings Realized"
-            rows={savingRows}
-            columns={savingsColumns}
-            getRowSearchValues={(row) => [
-              row.savingsId,
-              row.savingsTitle,
-              row.category,
-              row.amount,
-              row.dateSubmitted,
-            ]}
-          />
-          {savingRows.length === 0 && (
-            <div className="mt-3 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
-              No savings records found.
-            </div>
-          )}
-        </TabsContent>
+        {!isVendorLike && (
+          <TabsContent value="saving-realized">
+            <PaymentSummaryMilestonesTable<SavingRealizedRow>
+              title="Savings Realized"
+              rows={savingRows}
+              columns={savingsColumns}
+              getRowSearchValues={(row) => [
+                row.savingsId,
+                row.savingsTitle,
+                row.category,
+                row.amount,
+                row.dateSubmitted,
+              ]}
+            />
+            {savingRows.length === 0 && (
+              <div className="mt-3 rounded-xl border border-[#E5E7EB] dark:border-slate-800 bg-[#F9FAFB] dark:bg-slate-800 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
+                No savings records found.
+              </div>
+            )}
+          </TabsContent>
+        )}
       </Tabs>
     </TabsContent>
   );

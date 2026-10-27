@@ -12,6 +12,7 @@ import MessageThread from "./MessageThread";
 import MessageComposer from "./MessageComposer";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import CreateAddendumDialog from "./CreateAddendumDialog";
+import { formatQuestionDeadline, wallClockInZoneToInstant } from "@/lib/utils";
 
 // Question type definition
 export interface Question {
@@ -61,9 +62,17 @@ type QuestionsResponse = {
 
 interface QuestionsTabProps {
   solicitationStatus?: string;
+  isOwner?: boolean;
+  questionDeadline?: string | null;
+  timezone?: string;
 }
 
-const QuestionsTab: React.FC<QuestionsTabProps> = ({ solicitationStatus }) => {
+const QuestionsTab: React.FC<QuestionsTabProps> = ({
+  solicitationStatus,
+  isOwner,
+  questionDeadline,
+  timezone,
+}) => {
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
   const { id: solicitationId } = useParams<{ id: string }>();
@@ -74,6 +83,17 @@ const QuestionsTab: React.FC<QuestionsTabProps> = ({ solicitationStatus }) => {
   const [showCreateQuestion, setShowCreateQuestion] = useState(false);
   const [isCreateAddendumDialogOpen, setIsCreateAddendumDialogOpen] =
     useState(false);
+  const [questionDraftClearSignal, setQuestionDraftClearSignal] = useState(0);
+
+  // The deadline is a wall clock in the solicitation's timezone (stored stamped
+  // UTC), so resolve it in that zone before comparing against now (QA #190).
+  const questionDeadlineDate = useMemo(
+    () => wallClockInZoneToInstant(questionDeadline, timezone),
+    [questionDeadline, timezone],
+  );
+  const questionDeadlinePassed = Boolean(
+    questionDeadlineDate && Date.now() >= questionDeadlineDate.getTime(),
+  );
 
   // Fetch questions
   const { data: questionsData, isLoading } = useQuery<QuestionsResponse>({
@@ -103,6 +123,7 @@ const QuestionsTab: React.FC<QuestionsTabProps> = ({ solicitationStatus }) => {
     onSuccess: () => {
       toastHandler.success("Success", "Question submitted successfully");
       setShowCreateQuestion(false);
+      setQuestionDraftClearSignal((signal) => signal + 1);
       queryClient.invalidateQueries({
         queryKey: ["solicitation-questions", solicitationId],
       });
@@ -323,11 +344,17 @@ const QuestionsTab: React.FC<QuestionsTabProps> = ({ solicitationStatus }) => {
             key={question._id}
             question={question}
             sendType={sendType}
-            onReply={!question.isAnswered ? handleReplyClick : undefined}
+            onReply={!question.isAnswered && !(isProcurement && !isOwner) ? handleReplyClick : undefined}
             solicitationStatus={solicitationStatus}
           />
         ))}
       </div>
+
+      {isVendor && questionDeadlinePassed && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          Questions closed on {formatQuestionDeadline(questionDeadline, timezone)}.
+        </div>
+      )}
 
       {/* Create Addendum Dialog */}
       <Dialog
@@ -363,12 +390,14 @@ const QuestionsTab: React.FC<QuestionsTabProps> = ({ solicitationStatus }) => {
               </Button>
             )}
           </div>
-          <MessageComposer
+                  <MessageComposer
             onSend={handleSendMessage}
             isNewChat={questions.length === 0}
-            isLoading={
-              createQuestionMutation.isPending || replyMutation.isPending
-            }
+                    isLoading={
+                      createQuestionMutation.isPending || replyMutation.isPending
+                    }
+                    clearOnSend={!isVendor}
+                    clearSignal={questionDraftClearSignal}
             replyToUser={
               replyToQuestion
                 ? {
@@ -382,6 +411,10 @@ const QuestionsTab: React.FC<QuestionsTabProps> = ({ solicitationStatus }) => {
             currentUser={{ name: "You" }}
             sendType={sendType}
             onSendTypeChange={setSendType}
+                    disabled={
+                      (isProcurement && !isOwner) ||
+                      (isVendor && questionDeadlinePassed)
+                    }
           />
         </div>
       )}

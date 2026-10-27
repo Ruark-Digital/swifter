@@ -1,2 +1,0 @@
-import{useStore as t}from"zustand";function n(n){var r=n;return r.use={},Object.keys(r.getState()).forEach((function(n){var e=function(t){return t[n]};r.use[n]="function"==typeof r?function(){return r(e)}:function(){return t(r,e)}})),n}function r(n){var r=n;return Object.keys(r.getState()).forEach((function(n){var e,u=function(t){return t[n]};r["use".concat((e=n,e.charAt(0).toUpperCase()+e.slice(1)))]="function"==typeof r?function(){return r(u)}:function(){return t(r,u)}})),r}export{n as createSelectorFunctions,r as createSelectorHooks};
-//# sourceMappingURL=index.es.js.map

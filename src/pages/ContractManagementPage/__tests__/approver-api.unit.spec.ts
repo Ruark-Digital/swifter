@@ -24,7 +24,7 @@ test.describe("approverApi (unit)", () => {
     });
 
     await api.getContract("c1");
-    expect(getSpy.calls[0]).toEqual({ url: "/approver/contract/c1" });
+    expect(getSpy.calls[0]).toEqual({ url: "/contract/approver/contracts/c1" });
   });
 
   test("getApproveStatus calls correct endpoint", async () => {
@@ -35,7 +35,9 @@ test.describe("approverApi (unit)", () => {
     });
 
     await api.getApproveStatus("c1");
-    expect(getSpy.calls[0]).toEqual({ url: "/approver/contract/c1/approve/status" });
+    expect(getSpy.calls[0]).toEqual({
+      url: "/contract/approver/contracts/c1/approve/status",
+    });
   });
 
   test("approveContract calls correct endpoint", async () => {
@@ -48,7 +50,7 @@ test.describe("approverApi (unit)", () => {
     const payload = { action: "approved" as const, comment: "Looks good" };
     await api.approveContract("c1", payload);
     expect(postSpy.calls[0]).toEqual({
-      url: "/approver/contract/c1/approve",
+      url: "/contract/approver/contracts/c1/approve",
       payload,
     });
   });

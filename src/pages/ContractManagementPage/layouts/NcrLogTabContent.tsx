@@ -17,33 +17,54 @@ type Props = {
   contract: ContractDetail
   isActive?: boolean;
   actionsDisabled?: boolean;
+  /** BE-computed flag: is the logged-in user the contract's owner/manager.
+   *  Gates the manager (CM) create action — a manager who doesn't own the
+   *  contract can view but not act on it (they'd need to take it over). */
+  owner?: boolean;
 };
 
-const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive, actionsDisabled }) => {
-  const { isApprover, isVendor, isManager, isAdmin, isViewOnly } = useUserRole();
+const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive, actionsDisabled, owner }) => {
+  const { isApprover, isVendor, isProjectManager, isManager, isAdmin, isViewOnly } =
+    useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   
   const getBasePath = () => {
-    if (isVendor) return `/contract/vendor/contracts/${contractId}/ncrs`;
+    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/ncrs`;
     if (isApprover) return `/contract/approver/contracts/${contractId}/ncrs`;
-    if (isManager) return `/contract/manager/contracts/${contractId}/ncrs`;
-    if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/ncrs`;
+    // QA #298: company/super admins read via the manager (org-scoped) endpoint,
+    // like the main contract fetch. The /contract/user endpoint is
+    // participant-scoped and returns empty for admins.
+    if (isManager || isAdmin) return `/contract/manager/contracts/${contractId}/ncrs`;
+    if (isViewOnly) return `/contract/user/contracts/${contractId}/ncrs`;
     return `/contract/user/contracts/${contractId}/ncrs`; // Default fallback
   };
 
   const basePath = getBasePath();
+
+  // Contract-scoped personnel endpoint for the responder dropdown (mirrors the
+  // RFI tab's 3-way role branch; manager path is the irregular one).
+  const personnelPath = isApprover
+    ? `/contract/approver/contracts/${contractId}/personnel`
+    : isContractVendorLike
+    ? `/contract/vendor/contracts/${contractId}/personnel`
+    : `/contract/manager/personnel/contract/${contractId}`;
 
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
 
+  const statsQueryKey = ["contractNcrs", "stats", contractId, basePath] as const;
+  const listQueryKey = [
+    "contractNcrs",
+    contractId,
+    pagination.pageIndex,
+    pagination.pageSize,
+    basePath,
+  ] as const;
+
   const { data: statsRes, isLoading: isStatsLoading } = useQuery({
-    queryKey: [
-      "contractNcrs",
-      "stats",
-      contractId,
-      basePath
-    ],
+    queryKey: statsQueryKey,
     queryFn: async () => {
       const response = await getRequest({
         url: `${basePath}/stats`,
@@ -54,13 +75,7 @@ const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive, act
   });
 
   const { data: ncrsRes, isLoading: isNcrsLoading } = useQuery({
-    queryKey: [
-      "contractNcrs",
-      contractId,
-      pagination.pageIndex,
-      pagination.pageSize,
-      basePath
-    ],
+    queryKey: listQueryKey,
     queryFn: async () => {
       const query: ManagerListNcrsQuery = {
         page: pagination.pageIndex + 1,
@@ -84,18 +99,21 @@ const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive, act
   return (
     <TabsContent value="ncr-log" className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-slate-900">
+        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
           Non-Compliance Report
         </h3>
-        {(isApprover || isVendor) && (
+        {(isApprover || isProjectManager || (isManager && Boolean(owner))) && (
           <CreateNcrDialog
             contractId={contractId}
             contract={contract}
             basePath={basePath}
+            personnelPath={personnelPath}
+            listInvalidateQueryKey={listQueryKey}
+            statsInvalidateQueryKey={statsQueryKey}
             trigger={
               <button
                 type="button"
-                className="inline-flex h-10 items-center justify-center rounded-xl bg-[#2A4467] px-4 text-sm font-semibold text-white"
+                className="inline-flex h-10 items-center justify-center rounded-xl bg-[#2A4467] px-4 text-sm font-semibold text-white disabled:pointer-events-none disabled:opacity-50"
                 disabled={!!actionsDisabled}
               >
                 Create NCR
@@ -120,6 +138,8 @@ const NcrLogTabContent: React.FC<Props> = ({ contractId, contract, isActive, act
         setPagination={setPagination}
         contractId={contractId}
         basePath={basePath}
+        listInvalidateQueryKey={listQueryKey}
+        statsInvalidateQueryKey={statsQueryKey}
       />
     </TabsContent>
   );

@@ -11,28 +11,42 @@ import { putRequest, getRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 import { TextInput } from "@/components/layouts/FormInputs/TextInput";
-import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
 import { yupResolver } from "@hookform/resolvers/yup";
-import { useForge, Forge, Forger, FormPropsRef } from "@/lib/forge";
+import { useForge, Forge, Forger, FormPropsRef } from "@adexdsamson/forge";
 import * as yup from "yup";
 import { PageLoader } from "@/components/ui/PageLoader";
+import { Option } from "@/components/ui/multiselect";
+import { RoleComboField } from "@/components/layouts/RoleComboField";
+import { buildRoleOptions, optionsFromUserRoles } from "@/lib/roleCombos";
 
 // Validation schema for editing user
 const editUserSchema = yup.object().shape({
   name: yup.string().required("Name is required"),
   phone: yup.string(),
   department: yup.string(),
-  role: yup.string().required("Role is required"),
+  roles: yup
+    .array()
+    .min(1, "Select at least one role")
+    .max(2, "You can select up to two roles"),
   email: yup.string().email("Invalid email").required("Email is required"),
 });
 
 type EditUserFormValues = yup.InferType<typeof editUserSchema>;
 
+type EditUserPayload = {
+  name: string;
+  phone?: string;
+  department?: string;
+  email: string;
+  roles: string[];
+};
+
 type User = {
   _id: string;
   name: string;
   email: string;
-  role: { _id: string; name: string };
+  role: string | { _id: string; name: string };
+  roles?: (string | { _id?: string; id?: string; name?: string })[];
   phone?: string;
   department?: string;
 };
@@ -43,19 +57,34 @@ interface EditUserDialogProps {
   userId: string;
 }
 
-const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => {
+const EditUserDialog = ({
+  open,
+  onOpenChange,
+  userId,
+}: EditUserDialogProps) => {
   const formRef = useRef<FormPropsRef | null>(null);
+  const hydratedUserIdRef = useRef<string | null>(null);
   const toast = useToastHandler();
   const queryClient = useQueryClient();
 
   // Fetch user data
-  const { data: userData, isLoading } = useQuery<ApiResponse<{ user: User }>, ApiResponseError>({
+  const { data: userData, isLoading } = useQuery<
+    ApiResponse<{ user: User }>,
+    ApiResponseError
+  >({
     queryKey: ["user", userId],
     queryFn: async () => await getRequest({ url: `/users/${userId}` }),
     enabled: open && !!userId,
   });
 
+  // Fetch roles
+  const { data: rolesData, isLoading: rolesLoading } = useQuery({
+    queryKey: ["roles"],
+    queryFn: async () => await getRequest({ url: "/onboarding/roles" }),
+  });
+
   const user = userData?.data?.data?.user;
+  const roles = rolesData?.data?.data || [];
 
   // Form setup
   const { control, reset } = useForge<EditUserFormValues>({
@@ -64,29 +93,46 @@ const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => 
       name: "",
       phone: "",
       department: "",
-      role: "",
+      roles: [],
       email: "",
     },
   });
 
-  // Update form values when user data is loaded
+  // Assignable roles from the catalog, minus platform/vendor-assigned roles
+  // (super_admin, project_manager, vendor, legacy "approval") — see roleCombos.
+  const roleOptions = buildRoleOptions(roles);
+
+  // Guard the form hydration so opening the dialog does not repeatedly reset it.
   useEffect(() => {
-    console.log({ user })
-    if (user) {
-      reset({
-        name: user.name || "",
-        phone: user.phone || "",
-        department: user.department || "",
-        role: user.role?._id || "",
-        email: user.email || "",
-      });
+    if (!open) {
+      hydratedUserIdRef.current = null;
+      return;
     }
-  }, [user, reset]);
+
+    if (!user || hydratedUserIdRef.current === user._id) {
+      return;
+    }
+
+    // Need the catalog to resolve role ids/names into multi-select options.
+    if (rolesLoading) {
+      return;
+    }
+
+    reset({
+      name: user.name || "",
+      phone: user.phone || "",
+      department: user.department || "",
+      roles: optionsFromUserRoles(user.roles, user.role, roleOptions),
+      email: user.email || "",
+    });
+
+    hydratedUserIdRef.current = user._id;
+  }, [open, user, roleOptions, rolesLoading, reset]);
 
   const { mutateAsync: updateUser, isPending } = useMutation<
     ApiResponse<User>,
     ApiResponseError,
-    EditUserFormValues
+    EditUserPayload
   >({
     mutationKey: ["updateUser", userId],
     mutationFn: async (userData) =>
@@ -98,40 +144,34 @@ const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => 
       handleCancel();
     },
     onError: (error) => {
-      console.log(error);
       const err = error as ApiResponseError;
       toast.error(
         "Error",
-        err?.response?.data?.message ?? "Failed to update user"
+        err?.response?.data?.message ?? "Failed to update user",
       );
     },
   });
 
   const handleSubmit = async (data: EditUserFormValues) => {
     try {
-      await updateUser(data);
+      const selectedRoles = (data.roles ?? []) as Option[];
+      await updateUser({
+        name: data.name,
+        phone: data.phone,
+        department: data.department,
+        email: data.email,
+        roles: selectedRoles.map((option) => option.value),
+      });
     } catch (error) {
       // Error is handled by onError
     }
   };
 
   const handleCancel = () => {
+    hydratedUserIdRef.current = null;
     onOpenChange(false);
     reset();
   };
-
-  // Fetch roles
-  const { data: rolesData, isLoading: rolesLoading } = useQuery({
-    queryKey: ["roles"],
-    queryFn: async () => await getRequest({ url: "/onboarding/roles" }),
-  });
-
-  const roles = rolesData?.data?.data || [];
-
-  const roleOptions = roles.map((role: { _id: string; name: string }) => ({
-    value: role._id,
-    label: role.name?.replace?.('_', " ")?.toUpperCase(),
-  }));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -142,7 +182,7 @@ const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => 
 
         <div className="p-6 space-y-4">
           {isLoading || rolesLoading ? (
-            <PageLoader 
+            <PageLoader
               showHeader={false}
               message="Loading user data..."
               className="py-8"
@@ -178,16 +218,8 @@ const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => 
                 containerClass="space-y-1"
               />
 
-              <Forger
-                name="role"
-                component={TextSelect}
-                label="Role *"
-                placeholder="Select role"
-                options={roleOptions}
-                containerClass="space-y-1"
-              />
+              <RoleComboField control={control} options={roleOptions} />
 
-              {/* Display email as read-only */}
               <Forger
                 name="email"
                 component={TextInput}
@@ -195,7 +227,6 @@ const EditUserDialog = ({ open, onOpenChange, userId }: EditUserDialogProps) => 
                 disabled
                 containerClass="space-y-1"
               />
-              
             </Forge>
           )}
         </div>

@@ -76,6 +76,8 @@ type BidComparison = {
   score: number;
   rank: number;
   rankType: "first" | "second" | "third" | "other";
+  currency: string;
+  companyCurrency: string;
 };
 
 type Document = {
@@ -153,12 +155,13 @@ const RankBadge = ({
 
 const EvaluationDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  // const navigate = useNavigate();
-
   if (!id) {
     return <div>Evaluation not found</div>;
   }
+  return <EvaluationDetailPageContent id={id} />;
+};
 
+const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
   // API queries
   const {
     data: evaluationResponse,
@@ -168,6 +171,13 @@ const EvaluationDetailPage: React.FC = () => {
 
   const evaluation = evaluationResponse?.data?.data;
   const isOwner = evaluation?.owner || false;
+  const evaluationStartDate = evaluation?.startDate
+    ? new Date(evaluation.startDate)
+    : undefined;
+  const isEvaluationStartInFuture =
+    !!evaluationStartDate &&
+    !Number.isNaN(evaluationStartDate.getTime()) &&
+    evaluationStartDate.getTime() > Date.now();
   const { data: evaluatorsResponse } = useEvaluationEvaluators(id);
 
   // State for dialog management
@@ -320,6 +330,15 @@ const EvaluationDetailPage: React.FC = () => {
 
   // Handle release group
   const handleReleaseGroup = async () => {
+    if (isEvaluationStartInFuture) {
+      toastHandlers.error(
+        "Release Group",
+        "The evaluation group cannot be released until the evaluation start date."
+      );
+      setReleaseDialogOpen(false);
+      return;
+    }
+
     try {
       const result = await releaseGroupMutation.mutateAsync({
         evaluationGroupId: selectedGroupId,
@@ -484,6 +503,8 @@ const EvaluationDetailPage: React.FC = () => {
             : item.rank === 3
             ? ("third" as const)
             : ("other" as const),
+        currency: item.currency || "USD",
+        companyCurrency: item.companyCurrency || item.currency || "USD",
       })
     );
   }, [bidComparisonData]);
@@ -680,10 +701,23 @@ const EvaluationDetailPage: React.FC = () => {
     {
       accessorKey: "totalPrice",
       header: "Total Price",
+      // Total is converted to the buying company's base currency, so it is
+      // shown with the company currency — not each vendor's proposal currency
+      // (that is surfaced separately in the Proposal Currency column).
       cell: ({ row }) => (
         <span className="font-medium">
-          ${row.original.totalPrice.toLocaleString()}
+          {row.original.totalPrice.toLocaleString("en-US", {
+            style: "currency",
+            currency: row.original.companyCurrency,
+          })}
         </span>
+      ),
+    },
+    {
+      accessorKey: "currency",
+      header: "Proposal Currency",
+      cell: ({ row }) => (
+        <span className="font-medium">{row.original.currency}</span>
       ),
     },
     {
@@ -1155,8 +1189,15 @@ const EvaluationDetailPage: React.FC = () => {
                         trigger={
                           <Button
                             size="sm"
-                            className="bg-green-600 hover:bg-green-700 text-white"
+                            disabled={isEvaluationStartInFuture}
+                            title={
+                              isEvaluationStartInFuture
+                                ? "Available when the evaluation starts"
+                                : undefined
+                            }
+                            className="bg-green-600 hover:bg-green-700 text-white disabled:cursor-not-allowed disabled:opacity-50"
                             onClick={() => {
+                              if (isEvaluationStartInFuture) return;
                               setSelectedGroupId(group.groupId);
                               setReleaseDialogOpen(true);
                             }}
@@ -1350,9 +1391,15 @@ const EvaluationDetailPage: React.FC = () => {
                 enableExpanding: true,
                 getRowCanExpand: () => true,
                 renderSubComponent: ({ row }) => (
-                  <div className="pl-16 py-4 text-sm text-gray-700 dark:text-gray-300">
+                  // #65 — width is container-relative (was a hardcoded
+                  // 100vw-20rem, which could exceed the table area and force
+                  // horizontal scroll to read a long description). The text
+                  // wraps within the card instead.
+                  <div className="sticky left-0 pl-16 pr-6 py-4 text-sm text-gray-700 dark:text-gray-300 w-full max-w-4xl">
                     <div className="font-medium mb-1">Description</div>
-                    <div>{row.original.description || "-"}</div>
+                    <div className="whitespace-normal break-words">
+                      {row.original.description || "-"}
+                    </div>
                   </div>
                 ),
               }}

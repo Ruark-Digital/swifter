@@ -1,10 +1,17 @@
 import React from "react";
 import { useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { SEOWrapper } from "@/components/SEO";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -13,13 +20,15 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useUserRole } from "@/hooks/useUserRole";
-import { getRequest } from "@/lib/axiosInstance";
+import { getRequest, postRequest } from "@/lib/axiosInstance";
+import { Textarea } from "@/components/ui/textarea";
+import CreateMSADialog from "./layouts/CreateMSADialog";
 import Overview from "./layouts/Overview";
+import Analytics from "./layouts/Analytics";
 import LinkedContracts from "./layouts/LinkedContracts";
 import PaymentSummary from "./layouts/PaymentSummary";
 import Documents from "./layouts/Documents";
@@ -32,31 +41,28 @@ import Invoice from "./layouts/Invoice";
 import Rfi from "./layouts/Rfi";
 import Lem from "./layouts/Lem";
 import Approvers from "./layouts/Approvers";
+import { ROLE_TAB_WHITELIST, type MsaTabKey } from "./msaTabWhitelist";
+import VendorPersonnelTabContent from "@/pages/ContractManagementPage/layouts/VendorPersonnelTabContent";
 import Deliverables from "./layouts/Deliverables";
 import Reports from "./layouts/Reports";
+import ActionLogTabContent from "./layouts/ActionLogTabContent";
+import RateSheetsTabContent from "@/pages/ContractManagementPage/layouts/RateSheetsTabContent";
+import ClauseLibraryTabContent from "@/pages/ContractManagementPage/layouts/ClauseLibraryTabContent";
 import NcrLog from "./layouts/NcrLog";
 import { Share2 } from "lucide-react";
-import { Status } from "./components/StatusBadge";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
+import { Status, StatusBadge } from "./components/StatusBadge";
+import { useUser } from "@/store/authSlice";
+import { resolveCurrency } from "@/lib/utils";
+import type { ApiResponseError } from "@/types";
+import ContractLifecycleDialog from "@/pages/ContractManagementPage/components/ContractLifecycleDialog";
+import { resolvePendingPmTakeover } from "@/pages/ContractManagementPage/pmTakeover";
+import {
+  availableLifecycleActions,
+  type LifecycleAction,
+} from "@/pages/ContractManagementPage/components/contractLifecycle";
 
-type TabKey =
-  | "overview"
-  | "analytics"
-  | "kpi"
-  | "compliance"
-  | "documents"
-  | "amendments"
-  | "deliverables"
-  | "payment-summary"
-  | "rate-sheets"
-  | "lem"
-  | "invoice"
-  | "change"
-  | "claims"
-  | "rfi"
-  | "ncr-log"
-  | "approvers"
-  | "reports"
-  | "action-log";
+type TabKey = MsaTabKey;
 
 const ALL_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "overview", label: "Overview" },
@@ -75,80 +81,26 @@ const ALL_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "rfi", label: "RFI" },
   { key: "ncr-log", label: "NCR Log" },
   { key: "approvers", label: "Approvers" },
+  { key: "vendor-personnel", label: "Vendor Key Personnel" },
   { key: "reports", label: "Vendor’s Reports" },
+  { key: "clause-library", label: "Clause Library" },
   { key: "action-log", label: "Action Log" },
 ];
 
-const ROLE_TAB_WHITELIST: Record<
-  "approver" | "vendor" | "manager" | "view only",
-  TabKey[]
-> = {
-  approver: [
-    "overview",
-    "compliance",
-    "documents",
-    "amendments",
-    "lem",
-    "invoice",
-    "change",
-    "claims",
-    "rfi",
-    "deliverables",
-    "ncr-log",
-    "approvers",
-    "reports",
-    "payment-summary",
-  ],
-  vendor: [
-    "overview",
-    "compliance",
-    "documents",
-    "amendments",
-    "lem",
-    "invoice",
-    "change",
-    "claims",
-    "rfi",
-    "deliverables",
-    "ncr-log",
-    "approvers",
-    "reports",
-    "payment-summary",
-  ],
-  manager: [
-    "overview",
-    "kpi",
-    "compliance",
-    "documents",
-    "amendments",
-    "lem",
-    "invoice",
-    "change",
-    "claims",
-    "rfi",
-    "deliverables",
-    "ncr-log",
-    "approvers",
-    "reports",
-    "payment-summary",
-  ],
-  "view only": [
-    "overview",
-    "compliance",
-    "documents",
-    "amendments",
-    "lem",
-    "invoice",
-    "change",
-    "claims",
-    "rfi",
-    "deliverables",
-    "ncr-log",
-    "approvers",
-    "reports",
-    "payment-summary",
-  ],
-};
+// #82 — modules to disable on MSA across ALL profiles. The client asked to
+// disable the LINKS to these features (not remove the code), so we drop their
+// tab triggers from the MSA detail nav; the layouts/TabsContent stay in place
+// and can be re-enabled by removing a key here. Applied after role filtering so
+// it holds for every role.
+const MSA_DISABLED_TABS: ReadonlySet<TabKey> = new Set<TabKey>([
+  "deliverables",
+  "lem",
+  "claims",
+  "rfi",
+  "ncr-log",
+  "reports",
+  "invoice",
+]);
 
 type MsaStatus =
   | "draft"
@@ -158,7 +110,8 @@ type MsaStatus =
   | "cancelled"
   | "expired"
   | "terminated"
-  | "pending_approval";
+  | "pending_approval"
+  | "rejection";
 
 const toMsaStatus = (value?: string): MsaStatus | undefined => {
   switch (value) {
@@ -170,6 +123,7 @@ const toMsaStatus = (value?: string): MsaStatus | undefined => {
     case "expired":
     case "terminated":
     case "pending_approval":
+    case "rejection":
       return value;
     default:
       return undefined;
@@ -201,6 +155,8 @@ const formatMsaStatus = (
     return { label: "expired", className: "bg-orange-100 text-orange-700" };
   if (status === "terminated")
     return { label: "terminated", className: "bg-red-100 text-red-700" };
+  if (status === "rejection")
+    return { label: "rejected", className: "bg-red-100 text-red-700" };
   return { label: "draft", className: "bg-slate-100 text-slate-700" };
 };
 
@@ -208,6 +164,7 @@ export interface MSAContractDetail {
   vendor: Vendor;
   contractFormationStage: ContractFormationStage;
   _id: string;
+  owner?: boolean;
   company: Company;
   creator: Creator;
   internalTeam: Approver[];
@@ -226,6 +183,7 @@ export interface MSAContractDetail {
   holdBackBank: number;
   paymentStructure: string;
   deliverables: string[];
+  assignContract?: Array<{ _id?: string; name?: string }>;
   insurance: string;
   startDate: Date;
   endDate: Date;
@@ -239,12 +197,14 @@ export interface MSAContractDetail {
   timezone: string;
   isDeleted: boolean;
   vendorPersonnel: any[];
+  personnel?: VendorPersonnel[];
   milestone: any[];
   createdAt: Date;
   updatedAt: Date;
   __v: number;
   holdBackReleased: number;
   savingAmount: number;
+  projectManager?: { status?: string; user?: { _id?: string } };
 }
 
 export interface Approver {
@@ -300,8 +260,18 @@ export interface Signatory {
   _id: string;
 }
 
+export interface VendorPersonnel {
+  _id?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  role?: string;
+}
+
 export interface Vendor {
-  status: string;
+  _id?: string;
+  name?: string;
+  status?: string;
 }
 
 const formatDate = (iso?: string) => {
@@ -337,10 +307,31 @@ const MsaDetailPage: React.FC = () => {
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<unknown>(null);
-  const { isVendor, isApprover, isViewOnly, isManager } = useUserRole();
-  const queryKey = useUserQueryKey(["msa-contract-detail", id]);
+  const {
+    isVendor,
+    isApprover,
+    isViewOnly,
+    isManager,
+    isProjectManager,
+    isCompanyAdmin,
+  } = useUserRole();
+  const queryKey = useUserQueryKey(["msa-contracts-detail", id]);
+  const approveStatusQueryKey = useUserQueryKey(["msa-approve-status", id]);
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = React.useState<TabKey>("overview");
   const [topTab, setTopTab] = React.useState<"details" | "linked">("details");
+  const [approvalDialogOpen, setApprovalDialogOpen] = React.useState(false);
+  const [approvalAction, setApprovalAction] = React.useState<
+    "approved" | "rejected" | null
+  >(null);
+  const [lifecycleAction, setLifecycleAction] =
+    React.useState<LifecycleAction | null>(null);
+  const [comment, setComment] = React.useState("");
+  const [takeOverDialogOpen, setTakeOverDialogOpen] = React.useState(false);
+  const [takeOverAction, setTakeOverAction] = React.useState<
+    "approved" | "rejected" | null
+  >(null);
+  const [takeOverComment, setTakeOverComment] = React.useState("");
 
   const {
     data: msaResponse,
@@ -349,14 +340,15 @@ const MsaDetailPage: React.FC = () => {
   } = useQuery({
     queryKey,
     queryFn: async () => {
-      const base = isVendor
-        ? "/contract/vendor"
-        : isApprover
-          ? "/contract/approver"
-          : isViewOnly
-            ? "/contract/user"
-            : "/contract/manager";
-      return getRequest({ url: `${base}/msa-contract/${id ?? ""}` });
+      const base =
+        isVendor || isProjectManager
+          ? "/contract/vendor"
+          : isApprover
+            ? "/contract/approver"
+            : isViewOnly
+              ? "/contract/user"
+              : "/contract/manager";
+      return getRequest({ url: `${base}/msa-contracts/${id ?? ""}` });
     },
     enabled: !!id,
     staleTime: 60000,
@@ -374,21 +366,277 @@ const MsaDetailPage: React.FC = () => {
     toastErrorRef.current("MSA Details", error as any);
   }, [error]);
 
+  const msaRawStatus = (msaResponse?.data?.data as MSAContractDetail | undefined)
+    ?.status;
+  const isDraftMsa = msaRawStatus === "draft";
+
   const visibleTabs = React.useMemo(() => {
+    let tabs: Array<{ key: TabKey; label: string }>;
     if (isApprover)
-      return ALL_TABS.filter((t) =>
+      tabs = ALL_TABS.filter((t) =>
         ROLE_TAB_WHITELIST.approver.includes(t.key),
       );
-    if (isVendor)
-      return ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.vendor.includes(t.key));
-    if (isViewOnly)
-      return ALL_TABS.filter((t) =>
+    else if (isVendor || isProjectManager)
+      tabs = ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.vendor.includes(t.key));
+    else if (isViewOnly)
+      tabs = ALL_TABS.filter((t) =>
         ROLE_TAB_WHITELIST["view only"].includes(t.key),
       );
-    if (isManager)
-      return ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.manager.includes(t.key));
-    return ALL_TABS;
-  }, [isApprover, isVendor, isViewOnly, isManager]);
+    else if (isManager)
+      tabs = ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.manager.includes(t.key));
+    else tabs = ALL_TABS;
+    if (isDraftMsa) tabs = tabs.filter((t) => t.key !== "clause-library");
+    // #82 — disable the MSA module links for every profile.
+    tabs = tabs.filter((t) => !MSA_DISABLED_TABS.has(t.key));
+    return tabs;
+  }, [isApprover, isVendor, isProjectManager, isViewOnly, isManager, isDraftMsa]);
+
+  const msa = msaResponse?.data?.data as MSAContractDetail | undefined;
+  const user = useUser();
+
+  // Use the MSA's formation currency; fall back to the viewer's company/profile
+  // currency when the detail response omits it, so approver/vendor views show
+  // the right currency instead of a hardcoded USD (QA #59a).
+  const displayCurrency = resolveCurrency(msa?.currency, user?.currency);
+
+  // QA #105: view-only users must also see the MSA's linked contracts. The BE
+  // exposes /contract/user/msa-contracts/{id}/linked-contract for them.
+  const canFetchLinkedContracts =
+    (isManager || isCompanyAdmin || isViewOnly) && Boolean(id);
+  const linkedContractsQueryKey = useUserQueryKey(["msa-linked-contract", id]);
+
+  const { data: linkedContractsResponse, isLoading: isLinkedContractsLoading } =
+    useQuery({
+      queryKey: linkedContractsQueryKey,
+      queryFn: async () => {
+        const base = isViewOnly ? "/contract/user" : "/contract/manager";
+        return getRequest({
+          url: `${base}/msa-contracts/${id ?? ""}/linked-contract`,
+        });
+      },
+      enabled: canFetchLinkedContracts && topTab === "linked",
+      staleTime: 60_000,
+      retry: false,
+    });
+
+  const formatMoney = React.useCallback(
+    (value?: unknown, currency?: string) => {
+      const num = Number(value);
+      if (!Number.isFinite(num)) return undefined;
+      try {
+        return new Intl.NumberFormat(undefined, {
+          style: "currency",
+          currency: resolveCurrency(currency, user?.currency),
+          maximumFractionDigits: 0,
+        }).format(num);
+      } catch {
+        return `$${num.toLocaleString()}`;
+      }
+    },
+    [],
+  );
+
+  const linkedContractRows = React.useMemo(() => {
+    const raw = (linkedContractsResponse?.data as any)?.data;
+    if (!raw) return [];
+
+    const relationshipLabel = (rel?: string) => {
+      if (rel === "msa_project") return "MSA + Project";
+      if (rel === "msa") return "MSA";
+      if (rel === "project") return "Project";
+      if (rel === "standalone") return "Stand-Alone";
+      return "-";
+    };
+
+    const statusLabel = (raw?: string) => {
+      if (raw === "publish") return "Published";
+      if (raw === "active") return "Active";
+      if (raw === "draft") return "Draft";
+      if (raw === "expired") return "Expired";
+      if (raw === "terminated") return "Terminated";
+      if (raw === "suspended") return "Suspended";
+      if (raw === "pending_approval") return "Pending Approval";
+      return raw ? raw : "-";
+    };
+
+    const items = Array.isArray(raw) ? raw : [raw];
+    return items.filter(Boolean).map((it: any) => ({
+      title: String(it?.title ?? "-"),
+      code: String(it?.contractId ?? "-"),
+      id: String(it?._id ?? ""),
+      company:
+        String(it?.vendor?.name ?? it?.company?.name ?? "-"),
+      relationship: relationshipLabel(it?.contractRelationship),
+      value: formatMoney(it?.contractValue, it?.currency),
+      published: it?.datePublished ? formatDate(it.datePublished) : undefined,
+      endDate: it?.endDate ? formatDate(it.endDate) : undefined,
+      createdAtRaw: it?.createdAt ?? it?.datePublished,
+      status: statusLabel(it?.status),
+    }));
+  }, [formatMoney, linkedContractsResponse?.data]);
+
+  const currentUserId = user?._id;
+  const isMsaOwner =
+    typeof msa?.owner === "boolean"
+      ? msa.owner
+      : Boolean(
+          currentUserId && msa?.creator?._id && currentUserId === msa.creator._id,
+        );
+  const lifecycleActions = availableLifecycleActions(msa?.status);
+  const canSuspendMsa =
+    isManager && isMsaOwner && lifecycleActions.includes("suspend");
+  const canTerminateMsa =
+    isManager && isMsaOwner && lifecycleActions.includes("terminate");
+  const showLifecycleActions = canSuspendMsa || canTerminateMsa;
+  const isMsaProjectManager = Boolean(
+    user?.projectmanagerId &&
+    msa?.projectManager?.user?._id === user.projectmanagerId,
+  );
+  const isMsaProjectManagerPending = msa?.projectManager?.status === "pending";
+  const canProjectManagerApprove =
+    isMsaProjectManager &&
+    isMsaProjectManagerPending &&
+    msa?.status === "pending_approval";
+  // Rate Sheets, Vendor's Reports, NCR, and LEM are day-to-day operational
+  // actions that should only be reachable once the MSA is actually
+  // published — unlike the per-tab `pending_approval` gate below, draft is
+  // also gated here. (Terminated/suspended fall through naturally.)
+  const publishGatedActionsDisabled = msa?.status !== "publish";
+  // Freeze mutating tab actions once the MSA enters an end-state
+  // (terminated / suspended / expired) — page stays browsable for audit, but
+  // writes stop.
+  // A rejected MSA is an end-state for everyone EXCEPT the managing CM
+  // (contract manager / procurement owner), who can edit and reopen it. Vendor/
+  // PM, approvers and view-only stay frozen.
+  const isMsaFrozenStatus =
+    msa?.status === "terminated" ||
+    msa?.status === "suspended" ||
+    msa?.status === "expired" ||
+    (msa?.status === "rejection" && !(isManager && isMsaOwner));
+  const tabActionsDisabled =
+    msa?.status === "pending_approval" || isMsaFrozenStatus;
+  // QA #112: company admin may amend an EXPIRED MSA (Amendments tab only) to
+  // extend its duration. MSA amendments already allow company_admin server-side.
+  const msaAmendmentActionsDisabled =
+    tabActionsDisabled && !(isCompanyAdmin && msa?.status === "expired");
+
+  const { data: approveStatusResponse } = useQuery({
+    queryKey: [approveStatusQueryKey[0], msa?._id],
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `/contract/approver/msa-contracts/${msa?._id ?? ""}/approve/status`,
+      });
+      return res.data as { data?: { status?: string } };
+    },
+    enabled:
+      Boolean(msa?._id) && isApprover && msa?.status === "pending_approval",
+    staleTime: 60000,
+    retry: false,
+  });
+
+  const canApprove = approveStatusResponse?.data?.status === "pending";
+  const hasApprovedOrRejected =
+    approveStatusResponse?.data?.status === "approved" ||
+    approveStatusResponse?.data?.status === "rejected";
+  const showApprovalActions =
+    !showLifecycleActions &&
+    ((isApprover && canApprove && !hasApprovedOrRejected) ||
+      canProjectManagerApprove);
+
+  const approvalMutation = useMutation({
+    mutationFn: async (action: "approved" | "rejected") => {
+      const payload = { action, comment };
+      const url = canProjectManagerApprove
+        ? `/contract/vendor/msa-contracts/${msa?._id ?? ""}/approve`
+        : `/contract/approver/msa-contracts/${msa?._id ?? ""}/approve`;
+      const res = await postRequest({ url, payload });
+      return res.data as { message?: string };
+    },
+    onSuccess: (res, action) => {
+      toastHandler.success(
+        `MSA ${action === "approved" ? "approved" : "rejected"} successfully`,
+        res?.message ?? "Success",
+      );
+      queryClient.invalidateQueries({ queryKey });
+      queryClient.invalidateQueries({
+        queryKey: [approveStatusQueryKey[0], msa?._id],
+      });
+      setApprovalDialogOpen(false);
+      setApprovalAction(null);
+      setComment("");
+    },
+    onError: (err: ApiResponseError) => {
+      toastHandler.error("Failed to update MSA status", err);
+    },
+  });
+
+  const handleApprovalAction = (action: "approved" | "rejected") => {
+    setApprovalAction(action);
+    setApprovalDialogOpen(true);
+  };
+
+  const submitApproval = () => {
+    if (approvalAction) approvalMutation.mutate(approvalAction);
+  };
+
+  // PM take-over approval: a pending PM assignment on an already-live
+  // (publish/active) MSA, approved only by the owning Contract Manager. Distinct
+  // from the PM-accepts-MSA flow above (which applies while pending_approval).
+  const isLiveMsa = msa?.status === "active" || msa?.status === "publish";
+  const pendingPmTakeover = resolvePendingPmTakeover(
+    msa as Parameters<typeof resolvePendingPmTakeover>[0],
+  );
+  const takeOverPending = pendingPmTakeover.pending && isLiveMsa;
+  const canApproveTakeOver = isManager && isMsaOwner && takeOverPending;
+  const takeOverRequesterName = pendingPmTakeover.requesterName;
+
+  const takeOverApprovalMutation = useMutation({
+    mutationFn: async ({
+      action,
+      reason,
+    }: {
+      action: "approved" | "rejected";
+      reason?: string;
+    }) => {
+      const res = await postRequest({
+        url: `/contract/manager/msa-contracts/${msa?._id ?? ""}/project-manager/approval`,
+        payload: { action, reason },
+      });
+      return res.data as { message?: string };
+    },
+    onSuccess: (res, { action }) => {
+      toastHandler.success(
+        `Take-over request ${action === "approved" ? "approved" : "rejected"} successfully`,
+        res?.message ?? "Success",
+      );
+      queryClient.invalidateQueries({ queryKey });
+      setTakeOverDialogOpen(false);
+      setTakeOverAction(null);
+      setTakeOverComment("");
+    },
+    onError: (err: ApiResponseError) => {
+      toastHandler.error("Failed to update take-over request", err);
+    },
+  });
+
+  const handleTakeOverAction = (action: "approved" | "rejected") => {
+    if (action === "approved") {
+      takeOverApprovalMutation.mutate({ action: "approved" });
+      return;
+    }
+    setTakeOverAction(action);
+    setTakeOverDialogOpen(true);
+  };
+
+  const submitTakeOverApproval = () => {
+    if (takeOverAction === "rejected" && !takeOverComment.trim()) return;
+    if (takeOverAction) {
+      takeOverApprovalMutation.mutate({
+        action: takeOverAction,
+        reason: takeOverComment.trim() || undefined,
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -416,8 +664,6 @@ const MsaDetailPage: React.FC = () => {
     );
   }
 
-  const msa = msaResponse?.data?.data as MSAContractDetail | undefined;
-
   if (!msa) {
     return (
       <div className="space-y-8">
@@ -427,7 +673,7 @@ const MsaDetailPage: React.FC = () => {
           canonical={`/dashboard/msa/${id ?? ""}`}
           robots="noindex, nofollow"
         />
-        <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-700">
+        <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 text-sm text-slate-700 dark:text-slate-200">
           MSA not found.
         </div>
       </div>
@@ -436,19 +682,60 @@ const MsaDetailPage: React.FC = () => {
 
   const status = formatMsaStatus(toMsaStatus(msa?.status));
   const triggerClass =
-    "data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3";
+    "dark:text-slate-400 data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3";
 
-  const draftDuration = diffDays(undefined, undefined);
-  const reviewDuration = diffDays(undefined, undefined);
-  const approvalDuration = diffDays(undefined, undefined);
-  const executionDuration = diffDays(undefined, undefined);
+  const stages = msa?.contractFormationStage;
+  const draftDuration = diffDays(stages?.draft?.startDate, stages?.draft?.endDate);
+  const reviewDuration = diffDays(
+    stages?.review?.startDate,
+    stages?.review?.endDate,
+  );
+  const approvalDuration = diffDays(
+    stages?.approval?.startDate,
+    stages?.approval?.endDate,
+  );
+  const executionDuration = diffDays(
+    stages?.execution?.startDate,
+    stages?.execution?.endDate,
+  );
+  const stageRange = (s?: { startDate?: string; endDate?: string }) => ({
+    start: formatDate(s?.startDate),
+    end: formatDate(s?.endDate),
+  });
+  const formationStages = {
+    draft: stageRange(stages?.draft),
+    review: stageRange(stages?.review),
+    approval: stageRange(stages?.approval),
+    execution: stageRange(stages?.execution),
+  };
+  const contractManagerSource =
+    (msa as any)?.contractManager ||
+    (msa as any)?.manager ||
+    msa?.creator ||
+    undefined;
+  const contractManagerName = contractManagerSource?.name || "";
+  const contractManagerContact = contractManagerSource
+    ? {
+        name: contractManagerSource?.name,
+        email: contractManagerSource?.email,
+        // The detail payload returns `role` as a populated object
+        // ({ name }); flatten it to its name so the contact popover renders a
+        // string instead of an object (#99, mirrors the contract card #191).
+        role:
+          typeof contractManagerSource?.role === "string"
+            ? contractManagerSource.role
+            : contractManagerSource?.role?.name,
+        phone: contractManagerSource?.phone,
+      }
+    : undefined;
 
   const internalTeam = Array.isArray(msa?.internalTeam)
     ? msa!.internalTeam
     : [];
-  const vendorPersonnel = Array.isArray(msa?.vendorPersonnel)
-    ? msa!.vendorPersonnel!
-    : [];
+  // Vendor key personnel come from the top-level `personnel` array on the MSA
+  // detail response — not `vendorPersonnel` (which never existed, so this
+  // always rendered "N/A"). Mirrors the Contract detail behaviour.
+  const vendorPersonnel = Array.isArray(msa?.personnel) ? msa!.personnel! : [];
 
   return (
     <div className="space-y-8 pt-5">
@@ -477,29 +764,96 @@ const MsaDetailPage: React.FC = () => {
 
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
             {msa?.title}
           </h1>
-          <p className="text-sm text-slate-500">{msa?.msaContractId}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{msa?.msaContractId}</p>
         </div>
-        <Badge className={status?.className}>{status?.label}</Badge>
+        <StatusBadge status={status?.label} />
       </div>
+
+      {showLifecycleActions && (
+        <div className="flex items-center gap-4">
+          {canSuspendMsa && (
+            <Button
+              variant="outline"
+              className="bg-[#F3F4F6] border-[#E5E7EB]"
+              onClick={() => setLifecycleAction("suspend")}
+            >
+              Suspend MSA
+            </Button>
+          )}
+          {canTerminateMsa && (
+            <Button
+              variant="destructive"
+              onClick={() => setLifecycleAction("terminate")}
+            >
+              Terminate MSA
+            </Button>
+          )}
+        </div>
+      )}
+
+      {showApprovalActions && (
+        <div className="flex items-center gap-4 ">
+          <Button
+            variant="default"
+            className="bg-[#2A4467] hover:bg-[#2A4467]/90"
+            onClick={() => handleApprovalAction("approved")}
+          >
+            Approve Contract
+          </Button>
+          <Button
+            variant="outline"
+            className="bg-[#F3F4F6] border-[#E5E7EB]"
+            onClick={() => handleApprovalAction("rejected")}
+          >
+            Reject Contract
+          </Button>
+        </div>
+      )}
+
+      {canApproveTakeOver && (
+        <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+          <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+            {`Take-over request from ${takeOverRequesterName ?? "a project manager"}`}
+          </p>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="default"
+              className="bg-[#2A4467] hover:bg-[#2A4467]/90"
+              disabled={takeOverApprovalMutation.isPending}
+              onClick={() => handleTakeOverAction("approved")}
+            >
+              Approve
+            </Button>
+            <Button
+              variant="outline"
+              className="bg-[#F3F4F6] border-[#E5E7EB]"
+              disabled={takeOverApprovalMutation.isPending}
+              onClick={() => handleTakeOverAction("rejected")}
+            >
+              Reject
+            </Button>
+          </div>
+        </div>
+      )}
 
       <Tabs
         value={topTab}
         onValueChange={(v) => setTopTab(v as "details" | "linked")}
         className="w-full space-y-4"
       >
-        <TabsList className="bg-transparent p-0 gap-2">
+        <TabsList className="gap-2 p-2 bg-gray-200 rounded-full dark:bg-slate-800">
           <TabsTrigger
             value="details"
-            className="rounded-full px-4 py-2 text-sm font-semibold border border-[#E5E7EB] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:border-[#2A4467]"
+            className="rounded-full px-4 py-4 text-sm font-semibold border border-[#E5E7EB] dark:border-slate-700 text-slate-700 dark:text-slate-300 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:border-[#2A4467] data-[state=active]:dark:text-white"
           >
             MSA Details
           </TabsTrigger>
           <TabsTrigger
             value="linked"
-            className="rounded-full px-4 py-2 text-sm font-semibold border border-[#E5E7EB] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:border-[#2A4467]"
+            className="rounded-full px-4 py-4 text-sm font-semibold border border-[#E5E7EB] dark:border-slate-700 text-slate-700 dark:text-slate-300 data-[state=active]:bg-[#2A4467] data-[state=active]:text-white data-[state=active]:border-[#2A4467] data-[state=active]:dark:text-white"
           >
             Linked Contracts
           </TabsTrigger>
@@ -511,8 +865,11 @@ const MsaDetailPage: React.FC = () => {
             onValueChange={(v) => setActiveTab(v as TabKey)}
             className="w-full bg-transparent space-y-4"
           >
-            <ScrollArea className="pb-4 w-[75vw]">
-              <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent">
+            <div
+              className="overflow-x-auto pb-4 -mx-1 px-1"
+              style={{ width: "1px", minWidth: "100%" }}
+            >
+              <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent w-max">
                 {visibleTabs.map((t) => (
                   <TabsTrigger
                     key={t.key}
@@ -523,23 +880,45 @@ const MsaDetailPage: React.FC = () => {
                   </TabsTrigger>
                 ))}
               </TabsList>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
+            </div>
 
             <TabsContent value="overview">
               <div className="flex items-center justify-end w-full gap-3 pb-3">
-                <Button
-                  variant="outline"
-                  className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F]"
-                >
-                  <Share2 className="mr-2 h-4 w-4" /> Export Report
-                </Button>
-                <Button
-                  variant="secondary"
-                  className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F]"
-                >
-                  Edit MSA
-                </Button>
+                {/* QA #107 — this button was never wired to the export sheet, so
+                    "Export Report" did nothing for MSAs. Wrap it in the shared
+                    ExportReportSheet with contractType="MsaContract" (the sheet
+                    already targets /contract-export/{id}?type=MsaContract). */}
+                <ExportReportSheet contractId={id ?? ""} contractType="MsaContract">
+                  <Button
+                    variant="outline"
+                    className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
+                  >
+                    <Share2 className="mr-2 h-4 w-4" /> Export Report
+                  </Button>
+                </ExportReportSheet>
+                {isManager && isMsaOwner && (
+                  <CreateMSADialog
+                    trigger={
+                      <Button
+                        variant="secondary"
+                        className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
+                        disabled={
+                          ![
+                            "draft",
+                            "pending_approval",
+                            "active",
+                            "publish",
+                            "rejection",
+                          ].includes(String(msa?.status ?? ""))
+                        }
+                      >
+                        Edit MSA
+                      </Button>
+                    }
+                    editingMsaId={msa?._id ?? undefined}
+                    initialValues={msa as any}
+                  />
+                )}
               </div>
 
               <Overview
@@ -558,9 +937,9 @@ const MsaDetailPage: React.FC = () => {
                   description: msa?.description,
                 }}
                 dates={{
-                  published: formatDate(toISO(msa?.createdAt)),
-                  effective: formatDate(toISO(msa?.createdAt)),
-                  end: formatDate(toISO(msa?.updatedAt)),
+                  published: formatDate(toISO(msa?.datePublished)),
+                  effective: formatDate(toISO(msa?.startDate)),
+                  end: formatDate(toISO(msa?.endDate)),
                 }}
                 durations={{
                   draft: draftDuration,
@@ -568,70 +947,134 @@ const MsaDetailPage: React.FC = () => {
                   approval: approvalDuration,
                   execution: executionDuration,
                 }}
+                formationStages={formationStages}
                 status={status}
+                contractManager={contractManagerName}
+                contractManagerContact={contractManagerContact}
+                vendorName={(msa?.vendor as any)?.name}
                 internalTeam={internalTeam}
                 vendorPersonnel={vendorPersonnel}
               />
             </TabsContent>
 
+            <Analytics
+              contractId={id ?? ""}
+              isActive={activeTab === "analytics"}
+            />
+
             <Documents
               contractId={id ?? ""}
               files={msa?.files}
               isActive={activeTab === "documents"}
+              status={msa?.status}
+              onNavigateToClauseLibrary={
+                visibleTabs.some((t) => t.key === "clause-library")
+                  ? () => setActiveTab("clause-library")
+                  : undefined
+              }
             />
 
             <Amendments
               contractId={id ?? ""}
+              currency={displayCurrency}
               isActive={activeTab === "amendments"}
-              actionsDisabled={msa?.status === "publish"}
+              actionsDisabled={msaAmendmentActionsDisabled}
             />
 
             <Compliance
               contractId={id ?? ""}
               isActive={activeTab === "compliance"}
-              // contract={msa?.}
+              actionsDisabled={tabActionsDisabled}
+              owner={isMsaOwner}
             />
 
             <ChangeManagement
               contractId={id ?? ""}
+              currency={displayCurrency}
               isActive={activeTab === "change"}
-              actionsDisabled={msa?.status === "publish"}
+              actionsDisabled={tabActionsDisabled}
             />
 
             <Invoice
               contractId={id ?? ""}
+              currency={displayCurrency}
               isActive={activeTab === "invoice"}
-              actionsDisabled={msa?.status === "publish"}
+              actionsDisabled={tabActionsDisabled}
             />
 
             <Claims
               contractId={id ?? ""}
+              currency={displayCurrency}
               isActive={activeTab === "claims"}
-              actionsDisabled={msa?.status === "publish"}
+              actionsDisabled={tabActionsDisabled}
             />
 
             <Rfi
               contractId={id ?? ""}
               isActive={activeTab === "rfi"}
-              actionsDisabled={msa?.status === "publish"}
+              actionsDisabled={tabActionsDisabled}
             />
 
-            <NcrLog contractId={id ?? ""} isActive={activeTab === "ncr-log"} />
+            <NcrLog
+              contractId={id ?? ""}
+              contract={msa as any}
+              isActive={activeTab === "ncr-log"}
+              actionsDisabled={publishGatedActionsDisabled}
+            />
 
             <Deliverables
               contractId={id ?? ""}
               isActive={activeTab === "deliverables"}
             />
 
-            <Lem contractId={id ?? ""} isActive={activeTab === "lem"} />
+            <Lem
+              contractId={id ?? ""}
+              currency={displayCurrency}
+              isActive={activeTab === "lem"}
+              actionsDisabled={publishGatedActionsDisabled}
+            />
 
             <Approvers
               contractId={id ?? ""}
               isActive={activeTab === "approvers"}
             />
 
-            <Reports contractId={id ?? ""} isActive={activeTab === "reports"} />
-            
+            <VendorPersonnelTabContent
+              contractId={id ?? ""}
+              isActive={activeTab === "vendor-personnel"}
+              owner={isMsaOwner}
+              status={msa?.status}
+              contractType="MsaContract"
+              invalidateQueryKey={[...queryKey]}
+            />
+
+            <Reports
+              contractId={id ?? ""}
+              isActive={activeTab === "reports"}
+              actionsDisabled={publishGatedActionsDisabled}
+            />
+
+            <ActionLogTabContent
+              contractId={id ?? ""}
+              isActive={activeTab === "action-log"}
+            />
+
+            <RateSheetsTabContent
+              contractId={id ?? ""}
+              currency={displayCurrency}
+              contractType="MsaContract"
+              isActive={activeTab === "rate-sheets"}
+              actionsDisabled={publishGatedActionsDisabled}
+              owner={isMsaOwner}
+            />
+
+            <ClauseLibraryTabContent
+              contractType="MsaContract"
+              isActive={activeTab === "clause-library"}
+              currency={displayCurrency}
+              vendorName={(msa?.vendor as any)?.name}
+            />
+
             <Kpi contractId={id ?? ""} isActive={activeTab === "kpi"} />
 
             <PaymentSummary
@@ -644,10 +1087,110 @@ const MsaDetailPage: React.FC = () => {
 
         <TabsContent value="linked">
           <div className="pt-4">
-            <LinkedContracts rows={[]} />
+            <LinkedContracts
+              rows={linkedContractRows}
+              isLoading={isLinkedContractsLoading}
+            />
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {approvalAction === "approved"
+                ? "Approve Contract"
+                : "Reject Contract"}
+            </DialogTitle>
+            <DialogDescription>
+              {approvalAction === "approved"
+                ? "Are you sure you want to approve this contract? This action cannot be undone."
+                : "Please provide a reason for rejecting this contract."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <Textarea
+              placeholder="Add a comment (optional)"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              className="resize-none text-slate-900 dark:text-slate-100"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setApprovalDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={submitApproval}
+              disabled={approvalMutation.isPending}
+              variant={
+                approvalAction === "rejected" ? "destructive" : "default"
+              }
+            >
+              {approvalMutation.isPending
+                ? "Processing..."
+                : approvalAction === "approved"
+                  ? "Approve"
+                  : "Reject"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={takeOverDialogOpen} onOpenChange={setTakeOverDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Take-over Request</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejecting this take-over request.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <Textarea
+              placeholder="Reason for rejection"
+              value={takeOverComment}
+              onChange={(e) => setTakeOverComment(e.target.value)}
+              className="resize-none text-slate-900 dark:text-slate-100"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setTakeOverDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={submitTakeOverApproval}
+              disabled={
+                takeOverApprovalMutation.isPending || !takeOverComment.trim()
+              }
+              variant="destructive"
+            >
+              {takeOverApprovalMutation.isPending ? "Processing..." : "Reject"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <ContractLifecycleDialog
+        kind="msa"
+        id={msa?._id ?? ""}
+        title={msa?.title}
+        action={lifecycleAction}
+        open={lifecycleAction !== null}
+        onOpenChange={(open) => {
+          if (!open) setLifecycleAction(null);
+        }}
+      />
     </div>
   );
 };

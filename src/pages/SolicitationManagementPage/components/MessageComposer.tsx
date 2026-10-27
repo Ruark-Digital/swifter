@@ -29,6 +29,15 @@ interface MessageComposerProps {
   sendType: "reply" | "addendum" | null;
   isNewChat: boolean;
   onSendTypeChange: (type: "reply" | "addendum") => void;
+  disabled?: boolean;
+  /** Overrides the "Send Question"/"Send Response" label for callers outside
+   * Solicitation Q&A (e.g. Change/Claims/RFI comments), where that copy
+   * doesn't apply. */
+  sendLabel?: string;
+  /** Keep the draft after submit until the parent confirms success. */
+  clearOnSend?: boolean;
+  /** Increment after a successful submit to clear a retained draft. */
+  clearSignal?: number;
 }
 
 // Helper function to get initials from name
@@ -49,11 +58,19 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
   currentUser,
   sendType,
   isNewChat,
+  disabled = false,
+  sendLabel,
+  clearOnSend = true,
+  clearSignal,
 }) => {
   const { isProcurement } = useUserRole();
   const [content, setContent] = useState("");
   const [selectedReplyUser, setSelectedReplyUser] = useState(replyToUser);
   const user = useUser();
+
+  React.useEffect(() => {
+    if (clearSignal !== undefined) setContent("");
+  }, [clearSignal]);
 
   React.useEffect(() => {
     setSelectedReplyUser(replyToUser);
@@ -69,7 +86,7 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
   const handleSend = () => {
     if (!content.trim()) return;
     onSend(content, sendType);
-    setContent("");
+    if (clearOnSend) setContent("");
   };
 
   const isContentEmpty =
@@ -136,9 +153,9 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
           <RichTextEditor
             value={content}
             onChange={setContent}
-            placeholder=""
+            placeholder={disabled ? "You don't have permission to comment on this solicitation." : ""}
             minHeight="200px"
-            disabled={isLoading}
+            disabled={isLoading || disabled}
           />
           {/* Character Count */}
           <div className="flex justify-between items-center mt-2">
@@ -152,7 +169,7 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
         <div className="flex justify-end">
           <Button
             onClick={handleSend}
-            disabled={isLoading || isContentEmpty}
+            disabled={isLoading || isContentEmpty || disabled}
             className="px-6 py-2 rounded-md font-medium"
           >
             {isLoading ? (
@@ -160,6 +177,8 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 Sending...
               </div>
+            ) : sendLabel ? (
+              sendLabel
             ) : isProcurement ? (
               "Send Response"
             ) : (

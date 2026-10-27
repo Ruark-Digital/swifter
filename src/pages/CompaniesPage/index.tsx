@@ -3,7 +3,12 @@ import { Building, MoreHorizontal } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getRequest, putRequest } from "@/lib/axiosInstance";
+import {
+  getRequest,
+  putRequest,
+  patchRequest,
+  deleteRequest,
+} from "@/lib/axiosInstance";
 import {
   ApiResponse,
   ApiResponseError,
@@ -29,7 +34,6 @@ import { DropdownFilters } from "@/components/layouts/SolicitationFilters";
 import { format as formatDate, startOfDay, subDays, endOfDay } from "date-fns";
 import {
   Dialog,
-  DialogTrigger,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -65,7 +69,7 @@ export type Company = {
   name: string;
   industry?: string;
   sizeCategory: string;
-  status: "active" | "inactive";
+  status: "active" | "inactive" | "deleted";
   maxUsers: number;
   admins: Admin[];
   domain?: string;
@@ -76,6 +80,8 @@ export type Company = {
   updatedAt: string;
   subscriptionExpiry: string;
   subscriptionStatus: string;
+  /** Set when status === "deleted" — company is scheduled for permanent deletion on this date, cancellable until then. */
+  deletionScheduledAt?: string;
 };
 
 // API response types - Updated to match API documentation
@@ -94,14 +100,23 @@ const StatusBadge = ({ status }: { status: Company["status"] }) => {
         return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
       case "inactive":
         return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
+      case "deleted":
+        return "bg-gray-200 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
     }
   };
 
+  const label =
+    status === "active"
+      ? "Active"
+      : status === "deleted"
+        ? "Pending Deletion"
+        : "Inactive";
+
   return (
     <Badge className={`${getStatusColor(status)} border-0 p-2 px-4`}>
-      {status === "active" ? "Active" : "Inactive"}
+      {label}
     </Badge>
   );
 };
@@ -126,6 +141,151 @@ const EmptyState = () => {
 };
 
 /**
+ * Row actions for the companies table (View / Suspend-Activate / Delete).
+ * Extracted to a component so the confirm dialogs are controlled and rendered
+ * OUTSIDE the dropdown — a ConfirmAlert placed inside DropdownMenuContent would
+ * unmount when the menu closes and never open (same trap fixed in
+ * ContractActionsCell). Delete is QA #189.
+ */
+const CompanyActionsCell = ({
+  company,
+  onUpdateStatus,
+  onDelete,
+  isDeleting,
+  onCancelDeletion,
+  isCancelingDeletion,
+}: {
+  company: Company;
+  onUpdateStatus: (
+    companyId: string,
+    status: "active" | "inactive"
+  ) => Promise<void>;
+  onDelete: (companyId: string) => Promise<void>;
+  isDeleting: boolean;
+  onCancelDeletion: (companyId: string) => Promise<void>;
+  isCancelingDeletion: boolean;
+}) => {
+  const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [confirm, setConfirm] = useState<
+    null | "status" | "delete" | "cancel-deletion"
+  >(null);
+  const isActive = company.status === "active";
+  const isScheduledForDeletion = company.status === "deleted";
+
+  return (
+    <>
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            className="h-8 w-8 p-0"
+            data-testid="company-actions-dropdown"
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-44 rounded-2xl">
+          <DropdownMenuItem
+            onClick={() => navigate(`/dashboard/company/${company._id}`)}
+            className="p-3"
+          >
+            View Company
+          </DropdownMenuItem>
+          {isScheduledForDeletion ? (
+            <DropdownMenuItem
+              className="p-3 text-green-600 dark:text-green-400"
+              data-testid="cancel-company-deletion"
+              onSelect={(e) => {
+                e.preventDefault();
+                setMenuOpen(false);
+                requestAnimationFrame(() => setConfirm("cancel-deletion"));
+              }}
+            >
+              Cancel Deletion
+            </DropdownMenuItem>
+          ) : (
+            <>
+              <DropdownMenuItem
+                className={`p-3 ${
+                  isActive
+                    ? "text-orange-600 dark:text-orange-400"
+                    : "text-green-600 dark:text-green-400"
+                }`}
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setMenuOpen(false);
+                  requestAnimationFrame(() => setConfirm("status"));
+                }}
+              >
+                {isActive ? "Suspend Company" : "Activate Company"}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="p-3 text-red-600 dark:text-red-400"
+                data-testid="delete-company"
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setMenuOpen(false);
+                  requestAnimationFrame(() => setConfirm("delete"));
+                }}
+              >
+                Delete Company
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <ConfirmAlert
+        open={confirm === "status"}
+        onClose={(o) => !o && setConfirm(null)}
+        type={isActive ? "error" : "info"}
+        title={isActive ? "Suspend Company" : "Activate Company"}
+        text={`Are you sure you want to ${
+          isActive ? "suspend" : "activate"
+        } this company? This will ${
+          isActive
+            ? "deactivate the company and restrict access"
+            : "restore company access"
+        }.`}
+        onPrimaryAction={async () => {
+          await onUpdateStatus(company._id, isActive ? "inactive" : "active");
+          setConfirm(null);
+        }}
+      />
+
+      <ConfirmAlert
+        open={confirm === "delete"}
+        onClose={(o) => !o && setConfirm(null)}
+        type="delete"
+        title="Delete Company"
+        text="This schedules the company for permanent deletion in 30 days. The company will be grayed out and inaccessible in the meantime, and you can cancel the deletion from this menu at any point before then."
+        primaryButtonText="Schedule Deletion"
+        primaryButtonLoading={isDeleting}
+        onPrimaryAction={async () => {
+          await onDelete(company._id);
+          setConfirm(null);
+        }}
+      />
+
+      <ConfirmAlert
+        open={confirm === "cancel-deletion"}
+        onClose={(o) => !o && setConfirm(null)}
+        type="info"
+        title="Cancel Deletion"
+        text="This cancels the scheduled deletion and restores full access to the company."
+        primaryButtonText="Cancel Deletion"
+        primaryButtonLoading={isCancelingDeletion}
+        onPrimaryAction={async () => {
+          await onCancelDeletion(company._id);
+          setConfirm(null);
+        }}
+      />
+    </>
+  );
+};
+
+/**
  * Companies management page.
  * Manages company listing, filtering, and status updates.
  * Date filtering derives start and end dates from presets (e.g., today, 7_days, 30_days)
@@ -137,7 +297,6 @@ const EmptyState = () => {
  * <CompaniesPage />
  */
 const CompaniesPage = () => {
-  const navigate = useNavigate();
   const toast = useToastHandler();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
@@ -428,6 +587,66 @@ const CompaniesPage = () => {
     }
   };
 
+  // Permanent company deletion (super admin) — QA #189. BE: DELETE /companies/{id}.
+  const { mutateAsync: deleteCompany, isPending: isDeletingCompany } =
+    useMutation<ApiResponse<unknown>, ApiResponseError, { companyId: string }>({
+      mutationKey: ["deleteCompany"],
+      mutationFn: async ({ companyId }) =>
+        await deleteRequest({ url: `/companies/${companyId}` }),
+      onSuccess: () => {
+        toast.success("Success", "Company deleted successfully");
+        queryClient.invalidateQueries({ queryKey: ["companies"] });
+        queryClient.invalidateQueries({ queryKey: ["companyDashboard"] });
+      },
+      onError: (error) => {
+        const err = error as ApiResponseError;
+        toast.error(
+          "Error",
+          err?.response?.data?.message ?? "Failed to delete company"
+        );
+      },
+    });
+
+  const handleDeleteCompany = async (companyId: string) => {
+    try {
+      await deleteCompany({ companyId });
+    } catch (error) {
+      // Error is already handled in onError callback
+    }
+  };
+
+  // Cancel a scheduled company deletion within the 30-day grace period.
+  const { mutateAsync: cancelDeletion, isPending: isCancelingDeletion } =
+    useMutation<ApiResponse<unknown>, ApiResponseError, { companyId: string }>(
+      {
+        mutationKey: ["cancelCompanyDeletion"],
+        mutationFn: async ({ companyId }) =>
+          await patchRequest({
+            url: `/companies/${companyId}/cancel-deletion`,
+          }),
+        onSuccess: () => {
+          toast.success("Success", "Company deletion canceled");
+          queryClient.invalidateQueries({ queryKey: ["companies"] });
+          queryClient.invalidateQueries({ queryKey: ["companyDashboard"] });
+        },
+        onError: (error) => {
+          const err = error as ApiResponseError;
+          toast.error(
+            "Error",
+            err?.response?.data?.message ?? "Failed to cancel deletion"
+          );
+        },
+      }
+    );
+
+  const handleCancelDeletion = async (companyId: string) => {
+    try {
+      await cancelDeletion({ companyId });
+    } catch (error) {
+      // Error is already handled in onError callback
+    }
+  };
+
   // Extract data from API responses
   const companyStats = dashboardData?.data?.data.company || {
     allCompanies: 0,
@@ -517,61 +736,14 @@ const CompaniesPage = () => {
       id: "actions",
       header: "Actions",
       cell: ({ row }) => (
-        <Dialog>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44 rounded-2xl">
-              <DropdownMenuItem
-                onClick={() =>
-                  navigate(`/dashboard/company/${row.original._id}`)
-                }
-                className="p-3"
-              >
-                View Company
-              </DropdownMenuItem>
-              {/* <EditCompanyDialog externalDialog company={row.original}>
-                <DropdownMenuItem className="p-3">
-                  Edit Company
-                </DropdownMenuItem>
-              </EditCompanyDialog> */}
-              {row.original.status === "active" ? (
-                <DialogTrigger asChild>
-                  <DropdownMenuItem className="p-3 text-orange-600 dark:text-orange-400">
-                    Suspend Company
-                  </DropdownMenuItem>
-                </DialogTrigger>
-              ) : (
-                <DialogTrigger asChild>
-                  <DropdownMenuItem className="p-3 text-green-600 dark:text-green-400">
-                    Activate Company
-                  </DropdownMenuItem>
-                </DialogTrigger>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <ConfirmAlert
-            text={`Are you sure you want to ${
-              row.original.status === "active" ? "suspend" : "activate"
-            } this company? This will deactivate the company and restrict access.`}
-            title={
-              row.original.status === "active"
-                ? "Suspend Company"
-                : "Activate Company"
-            }
-            type={row.original.status === "active" ? "error" : "info"}
-            onPrimaryAction={() =>
-              handleUpdateCompanyStatus(
-                row.original._id,
-                row.original.status === "active" ? "inactive" : "active"
-              )
-            }
-            hideDialog
-          />
-        </Dialog>
+        <CompanyActionsCell
+          company={row.original}
+          onUpdateStatus={handleUpdateCompanyStatus}
+          onDelete={handleDeleteCompany}
+          isDeleting={isDeletingCompany}
+          onCancelDeletion={handleCancelDeletion}
+          isCancelingDeletion={isCancelingDeletion}
+        />
       ),
     },
   ];
@@ -644,6 +816,10 @@ const CompaniesPage = () => {
           pagination: pagination,
           totalCounts: totalCompanies,
           isLoading: isLoading,
+          getRowClassName: (row) =>
+            row.original.status === "deleted"
+              ? "opacity-50 grayscale-[60%]"
+              : "",
         }}
         emptyPlaceholder={<EmptyState />}
         classNames={{

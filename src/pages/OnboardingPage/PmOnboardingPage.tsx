@@ -1,4 +1,4 @@
-import { Forge, useForge } from "@/lib/forge";
+import { Forge, useForge } from "@adexdsamson/forge";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -16,6 +16,7 @@ type PmFormState = {
   name: string;
   emailAddress: string;
   phone: string;
+  timezone: string;
   password: string;
   confirmPassword: string;
 };
@@ -27,6 +28,7 @@ const schema = yup.object({
     .email("Invalid email format")
     .required("Email address is required"),
   phone: yup.string().required("Phone number is required"),
+  timezone: yup.string().required("Time zone is required"),
   password: yup
     .string()
     .min(8, "Password must be at least 8 characters")
@@ -86,6 +88,7 @@ const PmOnboardingPage = () => {
       name: "",
       emailAddress: "",
       phone: "",
+      timezone: "",
       password: "",
       confirmPassword: "",
     },
@@ -103,8 +106,15 @@ const PmOnboardingPage = () => {
           return;
         }
 
-        forge.setValue("name", decoded.name || "");
-        forge.setValue("emailAddress", decoded.email || "");
+        const decodedName =
+          decoded.name ||
+          [decoded.firstName, decoded.lastName].filter(Boolean).join(" ") ||
+          "";
+        const decodedEmail =
+          decoded.emailAddress || decoded.email || decoded.primaryEmail || "";
+
+        forge.setValue("name", decodedName);
+        forge.setValue("emailAddress", decodedEmail);
         setTokenState(decoded.token);
       } catch (error) {
         console.error("Error processing encoded data:", error);
@@ -123,7 +133,7 @@ const PmOnboardingPage = () => {
   >({
     mutationKey: ["pmRegister"],
     mutationFn: async (data) =>
-      await postRequest({ url: "/onboarding/pm-accept", payload: data }),
+      await postRequest({ url: "/onboarding/vendor-pm-accept", payload: data }),
   });
 
   const onSubmit = async (data: PmFormState) => {
@@ -133,6 +143,7 @@ const PmOnboardingPage = () => {
         emailAddress: data.emailAddress,
         name: data.name,
         phone: data.phone,
+        timezone: data.timezone,
         password: data.password,
       };
 
@@ -169,7 +180,6 @@ const PmOnboardingPage = () => {
           {...{
             control: forge.control,
             onSubmit: onSubmit,
-            debug: true,
           }}
         >
           <PmOnboardingForm />

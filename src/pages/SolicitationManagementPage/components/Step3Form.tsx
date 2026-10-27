@@ -1,6 +1,6 @@
 import { X, Plus } from "lucide-react";
 import { useWatch } from "react-hook-form";
-import { Forger, useFieldArray } from "@/lib/forge";
+import { Forger, useFieldArray } from "@adexdsamson/forge";
 import { useFormContext } from "react-hook-form";
 import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
 import {
@@ -10,7 +10,7 @@ import {
   TextTimeInput,
 } from "@/components/layouts/FormInputs/TextInput";
 import { CreateSolicitationFormData } from "./CreateSolicitationDialog";
-import { ForgeControl } from "@/lib/forge/types";
+import { ForgeControl } from "@adexdsamson/forge";
 
 interface Step3FormProps {
   control: ForgeControl<CreateSolicitationFormData>;

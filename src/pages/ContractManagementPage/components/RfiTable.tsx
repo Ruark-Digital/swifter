@@ -1,4 +1,5 @@
 import React from "react";
+import { resolveEnvFileUrl } from "@/config";
 import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -13,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetFooter,
   SheetHeader,
@@ -28,7 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import MessageComposer from "@/pages/SolicitationManagementPage/components/MessageComposer";
-import { Forge, Forger, useForge } from "@/lib/forge";
+import { Forge, Forger, useForge } from "@adexdsamson/forge";
 import {
   TextArea,
   TextDatePicker,
@@ -39,11 +41,11 @@ import {
   ArrowLeft,
   Check,
   CloudUpload,
-  Download,
+  Edit2,
   Search,
   X,
 } from "lucide-react";
-import { useWatch } from "react-hook-form";
+import { useFormContext } from "react-hook-form";
 import { ContractRfis, type ApiResponseError } from "@/types";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import {
@@ -54,13 +56,94 @@ import {
   // type ContractRfiDTO,
 } from "../api/contractManagerApi";
 import { approverApi } from "../api/approverApi";
-// import { vendorApi } from "../api/vendorApi";
+import { vendorApi } from "../api/vendorApi";
 import { formatDateTZ } from "@/lib/utils";
 import { formatFileSize, getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useUser } from "@/store/authSlice";
 import { postRequest } from "@/lib/axiosInstance";
+import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
 import { DocumentItem, type DocType } from "./DocumentItem";
+import { IssueRfiDialog } from "../layouts/RfiTabContent";
+
+// RFI `responder` is a single id (string) or a populated user object/ref —
+// see memory project_rfi_responder_singular. Only that specific user
+// should see Respond, not every approver on the team.
+const getResponderId = (raw: any): string | undefined => {
+  const r = raw?.responder;
+  if (!r) return undefined;
+  if (typeof r === "string") return r;
+  if (typeof r?.user === "string") return r.user;
+  return r?.user?._id ?? r?._id;
+};
+
+// "May the current user respond right now?" — gated on the BE-authoritative,
+// turn-aware `canRespond` flag. Per the v2.3.0 RFI contract `canRespond` is
+// `true` ONLY when the RFI is open and it is THIS caller's turn. The RFI is now
+// a two-way thread in which the ISSUER responds to the responder's response, so
+// the BE returns `canRespond:true` for the issuer on their turn as well — we
+// trust it for both parties. (The old code additionally required a responder
+// role via isCurrentResponder/isEligibleResponder to exclude the issuer, which
+// now wrongly blocks the issuer from taking their turn.) The lastAuthor guard
+// below is belt-and-suspenders against a stale flag right after the caller posts.
+const getLastThreadMessage = (raw: any): any => {
+  if (!raw) return null;
+  if (raw.lastResponse) return raw.lastResponse;
+  const thread = Array.isArray(raw.responses) ? raw.responses : [];
+  return thread.length ? thread[thread.length - 1] : null;
+};
+
+const canRespondToRfi = (raw: any, currentUserId?: string): boolean => {
+  if (!raw) return false;
+  // Turn guard: if the caller authored the latest thread message, it is the
+  // other party's turn — hide Respond until they reply. Defends against a
+  // `canRespond` flag that doesn't flip after answering (QA #114 #3).
+  const lastMsg = getLastThreadMessage(raw);
+  const lastAuthorId =
+    typeof lastMsg?.submittedBy === "string"
+      ? lastMsg.submittedBy
+      : lastMsg?.submittedBy?._id;
+  if (lastAuthorId && currentUserId && lastAuthorId === currentUserId)
+    return false;
+  // BE turn-taking flag is authoritative when present: `canRespond` already
+  // means "open AND the caller's turn", for issuer and responder alike (the
+  // issuer answers the responder's response under the v2.3.0 contract).
+  if (typeof raw.canRespond === "boolean") return raw.canRespond;
+  // Legacy fallback (older payloads without the flags): the assigned responder
+  // — and never the issuer — may respond while the RFI is open and unanswered.
+  const isOpen = String(raw.status ?? "").toLowerCase() !== "closed";
+  const responded = Boolean(
+    raw.hasResponse ?? raw.response ?? (raw.responseCount ?? 0) > 0,
+  );
+  const responderId = getResponderId(raw);
+  const isAssigned = Boolean(currentUserId) && responderId === currentUserId;
+  const issuerId =
+    typeof raw.submittedBy === "object" ? raw.submittedBy?._id : undefined;
+  const isIssuer = Boolean(currentUserId) && issuerId === currentUserId;
+  return isOpen && !responded && isAssigned && !isIssuer;
+};
+
+const getResponderName = (raw: any): string => {
+  const responder = raw?.responder;
+  if (!responder) return "-";
+  if (typeof responder?.name === "string" && responder.name.trim()) {
+    return responder.name;
+  }
+  if (typeof responder?.user?.name === "string" && responder.user.name.trim()) {
+    return responder.user.name;
+  }
+  if (typeof responder?.email === "string" && responder.email.trim()) {
+    return responder.email;
+  }
+  if (
+    typeof responder?.user?.email === "string" &&
+    responder.user.email.trim()
+  ) {
+    return responder.user.email;
+  }
+  return "-";
+};
 
 export type RfiRow = {
   id: string;
@@ -93,8 +176,8 @@ const LabelRow = ({
   value: React.ReactNode;
 }) => (
   <div className="space-y-2">
-    <div className="text-xs font-medium text-[#9CA3AF]">{label}</div>
-    <div className="text-sm font-medium text-[#111827]">{value}</div>
+    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">{label}</div>
+    <div className="text-sm font-medium text-[#111827] dark:text-slate-100">{value}</div>
   </div>
 );
 
@@ -114,15 +197,22 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
   const [isOpen, setIsOpen] = React.useState(false);
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
-  const { isApprover } = useUserRole();
+  const currentUser = useUser();
+  const { isApprover, isVendor, isProjectManager } = useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
+  const roleNs = isApprover
+    ? "approver"
+    : isContractVendorLike
+      ? "vendor"
+      : "contractManager";
   const queryKey = useUserQueryKey([
-    isApprover ? "approver" : "contractManager",
+    roleNs,
     "contractRfis",
     "detail",
     rfiId,
   ]);
   const commentsQueryKey = useUserQueryKey([
-    isApprover ? "approver" : "contractManager",
+    roleNs,
     "contractRfis",
     "comments",
     contractId,
@@ -134,7 +224,9 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     queryFn: async () =>
       isApprover
         ? await approverApi.getRfiDetail(rfiId, contractId)
-        : await contractManagerApi.getRfiDetail(contractId, rfiId),
+        : isContractVendorLike
+          ? await vendorApi.getRfiDetail(contractId, rfiId)
+          : await contractManagerApi.getRfiDetail(contractId, rfiId),
     enabled: Boolean(rfiId) && isOpen,
     staleTime: 60000,
   });
@@ -150,7 +242,9 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     queryFn: async () =>
       isApprover
         ? await approverApi.listRfiComments(contractId, rfiId)
-        : await contractManagerApi.listRfiComments(contractId, rfiId),
+        : isContractVendorLike
+          ? await vendorApi.listRfiComments(contractId, rfiId)
+          : await contractManagerApi.listRfiComments(contractId, rfiId),
     enabled: Boolean(contractId) && Boolean(rfiId) && isOpen,
     staleTime: 60000,
   });
@@ -161,7 +255,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     ContractChangeCommentDTO
   >({
     mutationKey: [
-      isApprover ? "approver" : "contractManager",
+      roleNs,
       "contractRfis",
       "comments",
       "add",
@@ -171,7 +265,9 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     mutationFn: async (payload) =>
       isApprover
         ? await approverApi.addRfiComment(contractId, rfiId, payload)
-        : await contractManagerApi.addRfiComment(contractId, rfiId, payload),
+        : isContractVendorLike
+          ? await vendorApi.addRfiComment(contractId, rfiId, payload)
+          : await contractManagerApi.addRfiComment(contractId, rfiId, payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: commentsQueryKey });
     },
@@ -180,25 +276,171 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
     },
   });
 
-  const rfiDetail = rfiDetailRes?.data?.contractRfi as unknown as any;
-  const rfiTitle = rfiDetail?.title ?? rfi?.title ?? "-";
-  const rfiDescription = rfiDetail?.description ?? rfi?.description ?? "-";
-  const rfiStatus = rfi?.status ?? "-";
-  const rfiSubmittedBy = rfiDetail?.submittedBy?.name ?? rfi?.submittedBy ?? "-";
-  const rfiIdentifier = rfi?.rfiId ?? rfi?._id ?? "-";
+  // The detail endpoint returns a LEAN contractRfi — only title/description/
+  // deadline — with the auth flags alongside it (isResponse, canRespond,
+  // isIssuer, isCurrentResponder, isEligibleResponder, responderStatus).
+  // Verified via the live payload: the rich fields (responder, submittedBy,
+  // status, files, hasResponse, responseCount, and the response thread) live
+  // ONLY on the LIST row passed as `rfi`. So merge — the list row is the rich
+  // base, the lean detail just refreshes the descriptive fields, and `wrapper`
+  // supplies the authoritative auth flags (QA #114).
+  // The detail API body is { status, message, data: { contractRfi, isResponse,
+  // canRespond, isIssuer, isCurrentResponder, isEligibleResponder,
+  // responderStatus } }. `client.get` returns the axios response, so
+  // rfiDetailRes.data is that BODY and the auth-flag envelope is one level
+  // deeper at `.data.data`. Detect the envelope (it carries contractRfi /
+  // isResponse) so this works whether or not the client already unwrapped a
+  // level. Reading the body directly leaked its numeric `status: 200` into the
+  // merge and crashed `rfiStatus.toLowerCase()` (QA #114 follow-up). The detail
+  // `contractRfi` is RICH (responder, responses[], status, files) — merge it
+  // over the list row so data is present before/after the fetch resolves.
+  const rawDetail = (rfiDetailRes?.data as any) ?? undefined;
+  const wrapper =
+    rawDetail?.contractRfi !== undefined ||
+    typeof rawDetail?.isResponse === "boolean"
+      ? rawDetail
+      : (rawDetail?.data ?? rawDetail);
+  const detailRich = wrapper?.contractRfi ?? undefined;
+  const rfiDetail = { ...((rfi as any) ?? {}), ...(detailRich ?? {}) } as any;
+
+  // Response content comes from the thread's most recent message
+  // (`responses[]` / `lastResponse`), which is on the detail's contractRfi and
+  // is role-agnostic — the ISSUER (Vendor PM) sees it too, without the
+  // role-gated /response call that 403s for them (QA #114 #4/#5). Falls back to
+  // a legacy embedded `response` object.
+  const lastResponseMsg = getLastThreadMessage(rfiDetail);
+  const rfiResponse = (
+    lastResponseMsg
+      ? {
+          description: lastResponseMsg.description,
+          files: lastResponseMsg.files,
+          submittedBy: lastResponseMsg.submittedBy,
+          submittedAt: lastResponseMsg.submittedAt,
+        }
+      : (rfiDetail?.response ?? null)
+  ) as {
+    description?: string;
+    files?: Array<{ name?: string; url?: string; type?: string; size?: string | number }>;
+    submittedBy?: { _id?: string; name?: string; email?: string } | string;
+    submittedAt?: string;
+  } | null;
+  // The assigned responder object (when populated) resolves a thread message's
+  // bare `submittedBy` id to a display name (QA #113 #1). Passed to the response
+  // panel, which renders the full thread (QA #177).
+  const responderObj =
+    rfiDetail?.responder && typeof rfiDetail.responder === "object"
+      ? rfiDetail.responder
+      : undefined;
+
+  // Full ordered RFI response thread. The BE returns every message (each with
+  // its own attachments), so render them all instead of collapsing to the
+  // latest — previous responses and documents must be retained, not overridden
+  // by the newest (QA #177). Falls back to the single last message for older
+  // payloads that only carried `lastResponse`.
+  const responseThread = Array.isArray(rfiDetail?.responses)
+    ? rfiDetail.responses
+    : lastResponseMsg
+      ? [lastResponseMsg]
+      : [];
+
+  // Show the Response tab when ANY positive signal says a response exists — use
+  // OR (not ??) so a stale wrapper `isResponse:false` can't hide a response the
+  // list row confirms via hasResponse/responseCount/lastResponse (QA #114 #2).
+  const hasResponse = Boolean(
+    wrapper?.isResponse ||
+      rfiDetail?.hasResponse ||
+      (rfiDetail?.responseCount ?? 0) > 0 ||
+      rfiResponse,
+  );
+  // Respond follows the BE turn-taking flag (`canRespond` = open AND the
+  // caller's turn) — for the issuer as well, now that they answer the
+  // responder's response (v2.3.0). The merged rfiDetail carries the list row's
+  // thread so the turn guard (QA #114 #3) works here too.
+  const canRespond = canRespondToRfi(
+    {
+      canRespond: wrapper?.canRespond ?? rfiDetail?.canRespond,
+      status: rfiDetail?.status,
+      submittedBy: rfiDetail?.submittedBy,
+      responder: rfiDetail?.responder,
+      hasResponse: rfiDetail?.hasResponse,
+      responseCount: rfiDetail?.responseCount,
+      lastResponse: rfiDetail?.lastResponse,
+      responses: rfiDetail?.responses,
+    },
+    currentUser?._id,
+  );
+  const rfiTitle = rfiDetail?.title ?? "-";
+  const rfiDescription = rfiDetail?.description ?? "-";
+  // Guard against a non-string ever reaching `rfiStatus.toLowerCase()`.
+  const rfiStatus =
+    typeof rfiDetail?.status === "string" ? rfiDetail.status : "-";
+  // Backend returns `submittedBy` as a populated user object ({_id, name,
+  // email}); older rows may be plain strings. Coerce before rendering.
+  const submittedByRaw = rfiDetail?.submittedBy;
+  const rfiSubmittedBy =
+    typeof submittedByRaw === "string"
+      ? submittedByRaw
+      : (submittedByRaw?.name ?? submittedByRaw?.email ?? "-");
+  const rfiIdentifier = rfiDetail?.rfiId ?? rfiDetail?._id ?? "-";
+  // getResponderName returns "-" for a missing responder (which is TRUTHY), so
+  // a plain `|| fallback` never fires. The merged rfiDetail already carries the
+  // list row's responder, so read it directly (QA #114 #6).
+  const responderName = getResponderName(rfiDetail);
+
+  // Only the RFI issuer may close it, and only while it is still open.
+  // Manager uses /rfis (plural); vendor/approver/user use /rfi (singular) —
+  // mirror RfiTabContent.getBasePath() and the edit path above.
+  const rfiIssuerId =
+    typeof submittedByRaw === "object" ? submittedByRaw?._id : undefined;
+  const isRfiIssuer =
+    Boolean(currentUser?._id) &&
+    Boolean(rfiIssuerId) &&
+    rfiIssuerId === currentUser?._id;
+  // RFI close is singular `/rfi/{id}/close` for ALL roles per docs.json —
+  // including manager (which uniquely uses `/rfis` plural for EDIT but `/rfi`
+  // for close). Do not reuse the edit base here.
+  const rfiRoleBase = isApprover
+    ? `/contract/approver/contracts/${contractId}/rfi`
+    : isContractVendorLike
+      ? `/contract/vendor/contracts/${contractId}/rfi`
+      : `/contract/manager/contracts/${contractId}/rfi`;
+  const [closeRfiOpen, setCloseRfiOpen] = React.useState(false);
+  const closeRfiMutation = useMutation<{ message?: string }, ApiResponseError, void>({
+    mutationKey: [roleNs, "contractRfis", "close", contractId, rfiId],
+    mutationFn: async () => {
+      const res = await postRequest({ url: `${rfiRoleBase}/${rfiId}/close`, payload: {} });
+      return res.data as { message?: string };
+    },
+    onSuccess: async (res) => {
+      toastHandler.success("RFI", res?.message ?? "RFI closed");
+      setCloseRfiOpen(false);
+      // Refresh every RFI-scoped query so the closed status renders everywhere:
+      // the list/stats use a bare ["contractRfis", ...] key, while this detail
+      // query is user-scoped ([userId, roleNs, "contractRfis", "detail", ...]).
+      // Invalidating only the detail key left the table row showing "open" until
+      // a manual refetch. A predicate match catches both — mirroring the respond
+      // mutation — so the table re-renders the updated status immediately.
+      await queryClient.invalidateQueries({
+        predicate: (q) => q.queryKey.some((k) => k === "contractRfis"),
+      });
+    },
+    onError: (error) => {
+      toastHandler.error("Close RFI", error);
+    },
+  });
 
   const formatDate = (value?: string | Date) =>
-    formatDateTZ(value, "MMMM dd, yyyy");
+    formatDateTZ(value, "dd MMM yyyy");
 
   const submissionDate = formatDate(rfi?.createdAt);
   const responseDeadline = formatDate(rfiDetail?.deadline ?? rfi?.deadline);
 
   const statusTone =
     rfiStatus?.toLowerCase() === "open"
-      ? "bg-[#DCFCE7] text-[#16A34A]"
+      ? "bg-[#DCFCE7] text-[#16A34A] dark:bg-green-900/40 dark:text-green-300"
       : rfiStatus?.toLowerCase() === "closed"
-        ? "bg-red-100 text-red-600"
-        : "bg-slate-100 text-slate-700";
+        ? "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300"
+        : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
 
   const files = (rfiDetail?.files ?? rfi?.files ?? []) as Array<{
     name?: string;
@@ -246,13 +488,16 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
           <SheetHeader className="space-y-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827]"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </button>
-                <SheetTitle className="text-base font-semibold text-[#0F0F0F]">
+                <SheetClose asChild>
+                  <button
+                    type="button"
+                    aria-label="Close RFI details"
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] dark:border-slate-700 text-[#111827] dark:text-slate-100"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                </SheetClose>
+                <SheetTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   RFI Details
                 </SheetTitle>
               </div>
@@ -261,15 +506,74 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
 
           <div className="space-y-6">
             <div className="flex items-start justify-between">
-              <div className="text-base font-semibold text-[#0F0F0F]">
+              <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 {rfiTitle}
               </div>
-              <Button
-                variant="outline"
-                className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F]"
-              >
-                <Download className="mr-2 h-4 w-4" /> Export
-              </Button>
+              <div className="flex items-center gap-2">
+                {(() => {
+                  const issuerId =
+                    typeof submittedByRaw === "object"
+                      ? submittedByRaw?._id
+                      : undefined;
+                  const isIssuer =
+                    Boolean(currentUser?._id) &&
+                    Boolean(issuerId) &&
+                    issuerId === currentUser?._id;
+                  // Active vendor is read-only in CLM (strict) — no Edit RFI.
+                  if (!isIssuer || isVendor) return null;
+                  // Manager uses /rfis (plural); vendor/approver use /rfi
+                  // (singular). Match RfiTabContent.getBasePath().
+                  const editBase = isApprover
+                    ? `/contract/approver/contracts/${contractId}/rfi`
+                    : isContractVendorLike
+                      ? `/contract/vendor/contracts/${contractId}/rfi`
+                      : `/contract/manager/contracts/${contractId}/rfis`;
+                  const editPath = `${editBase}/${rfiId}`;
+                  const responderInitial =
+                    typeof rfiDetail?.responder === "string"
+                      ? rfiDetail.responder
+                      : (rfiDetail?.responder?.user?._id ??
+                          rfiDetail?.responder?._id ??
+                          undefined);
+                  return (
+                    <IssueRfiDialog
+                      contractId={contractId}
+                      basePath={editBase}
+                      mode="edit"
+                      rfiId={rfiId}
+                      editPath={editPath}
+                      detailInvalidateQueryKey={queryKey}
+                      initialRfi={{
+                        title: rfiTitle,
+                        description: rfiDescription,
+                        deadline:
+                          rfiDetail?.deadline ?? rfi?.deadline ?? undefined,
+                        responder: responderInitial,
+                        files: (files as any) ?? [],
+                      }}
+                      trigger={
+                        <Button
+                          variant="outline"
+                          className="h-9 rounded-lg border-[#E5E7EB] dark:border-slate-700 px-3 text-xs font-semibold text-[#0F0F0F] dark:text-slate-100"
+                          data-testid="edit-rfi-trigger"
+                        >
+                          <Edit2 className="mr-2 h-4 w-4" /> Edit
+                        </Button>
+                      }
+                    />
+                  );
+                })()}
+                {isRfiIssuer && !isVendor && rfiStatus?.toLowerCase() !== "closed" && (
+                  <Button
+                    variant="outline"
+                    className="h-9 rounded-lg border-red-200 px-3 text-xs font-semibold text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-900/30"
+                    data-testid="close-rfi-trigger"
+                    onClick={() => setCloseRfiOpen(true)}
+                  >
+                    Close RFI
+                  </Button>
+                )}
+              </div>
             </div>
 
             <Tabs defaultValue="overview" className="space-y-6">
@@ -282,9 +586,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                 </TabsTrigger>
 
                 {(() => {
-                  const detailAny = rfiDetailRes as any;
-                  const isResponse = detailAny?.data?.isResponse ?? false;
-                  return isResponse ? (
+                  return hasResponse ? (
                     <TabsTrigger
                       value="response"
                       className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
@@ -319,6 +621,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                     label="Response Deadline"
                     value={responseDeadline}
                   />
+                  <LabelRow label="Responder" value={responderName} />
                   <LabelRow
                     label="Status"
                     value={
@@ -332,14 +635,14 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  <div className="text-xs font-medium text-[#9CA3AF]">
+                  <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
                     Description
                   </div>
-                  <div className="text-sm text-[#374151]">{rfiDescription}</div>
+                  <div className="text-sm text-[#374151] dark:text-slate-200">{rfiDescription}</div>
                 </div>
 
                 <div className="space-y-3">
-                  <div className="text-base font-semibold text-[#0F0F0F]">
+                  <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                     Attached Documents
                   </div>
                   <div className="grid gap-3 sm:grid-cols-1">
@@ -359,12 +662,12 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                           key={d.id}
                           d={d}
                           handlePreview={() => {
-                            window.open(d.url || "#", "_blank");
+                            window.open(d.url ? resolveEnvFileUrl(d.url) : "#", "_blank");
                           }}
                           handleDownload={() => {
                             if (!d.url) return;
                             const link = document.createElement("a");
-                            link.href = d.url;
+                            link.href = resolveEnvFileUrl(d.url);
                             link.download = d.name;
                             document.body.appendChild(link);
                             link.click();
@@ -382,6 +685,8 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                   rfiId={rfiId}
                   contractId={contractId}
                   isApprover={isApprover}
+                  thread={responseThread}
+                  responder={responderObj}
                 />
               </TabsContent>
 
@@ -404,7 +709,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                 <Separator />
 
                 {isCommentsLoading ? (
-                  <div className="rounded-xl border border-[#E5E7EB] p-4 text-sm text-[#6B7280]">
+                  <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
                     Loading comments...
                   </div>
                 ) : comments.length ? (
@@ -412,25 +717,25 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                     {comments.map((comment, index) => (
                       <div
                         key={comment._id ?? `${index}`}
-                        className="rounded-xl border border-[#E5E7EB] p-4"
+                        className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 dark:bg-slate-900 p-4"
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div>
-                            <div className="text-sm font-semibold text-[#111827]">
+                            <div className="text-sm font-semibold text-[#111827] dark:text-slate-100">
                               {getCommentAuthor(comment)}
                             </div>
                             {getCommentEmail(comment) ? (
-                              <div className="text-xs text-[#6B7280]">
+                              <div className="text-xs text-[#6B7280] dark:text-slate-400">
                                 {getCommentEmail(comment)}
                               </div>
                             ) : null}
                           </div>
-                          <div className="text-xs text-[#6B7280]">
-                            {formatDateTZ(comment.createdAt, "MMM dd, yyyy")}
+                          <div className="text-xs text-[#6B7280] dark:text-slate-400">
+                            {formatDateTZ(comment.createdAt, "dd MMM yyyy")}
                           </div>
                         </div>
                         <div
-                          className="text-sm text-[#374151] mt-3 prose prose-sm max-w-none"
+                          className="text-sm text-[#374151] dark:text-slate-200 mt-3 prose prose-sm dark:prose-invert max-w-none"
                           dangerouslySetInnerHTML={{
                             __html: comment.content ?? "",
                           }}
@@ -439,32 +744,34 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                     ))}
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-[#E5E7EB] p-4 text-sm text-[#6B7280]">
+                  <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
                     No comments yet.
                   </div>
                 )}
 
-                <MessageComposer
-                  onSend={(content) => {
-                    void handleSendComment(content);
-                  }}
-                  isLoading={addCommentMutation.isPending}
-                  replyToUser={{ name: "Zenith Solution" }}
-                  availableUsers={[
-                    { name: "Zenith Solution" },
-                    { name: "Procurement Team" },
-                    { name: "Contract Manager" },
-                  ]}
-                  currentUser={{ name: "You" }}
-                  sendType="reply"
-                  isNewChat={false}
-                  onSendTypeChange={() => {}}
-                />
+                {!isVendor && (
+                  <MessageComposer
+                    onSend={(content) => {
+                      void handleSendComment(content);
+                    }}
+                    isLoading={addCommentMutation.isPending}
+                    replyToUser={
+                      rfiSubmittedBy && rfiSubmittedBy !== "-"
+                        ? { name: rfiSubmittedBy }
+                        : undefined
+                    }
+                    currentUser={{ name: "You" }}
+                    sendType="reply"
+                    isNewChat={false}
+                    onSendTypeChange={() => {}}
+                    sendLabel="Send"
+                  />
+                )}
               </TabsContent>
             </Tabs>
           </div>
 
-          {!(rfiDetailRes?.data?.isResponse ?? false) && isApprover && (
+          {canRespond && !isVendor && (
             <SheetFooter>
               <div className="flex w-full gap-3 pt-2">
                 <Button variant="outline" className="flex-1 h-12 rounded-xl">
@@ -472,7 +779,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                 </Button>
                 <RespondToRfiDialog
                   rfiId={rfiId}
-                  rfi={rfiDetail?.contractRfi}
+                  rfi={rfiDetail}
                   contractId={contractId}
                   trigger={
                     <Button className="flex-1 h-12 rounded-xl">Respond</Button>
@@ -482,90 +789,211 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
             </SheetFooter>
           )}
         </div>
+        <ConfirmAlert
+          open={closeRfiOpen}
+          onClose={(o) => !o && setCloseRfiOpen(false)}
+          type="warning"
+          title="Close RFI"
+          text="Close this RFI? Once closed it can no longer receive a response."
+          primaryButtonText="Close RFI"
+          secondaryButtonText="Cancel"
+          primaryButtonLoading={closeRfiMutation.isPending}
+          onPrimaryAction={() => closeRfiMutation.mutate()}
+          onSecondaryAction={() => setCloseRfiOpen(false)}
+        />
       </SheetContent>
     </Sheet>
   );
+};
+
+type RfiThreadMessage = {
+  _id?: string;
+  description?: string;
+  files?: Array<{ name?: string; url?: string; type?: string; size?: string | number }>;
+  submittedBy?: { _id?: string; name?: string; email?: string } | string;
+  submittedAt?: string;
 };
 
 const RfiResponseContent: React.FC<{
   rfiId: string;
   contractId: string;
   isApprover: boolean;
-}> = ({ rfiId, contractId, isApprover }) => {
+  /** Full ordered RFI thread from the detail payload — every message with its
+   *  own attachments — so previous responses are retained, not overwritten by
+   *  the newest (QA #177). Role-agnostic, so the issuer (Vendor PM) sees it too. */
+  thread?: RfiThreadMessage[];
+  /** Assigned responder; resolves a message's bare `submittedBy` id to a name
+   *  (QA #113 #1). */
+  responder?: { _id?: string; name?: string; email?: string };
+}> = ({ rfiId, contractId, isApprover, thread, responder }) => {
+  const hasThread = Array.isArray(thread) && thread.length > 0;
   const { data: respRes } = useQuery({
-    queryKey: [
+    queryKey: useUserQueryKey([
       isApprover ? "approver" : "contractManager",
       "contractRfis",
       "response",
       rfiId,
-    ],
+    ]),
     queryFn: async () =>
       isApprover
         ? await approverApi.getRfiResponse(contractId, rfiId)
         : await contractManagerApi.getRfiResponse(contractId, rfiId),
-    enabled: Boolean(rfiId),
+    // Only fetch when the detail didn't already embed the thread, so we don't
+    // fire a role-gated call that 403s for the issuer (Vendor PM).
+    enabled: Boolean(rfiId) && !hasThread,
     staleTime: 60000,
   });
 
-  const resp = Array.isArray(respRes?.data)
-    ? (respRes.data[0] ?? {})
-    : (respRes?.data ?? {});
-  const description = resp?.description ?? "-";
-  const files = (resp?.files ?? []) as Array<{
-    name?: string;
-    url?: string;
-    type?: string;
-    size?: string | number;
-  }>;
+  // The GET /response endpoint returns the full ordered thread array; use every
+  // message, not just the first, as the fallback for older payloads.
+  const fetched: RfiThreadMessage[] = Array.isArray(respRes?.data)
+    ? respRes.data
+    : respRes?.data
+      ? [respRes.data as RfiThreadMessage]
+      : [];
+  const messages = hasThread ? (thread as RfiThreadMessage[]) : fetched;
+
+  if (!messages.length) {
+    return (
+      <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
+        No response yet.
+      </div>
+    );
+  }
+
+  const resolveAuthor = (msg: RfiThreadMessage): string | undefined => {
+    const by = msg?.submittedBy;
+    const obj = by && typeof by === "object" ? by : undefined;
+    const id = typeof by === "string" ? by : obj?._id;
+    return (
+      obj?.name?.trim() ||
+      obj?.email?.trim() ||
+      (id && responder?._id === id
+        ? responder?.name?.trim() || responder?.email?.trim()
+        : undefined) ||
+      undefined
+    );
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <div className="text-xs font-medium text-[#9CA3AF]">
-          Response / Description
-        </div>
-        <div className="text-sm text-[#374151]">{description}</div>
-      </div>
-      <div className="space-y-3">
-        <div className="text-base font-semibold text-[#0F0F0F]">
-          Attached Documents
-        </div>
-        <div className="grid gap-3 sm:grid-cols-1">
-          {files.map((file, index) => {
-            const name = file.name ?? "Untitled";
-            const type = getFileExtension(name, file.type ?? "");
-            const d: DocType = {
-              id: `${name}-${index}`,
-              name,
-              type: type || "FILE",
-              size: getSizeLabel(file.size),
-              url: file.url,
-              icon: getFileIcon(type || "FILE"),
-            };
-            return (
-              <DocumentItem
-                key={d.id}
-                d={d}
-                handlePreview={() => {
-                  window.open(d.url || "#", "_blank");
-                }}
-                handleDownload={() => {
-                  if (!d.url) return;
-                  const link = document.createElement("a");
-                  link.href = d.url;
-                  link.download = d.name;
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                }}
-              />
-            );
-          })}
-        </div>
-      </div>
+    <div className="space-y-4">
+      {messages.map((msg, mi) => {
+        const author = resolveAuthor(msg);
+        const description = msg?.description ?? "-";
+        const files = (msg?.files ?? []) as Array<{
+          name?: string;
+          url?: string;
+          type?: string;
+          size?: string | number;
+        }>;
+        return (
+          <div
+            key={msg?._id ?? `resp-${mi}`}
+            className="space-y-4 rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4"
+          >
+            {author ? (
+              <div className="space-y-1">
+                <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
+                  Responded by
+                </div>
+                <div className="text-sm font-medium text-[#111827] dark:text-slate-100">
+                  {author}
+                  {msg?.submittedAt ? (
+                    <span className="ml-2 text-xs font-normal text-[#6B7280] dark:text-slate-400">
+                      {formatDateTZ(msg.submittedAt, "dd MMM yyyy")}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+            <div className="space-y-2">
+              <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
+                Response / Description
+              </div>
+              <div className="text-sm text-[#374151] dark:text-slate-200">
+                {description}
+              </div>
+            </div>
+            {files.length ? (
+              <div className="space-y-3">
+                <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
+                  Attached Documents
+                </div>
+                <div className="grid gap-3 sm:grid-cols-1">
+                  {files.map((file, index) => {
+                    const name = file.name ?? "Untitled";
+                    const type = getFileExtension(name, file.type ?? "");
+                    const d: DocType = {
+                      id: `${msg?._id ?? mi}-${name}-${index}`,
+                      name,
+                      type: type || "FILE",
+                      size: getSizeLabel(file.size),
+                      url: file.url,
+                      icon: getFileIcon(type || "FILE"),
+                    };
+                    return (
+                      <DocumentItem
+                        key={d.id}
+                        d={d}
+                        handlePreview={() => {
+                          window.open(d.url ? resolveEnvFileUrl(d.url) : "#", "_blank");
+                        }}
+                        handleDownload={() => {
+                          if (!d.url) return;
+                          const link = document.createElement("a");
+                          link.href = resolveEnvFileUrl(d.url);
+                          link.download = d.name;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
     </div>
   );
 };
+
+function RespondFileListItem({ file }: { file: File }) {
+  const { setValue, getValues } = useFormContext();
+  const handleRemove = () => {
+    const current = (getValues("files") as File[] | undefined) || [];
+    setValue(
+      "files",
+      current.filter((f: File) => f.name !== file.name) as any,
+    );
+  };
+  return (
+    <div className="flex w-full min-w-0 items-center justify-between gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-[#EAF1FB]">
+          <CloudUpload className="h-5 w-5 text-[#2A4467]" />
+        </div>
+        <div className="min-w-0">
+          <div className="truncate text-sm font-medium text-[#0F0F0F]">
+            {file.name}
+          </div>
+          <div className="text-xs font-medium text-[#9CA3AF]">
+            {formatFileSize(file.size)}
+          </div>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={handleRemove}
+        className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-[#9CA3AF]"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
 
 const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
   trigger,
@@ -573,14 +1001,23 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
   rfi,
   contractId,
 }) => {
-  const { isApprover } = useUserRole();
+  const { isApprover, isVendor, isProjectManager } = useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
+
+  // Coerce the current deadline to a Date so the read-only picker displays the
+  // deadline set for the responder (they cannot change it).
+  const initialDeadline = React.useMemo(() => {
+    if (!rfi?.deadline) return undefined;
+    const d = new Date(rfi.deadline as any);
+    return Number.isFinite(d.getTime()) ? d : undefined;
+  }, [rfi?.deadline]);
 
   const { control, reset, setValue } = useForge({
     defaultValues: {
       rfiTitle: rfi?.title ?? "",
-      responseDeadline: rfi?.deadline,
+      responseDeadline: initialDeadline,
       responseDescription: "",
       files: null as File[] | null,
     },
@@ -590,10 +1027,10 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
   React.useEffect(() => {
     if (rfi) {
       setValue("rfiTitle", rfi?.title ?? "", { shouldValidate: false });
-      setValue("responseDeadline", rfi?.deadline, { shouldValidate: false });
+      setValue("responseDeadline", initialDeadline, { shouldValidate: false });
       // setValue("responseDescription", rfi?.description ?? "", { shouldValidate: false });
     }
-  }, [rfi, setValue]);
+  }, [rfi, initialDeadline, setValue]);
 
   const uploadFiles = async (
     files: File[] | null,
@@ -624,6 +1061,8 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
       files: File[] | null;
     }) => {
       const uploaded = await uploadFiles(data.files);
+      // Responders cannot set or change the RFI deadline — it is fixed by the
+      // raiser — so no `deadline` is sent from the response dialog.
       const payload = {
         description: data.responseDescription,
         files:
@@ -636,16 +1075,25 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
               }))
             : undefined,
       };
-      return await approverApi.createRfiResponse(
-        contractId,
-        rfiId,
-        payload as any,
-      );
+      return isApprover
+        ? await approverApi.createRfiResponse(contractId, rfiId, payload as any)
+        : isContractVendorLike
+          ? await vendorApi.createRfiResponse(contractId, rfiId, payload as any)
+          : await contractManagerApi.createRfiResponse(
+              contractId,
+              rfiId,
+              payload as any,
+            );
     },
     onSuccess: async () => {
       setIsSuccess(true);
+      // Refresh every RFI-scoped query so the turn-taking reflects immediately:
+      // the list/stats use a bare ["contractRfis", ...] key, while the detail
+      // and comments queries are user-scoped ([userId, roleNs, "contractRfis",
+      // ...]). A predicate match catches both regardless of role, so the
+      // Respond button clears right after answering (QA #113 #3).
       await queryClient.invalidateQueries({
-        queryKey: ["approver", "contractRfis", "detail", rfiId],
+        predicate: (q) => q.queryKey.some((k) => k === "contractRfis"),
       });
     },
     onError: (error: ApiResponseError) => {
@@ -655,15 +1103,9 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
 
   const handleSubmit = async (data: {
     responseDescription: string;
+    responseDeadline?: Date | string | null;
     files: File[] | null;
   }) => {
-    if (!isApprover) {
-      toastHandler.error("RFI Response", {
-        message: "Only approvers can respond to RFIs.",
-      } as ApiResponseError);
-      return;
-    }
-
     try {
       await respondMutation.mutateAsync({
         responseDescription: data.responseDescription,
@@ -672,39 +1114,6 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
     } catch {
       return;
     }
-  };
-
-  const FileListItem = ({ file }: { file: File; control: unknown }) => {
-    const value = useWatch({ control, name: "files" }) as File[] | null;
-    return (
-      <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] bg-white p-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB]">
-            <CloudUpload className="h-5 w-5 text-[#2A4467]" />
-          </div>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-medium text-[#0F0F0F]">
-              {file.name}
-            </div>
-            <div className="text-xs font-medium text-[#9CA3AF]">
-              {formatFileSize(file.size)}
-            </div>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() =>
-            setValue(
-              "files",
-              (value ?? []).filter((f) => f.name !== file.name) as any,
-            )
-          }
-          className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF]"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-    );
   };
 
   return (
@@ -723,7 +1132,7 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
             <div className="flex h-16 w-16 items-center justify-center rounded-full">
               <Check className="h-16 w-16 text-green-600" />
             </div>
-            <div className="text-base font-semibold text-[#0F0F0F]">
+            <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
               RFI Issued Successfully
             </div>
             <div className="flex w-full items-center gap-4">
@@ -748,7 +1157,7 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
         ) : (
           <>
             <div className="flex items-center justify-between px-8 pt-8">
-              <DialogTitle className="text-xl font-semibold text-[#0F0F0F]">
+              <DialogTitle className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
                 Respond to RFI
               </DialogTitle>
             </div>
@@ -757,7 +1166,6 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
                 control={control}
                 onSubmit={handleSubmit}
                 className="space-y-5"
-                debug
               >
                 <Forger
                   name="rfiTitle"
@@ -786,20 +1194,20 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
                   component={TextFileUploader}
                   element={
                     <div className="flex flex-col items-center gap-3">
-                      <CloudUpload className="h-12 w-12 text-[#2A4467]" />
+                      <CloudUpload className="h-12 w-12 text-[#2A4467] dark:text-slate-300" />
                       <div className="space-y-1 text-center">
-                        <p className="text-base font-semibold text-[#2A4467]">
+                        <p className="text-base font-semibold text-[#2A4467] dark:text-slate-100">
                           Drag & Drop or Click to choose files
                         </p>
-                        <p className="text-sm text-[#6B7280]">
+                        <p className="text-sm text-[#6B7280] dark:text-slate-400">
                           Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG,
                           JPEG
                         </p>
                       </div>
                     </div>
                   }
-                  List={FileListItem}
-                  className="rounded-xl border-2 border-dashed border-[#9CA3AF] bg-white"
+                  List={RespondFileListItem}
+                  className="rounded-xl border-2 border-dashed border-[#9CA3AF] bg-white dark:border-slate-600 dark:bg-slate-900"
                   accept={
                     {
                       "application/pdf": [".pdf"],
@@ -849,7 +1257,7 @@ const columns: ColumnDef<RfiRow>[] = [
     accessorKey: "title",
     header: "Title",
     cell: ({ getValue }) => (
-      <div className="max-w-[260px] text-sm text-slate-700">
+      <div className="max-w-[260px] text-sm text-slate-700 dark:text-slate-200">
         {getValue<string>()}
       </div>
     ),
@@ -862,10 +1270,10 @@ const columns: ColumnDef<RfiRow>[] = [
       const s = getValue<RfiRow["status"]>();
       const tone =
         s === "open"
-          ? "bg-green-100 text-green-700"
+          ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
           : s === "closed"
-            ? "bg-red-100 text-red-600"
-            : "bg-slate-100 text-slate-700";
+            ? "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300"
+            : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
       return (
         <span className={`px-3 py-1 rounded-full text-xs font-medium ${tone}`}>
           {s}
@@ -876,43 +1284,53 @@ const columns: ColumnDef<RfiRow>[] = [
   {
     id: "actions",
     header: () => <div className="text-right">Actions</div>,
-    cell: ({ row }) => (
-      <div className="text-right">
-        {row.original.type === "received" && row.original.status !== "closed" ? (
-          <RespondToRfiDialog
-            rfiId={row.original.id}
-            rfi={row.original.rfi}
-            contractId={row.original.contractId ?? ""}
-            trigger={
-              <button
-                type="button"
-                data-testid="view-rfi-detail"
-                className="text-sm font-medium text-green-700 hover:underline"
-              >
-                Respond
-              </button>
-            }
-          />
-        ) : (
-          <RfiDetailsSheet
-            rfiId={row.original.id}
-            contractId={row.original.contractId ?? ""}
-            rfi={row.original.rfi}
-            trigger={
-              <button
-                type="button"
-                data-testid="view-rfi-detail"
-                className="text-sm font-medium text-green-700 hover:underline"
-              >
-                View
-              </button>
-            }
-          />
-        )}
-      </div>
-    ),
+    cell: ({ row }) => <RfiRowActions row={row.original} />,
   },
 ];
+
+const RfiRowActions: React.FC<{ row: RfiRow }> = ({ row }) => {
+  const currentUser = useUser();
+  const { isVendor } = useUserRole();
+  // Turn-aware gate: hides once the user has answered (issuer's turn) and never
+  // shows for the issuer's own RFI (QA #113 #3/#4). BE `canRespond` is the
+  // source of truth; the helper falls back for legacy payloads.
+  const canRespond = canRespondToRfi(row.rfi, currentUser?._id);
+
+  return (
+    <div className="flex items-center justify-end gap-3">
+      <RfiDetailsSheet
+        rfiId={row.id}
+        contractId={row.contractId ?? ""}
+        rfi={row.rfi}
+        trigger={
+          <button
+            type="button"
+            data-testid="view-rfi-detail"
+            className="text-sm font-medium text-green-700 hover:underline"
+          >
+            View
+          </button>
+        }
+      />
+      {canRespond && !isVendor && (
+        <RespondToRfiDialog
+          rfiId={row.id}
+          rfi={row.rfi}
+          contractId={row.contractId ?? ""}
+          trigger={
+            <button
+              type="button"
+              data-testid="respond-rfi"
+              className="text-sm font-medium text-green-700 hover:underline"
+            >
+              Respond
+            </button>
+          }
+        />
+      )}
+    </div>
+  );
+};
 
 type Props = {
   rows?: ContractRfis[];
@@ -959,8 +1377,8 @@ const RfiTable: React.FC<Props> = ({
         data={filteredRows}
         columns={columns}
         header={() => (
-          <div className="flex items-center gap-3 w-full border-b border-[#E5E7EB] px-5 py-4">
-            <span className="text-sm font-medium text-slate-900">RFI</span>
+          <div className="flex items-center gap-3 w-full border-b border-[#E5E7EB] dark:border-slate-800 px-5 py-4">
+            <span className="text-sm font-medium text-slate-900 dark:text-slate-100">RFI</span>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
@@ -981,13 +1399,13 @@ const RfiTable: React.FC<Props> = ({
           pagination,
         }}
         classNames={{
-          container: "border border-[#E5E7EB] rounded-xl bg-white",
-          tHeader: "bg-[#F9FAFB]",
-          tHeadRow: "border-b border-[#E5E7EB]",
-          tBody: "bg-white",
-          tRow: "border-b border-[#E5E7EB]",
-          tHead: "px-6 py-3 text-xs font-semibold text-slate-500",
-          tCell: "px-6 py-4 text-sm text-slate-700 align-top",
+          container: "border border-[#E5E7EB] dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900",
+          tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
+          tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tBody: "bg-white dark:bg-slate-900",
+          tRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tHead: "px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400",
+          tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-200 align-top",
         }}
       />
     </div>

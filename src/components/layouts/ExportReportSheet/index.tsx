@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Share2, Loader2 } from "lucide-react";
 import {
@@ -17,45 +17,70 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
-import { getRequest } from "@/lib/axiosInstance";
+import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 
 // API Types
-// Make options dynamic to support any added/removed keys from the API
+// Solicitation/evaluation endpoints return a map; the contract export
+// endpoint returns `{ available: string[], data: {...} }`. The sheet
+// keeps the same Record<string, boolean> internal state and normalizes
+// at the read boundary.
 type DocsOptionResponse = Record<string, boolean>;
+type ContractEntitiesResponse = {
+  available?: string[];
+  data?: Record<string, unknown>;
+};
 
 // Component Props Interface
 interface ExportReportSheetProps {
   solicitationId?: string;
   evaluationId?: string;
+  contractId?: string;
+  /** Tells the contract export endpoint whether contractId refers to
+   *  a regular Contract or an MsaContract. Defaults to "Contract". */
+  contractType?: "Contract" | "MsaContract";
   children?: React.ReactNode;
 }
 
 export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
   solicitationId,
   evaluationId,
+  contractId,
+  contractType = "Contract",
   children,
 }) => {
   const [exportFormat, setExportFormat] = useState("pdf");
-  const [selectedSections, setSelectedSections] = useState<
-    Record<string, boolean>
-  >({});
   const [isDownloading, setIsDownloading] = useState(false);
   const toast = useToastHandler();
 
   // Determine context type
   const isEvaluationContext = !!evaluationId;
   const isSolicitationContext = !!solicitationId;
+  const isContractContext = !!contractId;
 
-  // Fetch document options for both solicitation and evaluation contexts
+  // Fetch document options for solicitation, evaluation, and contract contexts
   const {
     data: docsOptionsData,
     isLoading: isLoadingOptions,
     error: optionsError,
-  } = useQuery<ApiResponse<DocsOptionResponse>, ApiResponseError>({
-    queryKey: ["docs-options", solicitationId, evaluationId],
+  } = useQuery<
+    ApiResponse<DocsOptionResponse | ContractEntitiesResponse>,
+    ApiResponseError
+  >({
+    queryKey: [
+      "docs-options",
+      solicitationId,
+      evaluationId,
+      contractId,
+      contractType,
+    ],
     queryFn: async () => {
+      if (isContractContext) {
+        return await getRequest({
+          url: `/contract/contract-export/${contractId}/entities?type=${contractType}`,
+        });
+      }
       const contextId = solicitationId || evaluationId;
       return await getRequest({
         url: isEvaluationContext
@@ -63,31 +88,52 @@ export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
           : `/procurement/solicitations/${contextId}/docs-option`,
       });
     },
-    enabled: !!(solicitationId || evaluationId),
+    enabled: !!(solicitationId || evaluationId || contractId),
   });
 
-  // Update selected sections based on API response
-  useEffect(() => {
-    const options = docsOptionsData?.data?.data;
-    if (options && typeof options === "object") {
-      const initialSections: Record<string, boolean> = {};
-      Object.entries(options).forEach(([key, value]) => {
-        initialSections[key] = Boolean(value);
+  // Pattern A from react-doctor's no-adjust-state-on-prop-change recipe:
+  // keep the user's selections bound to which docsOptionsData they came from.
+  // When the query refetches (new identity), the read auto-evicts to fresh
+  // server defaults — no useEffect mirror, no flash of stale checkboxes.
+  // The contract endpoint *currently* returns a flat `Record<string, boolean>`
+  // map (matching solicitation/evaluation) even though swagger advertises
+  // `{ available: string[], data: {...} }`. Handle both shapes here.
+  const computeDefaults = (
+    payload: DocsOptionResponse | ContractEntitiesResponse | undefined,
+  ): Record<string, boolean> => {
+    if (!payload || typeof payload !== "object") return {};
+    const result: Record<string, boolean> = {};
+    const available = (payload as ContractEntitiesResponse).available;
+    if (Array.isArray(available)) {
+      available.forEach((key) => {
+        result[key] = true;
       });
-      setSelectedSections(initialSections);
+    } else {
+      Object.entries(payload as DocsOptionResponse).forEach(([key, value]) => {
+        result[key] = Boolean(value);
+      });
     }
-  }, [docsOptionsData]);
+    return result;
+  };
+  const [sectionsState, setSectionsState] = useState<{
+    forData: typeof docsOptionsData;
+    sections: Record<string, boolean>;
+  }>({ forData: undefined, sections: {} });
+  const selectedSections =
+    sectionsState.forData === docsOptionsData
+      ? sectionsState.sections
+      : computeDefaults(docsOptionsData?.data?.data);
 
   const handleSectionChange = (section: string, checked: boolean) => {
-    setSelectedSections((prev) => ({
-      ...prev,
-      [section]: checked,
-    }));
+    setSectionsState({
+      forData: docsOptionsData,
+      sections: { ...selectedSections, [section]: checked },
+    });
   };
 
   // Handle download functionality
   const handleDownload = async () => {
-    if (!solicitationId && !evaluationId) {
+    if (!solicitationId && !evaluationId && !contractId) {
       toast.error("Download Error", "Missing required context ID");
       return;
     }
@@ -136,6 +182,41 @@ export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
         toast.success(
           "Download Complete",
           "Solicitation report downloaded successfully"
+        );
+      } else if (isContractContext && contractId) {
+        // Contract document download — POST /contract-export/{id}/download
+        // with JSON body { type, exportType, entity[] }. Response is a
+        // binary stream.
+        const response = await postRequest({
+          url: `/contract/contract-export/${contractId}/download`,
+          payload: {
+            type: contractType,
+            exportType: exportFormat,
+            entity: selectedSectionKeys,
+          },
+          config: { responseType: "blob" },
+        });
+
+        const blob = new Blob([response.data], {
+          type:
+            exportFormat === "pdf"
+              ? "application/pdf"
+              : "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        const baseName =
+          contractType === "MsaContract" ? "msa-export" : "contract-export";
+        link.download = `${baseName}-${contractId}.${exportFormat}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        toast.success(
+          "Download Complete",
+          `${contractType === "MsaContract" ? "MSA" : "Contract"} report downloaded successfully`
         );
       } else if (isEvaluationContext && evaluationId) {
         // Evaluation document download
@@ -219,9 +300,56 @@ export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
         label: "Submission Scores",
         description: "Scoring summary tables per submission",
       },
+      // Contract export entity keys (swagger: /contract-export endpoints)
+      invoice: { label: "Invoices", description: "Invoices table" },
+      change: { label: "Change Orders", description: "Change orders table" },
+      amendment: {
+        label: "Amendments",
+        description: "Amendments table + field-change sub-tables",
+      },
+      approvers: {
+        label: "Approval Groups",
+        description: "Approval groups table",
+      },
+      // NOTE: backend key is intentionally misspelled ("complaince") —
+      // preserve verbatim for compatibility per swagger.
+      complaince: {
+        label: "Compliance",
+        description: "Insurance & compliance table",
+      },
+      deliverable: {
+        label: "Deliverables",
+        description: "Deliverables table",
+      },
+      kpi: { label: "KPIs", description: "KPI table" },
+      lem: {
+        label: "Labour, Equipment & Materials",
+        description: "LEM table",
+      },
+      rfi: {
+        label: "RFIs",
+        description: "Requests for Information table",
+      },
+      ncr: {
+        label: "Non-Conformance Reports",
+        description: "NCR table",
+      },
+      claim: { label: "Claims", description: "Claims table" },
+      clause: {
+        label: "Contract Clauses",
+        description: "Contract clauses, grouped by section",
+      },
     };
 
-    return Object.entries(options)
+    const entries: Array<[string, boolean]> = (() => {
+      const available = (options as ContractEntitiesResponse).available;
+      if (Array.isArray(available)) {
+        return available.map((k) => [k, true] as [string, boolean]);
+      }
+      return Object.entries(options as DocsOptionResponse);
+    })();
+
+    return entries
       .filter(([, isAvailable]) => Boolean(isAvailable))
       .map(([key]) => {
         const friendly = friendlyLabels[key];
@@ -248,7 +376,10 @@ export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
           </Button>
         )}
       </SheetTrigger>
-      <SheetContent side="right" className="w-full sm:max-w-lg p-0">
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-lg p-0 flex flex-col"
+      >
         {/* Header */}
         <SheetHeader className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
@@ -261,7 +392,7 @@ export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-6 py-6">
           {/* Loading State */}
-          {isLoadingOptions && isSolicitationContext && (
+          {isLoadingOptions && (isSolicitationContext || isContractContext) && (
             <div className="flex items-center justify-center py-8">
               <div className="flex items-center gap-2">
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -327,7 +458,7 @@ export const ExportReportSheet: React.FC<ExportReportSheetProps> = ({
             )}
 
           {/* No Context Error */}
-          {!solicitationId && !evaluationId && (
+          {!solicitationId && !evaluationId && !contractId && (
             <div className="flex items-center justify-center py-8">
               <div className="text-center">
                 <p className="text-gray-600 dark:text-gray-400 mb-2">

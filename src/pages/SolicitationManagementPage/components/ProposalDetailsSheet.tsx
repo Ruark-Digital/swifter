@@ -19,6 +19,8 @@ type Action = {
   quantity?: number;
   unitOfMeasurement?: string;
   unitPrice?: number;
+  // Vendor's submitted currency — BE now returns it on each action item.
+  currency?: string;
   subtotal?: number;
   subItems?: Action[];
 };
@@ -96,6 +98,9 @@ const ProposalDetailsSheet: React.FC<ProposalDetailsSheetProps> = ({
   });
 
   const proposal = proposalData?.data;
+  // Read the vendor's submitted currency from the action items (all share it);
+  // fall back to USD for legacy payloads that omit it.
+  const currency = proposal?.data?.action?.[0]?.currency || "USD";
 
   // Handle document viewing
   const handleViewDocument = (file: {
@@ -137,12 +142,12 @@ const ProposalDetailsSheet: React.FC<ProposalDetailsSheetProps> = ({
         </div>
         <div className="sm:col-span-1 min-w-0">
           <div className="text-right text-gray-900 dark:text-gray-100 px-3">
-            {formatCurrency(item?.unitPrice ?? 0, "en-US", "USD")}
+            {formatCurrency(item?.unitPrice ?? 0, "en-US", currency)}
           </div>
         </div>
         <div className="sm:col-span-1 min-w-0">
           <div className="text-right font-semibold text-gray-900 dark:text-gray-100">
-            {formatCurrency(item?.subtotal ?? 0, "en-US", "USD")}
+            {formatCurrency(item?.subtotal ?? 0, "en-US", currency)}
           </div>
         </div>
       </div>
@@ -157,18 +162,17 @@ const ProposalDetailsSheet: React.FC<ProposalDetailsSheetProps> = ({
     </div>
   );
 
-  // Helper: compute total from action items when proposal.total is not present
+  // Helper: compute total from action items when proposal.total is not present.
+  // A top-level item's `subtotal` already rolls in its sub-items (the parent
+  // subtotal is its own qty×price plus every sub-item's qty×price), so the total
+  // is the sum of the top-level subtotals. Recursing into subItems double-counted
+  // them and inflated the total.
   const computeTotalFromActions = (items: any[]): number => {
     if (!Array.isArray(items)) return 0;
-    const sumWithChildren = (arr: any[]): number =>
-      arr.reduce((sum, itm) => {
-        const own = typeof itm?.subtotal === "number" ? itm.subtotal : 0;
-        const children = Array.isArray(itm?.subItems)
-          ? sumWithChildren(itm.subItems)
-          : 0;
-        return sum + own + children;
-      }, 0);
-    return sumWithChildren(items);
+    return items.reduce(
+      (sum, itm) => sum + (typeof itm?.subtotal === "number" ? itm.subtotal : 0),
+      0,
+    );
   };
 
   // Flatten items to display nested subItems in a single table with indenting
@@ -241,7 +245,7 @@ const ProposalDetailsSheet: React.FC<ProposalDetailsSheetProps> = ({
       header: "Unit Price",
       cell: ({ row }) => (
         <div className="">
-          {formatCurrency(row.original.unitPrice ?? 0, "en-US", "USD")}
+          {formatCurrency(row.original.unitPrice ?? 0, "en-US", currency)}
         </div>
       ),
     },
@@ -250,7 +254,7 @@ const ProposalDetailsSheet: React.FC<ProposalDetailsSheetProps> = ({
       header: "Subtotal",
       cell: ({ row }) => (
         <div className="font-semibold">
-          {formatCurrency(row.original.subtotal ?? 0, "en-US", "USD")}
+          {formatCurrency(row.original.subtotal ?? 0, "en-US", currency)}
         </div>
       ),
     },
@@ -417,7 +421,7 @@ const ProposalDetailsSheet: React.FC<ProposalDetailsSheetProps> = ({
                         {formatCurrency(
                           computeTotalFromActions(proposal?.data?.action || []),
                           "en-US",
-                          "USD"
+                          currency
                         )}
                       </p>
                     </div>

@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useCallback, useMemo, useState } from "react";
 // import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useUser } from "@/store/authSlice";
@@ -10,23 +10,16 @@ import { ChartComponent } from "./components/ChartCard";
 import { ActivityComponent } from "./components/ActivityCard";
 import { CardStats } from "./components/StatsCard";
 import { cn } from "@/lib/utils";
-import { DashboardConfig } from "@/config/dashboardConfig";
-import { PageLoader } from "@/components/ui/PageLoader";
-import { CycleTimeCard } from "./analytics/CycleTimeCard";
-import { InvoiceStatusCard } from "./analytics/InvoiceStatusCard";
-import { SpendCard } from "./analytics/SpendCard";
-import { VendorsValueCard } from "./analytics/VendorsValueCard";
-import { ProjectValueCard } from "./analytics/ProjectValueCard";
-import { RiskDistributionCard } from "./analytics/RiskDistributionCard";
-import { ChangeOrdersImpactCard } from "./analytics/ChangeOrdersImpactCard";
-import { CategoryValueCard } from "./analytics/CategoryValueCard";
-import { ComplianceStatusCard } from "./analytics/ComplianceStatusCard";
-import { ClauseIntelligenceCard } from "./analytics/ClauseIntelligenceCard";
-import { ContractStatusCard } from "./analytics/ContractStatusCard";
-import { VendorPerformanceSummaryCard } from "./analytics/VendorPerformanceSummaryCard";
-import { RenewalsTimelineCard } from "./analytics/RenewalsTimelineCard";
-import { AiInsightsAlerts } from "./analytics/AiInsightsAlerts";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { DashboardConfig, dashboardConfigs } from "@/config/dashboardConfig";
+import { isModuleDisabled, isModuleEnabled } from "@/lib/moduleFlags";
+import { DashboardSkeleton } from "./components/DashboardSkeleton";
+import { ContractsTabView } from "./ContractsTabView";
+import { VendorContractsView } from "./VendorContractsView";
+import {
+  useLandingTabs,
+  type LandingTabId,
+} from "./useLandingTabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const DEFAULT_CHART_FILTER = "12months";
 
@@ -107,6 +100,41 @@ const STAT_ROUTE_MAPPINGS: Record<
   },
 };
 
+// QA #187 — when the super-admin disables a company's Solicitation / Evaluation
+// modules, the dashboard must stop surfacing that content. These sets identify
+// solicitation/evaluation stat cards (by title) and charts (by id) so they can
+// be stripped from the config-driven dashboard for the roles whose primary view
+// is solicitation-oriented (procurement, company_admin, vendor).
+const SOLICITATION_STAT_TITLES = new Set([
+  "All Solicitations",
+  "Active Solicitations",
+  "Published Solicitations",
+  "Under Evaluations",
+  "Closed Solicitations",
+  "Awarded",
+  "Total Solicitations",
+  "All Invitations",
+  "Confirmed Invitations",
+  "Declined Invitations",
+  "Pending Invitations",
+]);
+const EVALUATION_STAT_TITLES = new Set([
+  "All Evaluations",
+  "Active Evaluations",
+  "Pending Evaluations",
+  "Completed Evaluations",
+]);
+const SOLICITATION_CHART_IDS = new Set([
+  "solicitation-status",
+  "solicitation-activities",
+  "proposal-submission",
+  "vendors-bid-intent-status",
+  "vendors-intent-status",
+  "bid-intent",
+  "vendors-distribution",
+]);
+const EVALUATION_CHART_IDS = new Set(["total-evaluation"]);
+
 const CM_YTD_STATS = [
   {
     title: "All Contracts",
@@ -151,7 +179,7 @@ const CM_YTD_STATS = [
     bgColor: "bg-blue-500/10",
   },
   {
-    title: "Committed vs Actual",
+    title: "Budget Spent",
     value: 0,
     icon: "creditCard",
     color: "text-blue-600",
@@ -173,9 +201,66 @@ const CM_YTD_STATS = [
   },
 ];
 
+// Maps the total-contract stat template onto live contract card values.
+// Shared by the contract_manager branch and the procurement Contracts tab so
+// both render identical contract stats.
+const buildContractTotalStats = (template: any[], cards: any) =>
+  template.map((stat) => {
+    const value =
+      stat.title === "All Contracts"
+        ? cards?.allContracts?.value ?? 0
+        : stat.title === "Active Contracts"
+          ? cards?.activeContracts?.value ?? 0
+          : stat.title === "Draft Contracts"
+            ? cards?.draftContracts?.value ?? 0
+            : stat.title === "Suspended"
+              ? cards?.suspendedContracts?.value ?? 0
+              : stat.title === "Expired"
+                ? cards?.expiredContracts?.value ?? 0
+                : stat.title === "Terminated"
+                  ? cards?.terminatedContracts?.value ?? 0
+                  : stat.title === "Total Contract Value"
+                    ? cards?.totalContractValue?.value ?? 0
+                    : stat.title === "Budget Spent"
+                      ? Math.round(cards?.committedVsActual?.percentage ?? 0)
+                      : stat.title === "Savings Realized"
+                        ? cards?.savingsRealized?.value ?? 0
+                        : stat.title === "Upcoming Renewals"
+                          ? cards?.upcomingRenewals?.count ?? 0
+                          : stat.title === "High Risk Contracts"
+                            ? cards?.highRiskContracts?.count ?? 0
+                            : stat.title === "Holdbacks"
+                              ? cards?.holdbacks?.value ?? 0
+                              : stat.value;
+    const isMoneyStat =
+      stat.title === "Total Contract Value" ||
+      stat.title === "Savings Realized" ||
+      stat.title === "Holdbacks";
+    return {
+      ...stat,
+      value,
+      ...(isMoneyStat
+        ? { currency: cards?.totalContractValue?.currency }
+        : {}),
+    };
+  });
+
 // Main Role-Based Dashboard Component
 export const RoleBasedDashboard: React.FC = () => {
-  const { dashboardConfig, userRole } = useUserRole();
+  const {
+    dashboardConfig: actualDashboardConfig,
+    userRole: actualRole,
+  } = useUserRole();
+  // The PM portal mirrors the vendor dashboard exactly (PM is a vendor-side
+  // project manager). Alias the role for the entire dashboard subtree so every
+  // vendor branch — landing tabs, data fetching, config, and render — applies
+  // to the PM identically.
+  const userRole =
+    actualRole === "project_manager" ? "vendor" : actualRole;
+  const dashboardConfig =
+    actualRole === "project_manager"
+      ? dashboardConfigs.vendor
+      : actualDashboardConfig;
   const user = useUser();
   const modules = user?.module;
   // Individual chart filters instead of global filter
@@ -185,6 +270,29 @@ export const RoleBasedDashboard: React.FC = () => {
     "total-contracts"
   );
   const navigate = useNavigate();
+
+  const isProjectManager = actualRole === "project_manager";
+  // The PM (Vendor-PM / CLM) side shows only the Contracts dashboard — no
+  // Solicitation toggle — even when the account also holds the vendor
+  // (Solicitation) role. A user with both accounts switches between the vendor
+  // and PM accounts at the account level, so an in-dashboard Solicitation/
+  // Contract toggle is redundant. Landing tabs come from the ACTIVE role
+  // (`actualRole`): on the PM side that's project_manager (Contracts only),
+  // while the vendor account keeps its own Solicitation + Contracts tabs.
+  const landingTabs = useLandingTabs(actualRole, modules);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get("tab") as LandingTabId | null;
+  const defaultLandingTab = landingTabs[0]?.id;
+  const activeLandingTab: LandingTabId | undefined =
+    tabFromUrl && landingTabs.some((t) => t.id === tabFromUrl)
+      ? tabFromUrl
+      : defaultLandingTab;
+
+  const setActiveLandingTab = (id: LandingTabId) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", id);
+    setSearchParams(next, { replace: true });
+  };
 
   // Fetch dashboard data based on user role (without global filter)
   const {
@@ -233,10 +341,18 @@ export const RoleBasedDashboard: React.FC = () => {
     contractManagerContractStatus,
     contractManagerVendorSummary,
     contractManagerRenewals,
-    isLoading,
+    contractManagerAiInsights,
+    isLoadingContractManagerAiInsights,
+    isInitialLoading,
+    pmContractMyActions,
+    pmContractGeneralUpdates,
     // Individual chart data fetchers
     getChartData,
-  } = useDashboardData(userRole, chartFilters);
+  } = useDashboardData(
+    userRole,
+    chartFilters,
+    userRole === "vendor" && activeLandingTab === "contracts"
+  );
 
   const cmYtdStats = useMemo(() => {
     const ytd = contractManagerYtdCards;
@@ -254,7 +370,7 @@ export const RoleBasedDashboard: React.FC = () => {
                   ? ytd?.terminatedContracts?.value ?? 0
                   : stat.title === "Total Contract Value"
                     ? ytd?.totalContractValue?.value ?? 0
-                    : stat.title === "Committed vs Actual"
+                    : stat.title === "Budget Spent"
                       ? Math.round(ytd?.committedVsActual?.percentage ?? 0)
                       : stat.title === "Savings Realized"
                         ? ytd?.savingsRealized?.value ?? 0
@@ -262,9 +378,31 @@ export const RoleBasedDashboard: React.FC = () => {
                           ? ytd?.highRiskContracts?.count ?? 0
                           : 0;
 
-      return { ...stat, value };
+      const isMoneyStat =
+        stat.title === "Total Contract Value" ||
+        stat.title === "Savings Realized" ||
+        stat.title === "Holdbacks";
+      return {
+        ...stat,
+        value,
+        ...(isMoneyStat
+          ? { currency: ytd?.totalContractValue?.currency }
+          : {}),
+      };
     });
   }, [contractManagerYtdCards]);
+
+  // Total-contract stats for roles whose base config isn't contract-shaped
+  // (e.g. procurement's Contracts landing tab) — sourced from the canonical
+  // contract_manager stat template.
+  const cmTotalStats = useMemo(
+    () =>
+      buildContractTotalStats(
+        dashboardConfigs.contract_manager.stats,
+        contractManagerTotalCards,
+      ),
+    [contractManagerTotalCards],
+  );
 
   const cmCycleTimeValues = useMemo(() => {
     const stages = contractManagerCycleTime?.stages ?? [];
@@ -469,13 +607,24 @@ export const RoleBasedDashboard: React.FC = () => {
     }
 
     if (userRole === "vendor") {
-      // Transform Vendor data
-      const transformedVendorMyActions =
-        DashboardDataTransformer.transformVendorMyActions(vendorMyActions);
-      const transformedVendorGeneralUpdates =
-        DashboardDataTransformer.transformVendorGeneralUpdates(
-          vendorGeneralUpdates
-        );
+      // Transform Vendor/PM data. My Actions / General Updates are tab-driven:
+      // the Contracts tab shows contract-scoped data, the Solicitation tab shows
+      // solicitation-scoped data. This applies to PMs too — a PM without
+      // solicitation access simply gets empty feeds on the Solicitation tab
+      // until they switch to the Contracts tab.
+      const showContractActivity = activeLandingTab === "contracts";
+      const transformedVendorMyActions = showContractActivity
+        ? DashboardDataTransformer.transformContractManagerDashboardActivity(
+            pmContractMyActions
+          )
+        : DashboardDataTransformer.transformVendorMyActions(vendorMyActions);
+      const transformedVendorGeneralUpdates = showContractActivity
+        ? DashboardDataTransformer.transformContractManagerDashboardActivity(
+            pmContractGeneralUpdates
+          )
+        : DashboardDataTransformer.transformVendorGeneralUpdates(
+            vendorGeneralUpdates
+          );
 
       return {
         ...dashboardConfig,
@@ -645,36 +794,10 @@ export const RoleBasedDashboard: React.FC = () => {
     }
 
     if (userRole === "contract_manager" || userRole === "approver") {
-      const cards = contractManagerTotalCards;
-      const transformedStats = dashboardConfig.stats.map((stat) => {
-        const value =
-          stat.title === "All Contracts"
-            ? cards?.allContracts?.value ?? 0
-            : stat.title === "Active Contracts"
-              ? cards?.activeContracts?.value ?? 0
-              : stat.title === "Draft Contracts"
-                ? cards?.draftContracts?.value ?? 0
-                : stat.title === "Suspended"
-                  ? cards?.suspendedContracts?.value ?? 0
-                  : stat.title === "Expired"
-                    ? cards?.expiredContracts?.value ?? 0
-                    : stat.title === "Terminated"
-                      ? cards?.terminatedContracts?.value ?? 0
-                      : stat.title === "Total Contract Value"
-                        ? cards?.totalContractValue?.value ?? 0
-                        : stat.title === "Committed vs Actual Value"
-                          ? Math.round(cards?.committedVsActual?.percentage ?? 0)
-                          : stat.title === "Savings Realized"
-                            ? cards?.savingsRealized?.value ?? 0
-                            : stat.title === "Upcoming Renewals"
-                              ? cards?.upcomingRenewals?.count ?? 0
-                              : stat.title === "High Risk Contracts"
-                                ? cards?.highRiskContracts?.count ?? 0
-                                : stat.title === "Holdbacks"
-                                  ? cards?.holdbacks?.value ?? 0
-                                  : stat.value;
-        return { ...stat, value };
-      });
+      const transformedStats = buildContractTotalStats(
+        dashboardConfig.stats,
+        contractManagerTotalCards,
+      );
 
       const transformedMyActions =
         DashboardDataTransformer.transformContractManagerDashboardActivity(
@@ -741,10 +864,58 @@ export const RoleBasedDashboard: React.FC = () => {
     vendorDashboard,
     vendorMyActions,
     vendorGeneralUpdates,
+    isProjectManager,
+    activeLandingTab,
+    pmContractMyActions,
+    pmContractGeneralUpdates,
     contractManagerTotalCards,
     contractManagerActionLogs,
     contractManagerGeneralUpdates,
   ]);
+
+  // QA #187 — strip solicitation/evaluation stat cards and charts when the
+  // company's module is disabled. Only applies to roles whose primary dashboard
+  // is solicitation-oriented; contract/super-admin views are untouched. A module
+  // is considered "off" only when explicitly `false` (absent/loading => keep).
+  const moduleFilteredConfig: DashboardConfig = useMemo(() => {
+    const solicitationOff = isModuleDisabled(modules?.solicitationManagement);
+    const evaluationOff = isModuleDisabled(modules?.evaluationsManagement);
+    const roleInScope =
+      userRole === "procurement" ||
+      userRole === "company_admin" ||
+      userRole === "vendor";
+    if ((!solicitationOff && !evaluationOff) || !roleInScope) {
+      return enhancedDashboardConfig;
+    }
+
+    const keepStat = (title?: string) => {
+      if (solicitationOff && title && SOLICITATION_STAT_TITLES.has(title))
+        return false;
+      if (evaluationOff && title && EVALUATION_STAT_TITLES.has(title))
+        return false;
+      return true;
+    };
+    const keepChart = (id?: string) => {
+      if (solicitationOff && id && SOLICITATION_CHART_IDS.has(id)) return false;
+      if (evaluationOff && id && EVALUATION_CHART_IDS.has(id)) return false;
+      return true;
+    };
+
+    return {
+      ...enhancedDashboardConfig,
+      stats: enhancedDashboardConfig.stats.filter((s) => keepStat(s.title)),
+      rows: enhancedDashboardConfig.rows
+        .map((row) => ({
+          ...row,
+          // Activity components (My Actions / General Updates) carry `items`
+          // and are kept as-is; only chart properties are filtered by id.
+          properties: row.properties.filter((p) =>
+            p.items ? true : keepChart(p.id),
+          ),
+        }))
+        .filter((row) => row.properties.length > 0),
+    };
+  }, [enhancedDashboardConfig, modules, userRole]);
 
   // Handle individual chart filter changes
   const handleFilterChange = useCallback((chartId?: string, filter?: string) => {
@@ -786,129 +957,252 @@ export const RoleBasedDashboard: React.FC = () => {
 
   const isContractAnalyticsRole =
     userRole === "contract_manager" || userRole === "approver";
-  const showCmOverviewTotalContracts =
-    isContractAnalyticsRole &&
-    cmTopTab === "overview" &&
-    cmSubTab === "total-contracts";
-  const showCmOverviewYtdContracts =
-    isContractAnalyticsRole &&
-    cmTopTab === "overview" &&
-    cmSubTab === "ytd-contracts";
-  const showCmAnalytics = isContractAnalyticsRole && cmTopTab === "analytics";
-  const showDefaultStats = !isContractAnalyticsRole || showCmOverviewTotalContracts;
-  const canShowMyActions = modules?.myActions === true;
-  const canShowGeneralUpdates = modules?.generalUpdatesNotifications === true;
+  const canShowMyActions = isModuleEnabled(modules?.myActions);
+  const canShowGeneralUpdates = isModuleEnabled(
+    modules?.generalUpdatesNotifications
+  );
 
-  if (isLoading && LOADING_ROLES.has(userRole)) {
-    return (
-      <PageLoader
-        title="Dashboard"
-        // headerContent={<ExportReportSheet />}
-      />
-    );
+  // Procurement's Contracts tab reuses the solicitation config's activity row
+  // shells (My Actions / General Updates) but must render CONTRACT activity data
+  // — not the solicitation data those rows carry — and must NOT render its
+  // solicitation charts (Solicitation Status, Solicitations Vs Evaluations, etc.).
+  const procurementContractsRows = useMemo(() => {
+    const contractMyActions =
+      DashboardDataTransformer.transformContractManagerDashboardActivity(
+        contractManagerActionLogs
+      );
+    const contractGeneralUpdates =
+      DashboardDataTransformer.transformContractManagerDashboardActivity(
+        contractManagerGeneralUpdates
+      );
+    return enhancedDashboardConfig.rows
+      .filter((row) => row.type === "activity")
+      .map((row) => ({
+        ...row,
+        properties: row.properties.map((activity) => {
+          if (activity.id === "my-actions") {
+            return { ...activity, items: contractMyActions };
+          }
+          if (activity.id === "general-updates") {
+            return { ...activity, items: contractGeneralUpdates };
+          }
+          return activity;
+        }),
+      }));
+  }, [
+    enhancedDashboardConfig.rows,
+    contractManagerActionLogs,
+    contractManagerGeneralUpdates,
+  ]);
+
+  // Company Admin's Contracts tab must render CONTRACT activity data, not the
+  // solicitation data companyAdminConfig carries. Company Admin's own base
+  // config has no "activity"-type row to reuse, so build the contract-shaped
+  // activity rows from the canonical contract_manager row template instead.
+  const companyAdminContractsRows = useMemo(() => {
+    const contractGeneralUpdates =
+      DashboardDataTransformer.transformContractManagerDashboardActivity(
+        contractManagerGeneralUpdates
+      );
+    // Company Admin never performs contract "my actions" (approvals/personal
+    // actions are CM/PM/approver-only), so that card is permanently empty for
+    // this role — drop it and let General Updates take the full row width.
+    return dashboardConfigs.contract_manager.rows
+      .filter((row) => row.type === "activity")
+      .map((row) => ({
+        ...row,
+        className: "lg:grid-cols-1",
+        properties: row.properties
+          .filter((activity) => activity.id !== "my-actions")
+          .map((activity) => {
+            if (activity.id === "general-updates") {
+              return { ...activity, items: contractGeneralUpdates };
+            }
+            return activity;
+          }),
+      }));
+  }, [contractManagerGeneralUpdates]);
+
+  if (isInitialLoading && LOADING_ROLES.has(userRole)) {
+    return <DashboardSkeleton />;
   }
 
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-medium text-gray-900 dark:text-gray-100">
-            Dashboard
-          </h1>
-        </div>
-        {/* <ExportReportSheet /> */}
+      <div className="flex justify-between items-center gap-4">
+        <h1 className="text-2xl font-medium text-gray-900 dark:text-gray-100">
+          Dashboard
+        </h1>
+
+        {/* Outer landing-tab strip — only shown when multiple tabs exist */}
+        {landingTabs.length > 1 && activeLandingTab && (
+          <Tabs
+            value={activeLandingTab}
+            onValueChange={(v) => setActiveLandingTab(v as LandingTabId)}
+          >
+            <TabsList className="bg-slate-100 rounded-full p-1.5 gap-3 h-12">
+              {landingTabs.map((t) => (
+                <TabsTrigger
+                  key={t.id}
+                  value={t.id}
+                  className={cn(
+                    "rounded-full px-4 py-2 text-sm",
+                    "data-[state=active]:bg-[#2A4467] data-[state=active]:text-white",
+                    "text-gray-600",
+                  )}
+                >
+                  {t.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        )}
       </div>
 
+      {/* project_manager mirrors the vendor dashboard (aliased above), so the
+          vendor Contracts branch below handles the PM Contracts view too. */}
+
+      {/* contract_manager / approver: full analytics tabs (unchanged) */}
       {isContractAnalyticsRole && (
-        <div className="space-y-4">
-          <Tabs
-            value={cmTopTab}
-            onValueChange={(v) =>
-              setCmTopTab((v as "overview" | "analytics") ?? "overview")
-            }
-            className="w-full"
-          >
-            <TabsList className="bg-slate-100 rounded-full p-1.5 gap-3 mb-3 h-12">
-              <TabsTrigger
-                value="overview"
-                className={cn(
-                  "rounded-full px-4 py-2 text-sm",
-                  "data-[state=active]:bg-[#2A4467] data-[state=active]:text-white",
-                  "text-gray-600"
-                )}
-              >
-                Overview
-              </TabsTrigger>
-              <TabsTrigger
-                value="analytics"
-                className={cn(
-                  "rounded-full px-4 py-2 text-sm",
-                  "text-gray-600",
-                  "data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
-                )}
-              >
-                Analytics
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="overview" className="space-y-4">
-              <Tabs
-                value={cmSubTab}
-                onValueChange={(v) =>
-                  setCmSubTab(
-                    (v as "total-contracts" | "ytd-contracts") ??
-                      "total-contracts"
-                  )
-                }
-                className="w-full"
-              >
-                <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
-                  <TabsTrigger
-                    value="total-contracts"
-                    className={cn(
-                      "data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3",
-                    )}
-                  >
-                    Total Contracts
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="ytd-contracts"
-                    className={cn(
-                      "data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3",
-                    )}
-                  >
-                    YTD Contracts
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="total-contracts" />
-                
-                <TabsContent value="ytd-contracts">
-                 
-                </TabsContent>
-              </Tabs>
-            </TabsContent>
-
-            <TabsContent value="analytics">
-              
-            </TabsContent>
-          </Tabs>
-        </div>
+        <ContractsTabView
+          topTab={cmTopTab}
+          setTopTab={setCmTopTab}
+          subTab={cmSubTab}
+          setSubTab={setCmSubTab}
+          stats={enhancedDashboardConfig.stats}
+          rows={enhancedDashboardConfig.rows}
+          cmYtdStats={cmYtdStats}
+          cmCycleTimeValues={cmCycleTimeValues}
+          chartFilters={chartFilters}
+          contractManagerTotalCards={contractManagerTotalCards}
+          contractManagerYtdCards={contractManagerYtdCards}
+          contractManagerActionLogs={contractManagerActionLogs}
+          contractManagerGeneralUpdates={contractManagerGeneralUpdates}
+          contractManagerCycleTime={contractManagerCycleTime}
+          contractManagerInvoiceStatus={contractManagerInvoiceStatus}
+          contractManagerCommittedVsActualSpend={contractManagerCommittedVsActualSpend}
+          contractManagerVendorContractValue={contractManagerVendorContractValue}
+          contractManagerProjectContractValue={contractManagerProjectContractValue}
+          contractManagerRiskDistribution={contractManagerRiskDistribution}
+          contractManagerChangeOrderImpact={contractManagerChangeOrderImpact}
+          contractManagerCategoryValue={contractManagerCategoryValue}
+          contractManagerComplianceStatus={contractManagerComplianceStatus}
+          contractManagerClauseIntelligence={contractManagerClauseIntelligence}
+          contractManagerContractStatus={contractManagerContractStatus}
+          contractManagerVendorSummary={contractManagerVendorSummary}
+          contractManagerRenewals={contractManagerRenewals}
+          contractManagerAiInsights={contractManagerAiInsights}
+          isLoadingContractManagerAiInsights={isLoadingContractManagerAiInsights}
+          canShowMyActions={canShowMyActions}
+          canShowGeneralUpdates={canShowGeneralUpdates}
+          onFilterChange={handleFilterChange}
+          getChartFilter={getChartFilter}
+          getChartData={getChartData}
+          onStatCardClick={handleStatCardClick}
+        />
       )}
 
-      {/* Stats Cards */}
-      {showDefaultStats && (
+      {/* procurement Contracts tab */}
+      {userRole === "procurement" && activeLandingTab === "contracts" && (
+        <ContractsTabView
+          topTab={cmTopTab}
+          setTopTab={setCmTopTab}
+          subTab={cmSubTab}
+          setSubTab={setCmSubTab}
+          stats={cmTotalStats}
+          rows={procurementContractsRows}
+          cmYtdStats={cmYtdStats}
+          cmCycleTimeValues={cmCycleTimeValues}
+          chartFilters={chartFilters}
+          contractManagerTotalCards={contractManagerTotalCards}
+          contractManagerYtdCards={contractManagerYtdCards}
+          contractManagerActionLogs={contractManagerActionLogs}
+          contractManagerGeneralUpdates={contractManagerGeneralUpdates}
+          contractManagerCycleTime={contractManagerCycleTime}
+          contractManagerInvoiceStatus={contractManagerInvoiceStatus}
+          contractManagerCommittedVsActualSpend={contractManagerCommittedVsActualSpend}
+          contractManagerVendorContractValue={contractManagerVendorContractValue}
+          contractManagerProjectContractValue={contractManagerProjectContractValue}
+          contractManagerRiskDistribution={contractManagerRiskDistribution}
+          contractManagerChangeOrderImpact={contractManagerChangeOrderImpact}
+          contractManagerCategoryValue={contractManagerCategoryValue}
+          contractManagerComplianceStatus={contractManagerComplianceStatus}
+          contractManagerClauseIntelligence={contractManagerClauseIntelligence}
+          contractManagerContractStatus={contractManagerContractStatus}
+          contractManagerVendorSummary={contractManagerVendorSummary}
+          contractManagerRenewals={contractManagerRenewals}
+          contractManagerAiInsights={contractManagerAiInsights}
+          isLoadingContractManagerAiInsights={isLoadingContractManagerAiInsights}
+          canShowMyActions={canShowMyActions}
+          canShowGeneralUpdates={canShowGeneralUpdates}
+          onFilterChange={handleFilterChange}
+          getChartFilter={getChartFilter}
+          getChartData={getChartData}
+          onStatCardClick={handleStatCardClick}
+        />
+      )}
+
+      {/* vendor Contracts tab */}
+      {userRole === "vendor" && activeLandingTab === "contracts" && (
+        <VendorContractsView enabled />
+      )}
+
+      {/* company_admin: Contracts tab */}
+      {userRole === "company_admin" && activeLandingTab === "contracts" && (
+        <ContractsTabView
+          topTab={cmTopTab}
+          setTopTab={setCmTopTab}
+          subTab={cmSubTab}
+          setSubTab={setCmSubTab}
+          stats={cmTotalStats}
+          rows={companyAdminContractsRows}
+          cmYtdStats={cmYtdStats}
+          cmCycleTimeValues={cmCycleTimeValues}
+          chartFilters={chartFilters}
+          contractManagerTotalCards={contractManagerTotalCards}
+          contractManagerYtdCards={contractManagerYtdCards}
+          contractManagerActionLogs={contractManagerActionLogs}
+          contractManagerGeneralUpdates={contractManagerGeneralUpdates}
+          contractManagerCycleTime={contractManagerCycleTime}
+          contractManagerInvoiceStatus={contractManagerInvoiceStatus}
+          contractManagerCommittedVsActualSpend={contractManagerCommittedVsActualSpend}
+          contractManagerVendorContractValue={contractManagerVendorContractValue}
+          contractManagerProjectContractValue={contractManagerProjectContractValue}
+          contractManagerRiskDistribution={contractManagerRiskDistribution}
+          contractManagerChangeOrderImpact={contractManagerChangeOrderImpact}
+          contractManagerCategoryValue={contractManagerCategoryValue}
+          contractManagerComplianceStatus={contractManagerComplianceStatus}
+          contractManagerClauseIntelligence={contractManagerClauseIntelligence}
+          contractManagerContractStatus={contractManagerContractStatus}
+          contractManagerVendorSummary={contractManagerVendorSummary}
+          contractManagerRenewals={contractManagerRenewals}
+          contractManagerAiInsights={contractManagerAiInsights}
+          isLoadingContractManagerAiInsights={isLoadingContractManagerAiInsights}
+          canShowMyActions={canShowMyActions}
+          canShowGeneralUpdates={canShowGeneralUpdates}
+          onFilterChange={handleFilterChange}
+          getChartFilter={getChartFilter}
+          getChartData={getChartData}
+          onStatCardClick={handleStatCardClick}
+        />
+      )}
+
+      {/* Stats Cards — shown for all non-analytics roles on their primary tab */}
+      {!isContractAnalyticsRole &&
+        !(userRole === "company_admin" && activeLandingTab === "contracts") &&
+        !(userRole === "procurement" && activeLandingTab === "contracts") &&
+        !(userRole === "vendor" && activeLandingTab === "contracts") && (
         <div
           className={cn(`grid grid-cols-1 md:grid-cols-2 gap-6`, {
-            "lg:grid-cols-2": enhancedDashboardConfig.stats.length === 8,
-            "lg:grid-cols-3": enhancedDashboardConfig.stats.length === 6,
+            "lg:grid-cols-2": moduleFilteredConfig.stats.length === 8,
+            "lg:grid-cols-3": moduleFilteredConfig.stats.length === 6,
             "lg:grid-cols-4":
-              enhancedDashboardConfig.stats.length === 4 ||
-              enhancedDashboardConfig.stats.length > 8,
+              moduleFilteredConfig.stats.length === 4 ||
+              moduleFilteredConfig.stats.length > 8,
           })}
         >
-          {enhancedDashboardConfig.stats?.map?.((stat, index) => (
+          {moduleFilteredConfig.stats?.map?.((stat, index) => (
             <CardStats
               key={`${stat.title}-${index}`}
               {...stat}
@@ -918,64 +1212,19 @@ export const RoleBasedDashboard: React.FC = () => {
         </div>
       )}
       
-      {showCmOverviewYtdContracts && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {cmYtdStats.map((stat, index) => (
-              <CardStats
-                key={`cm-ytd-${index}`}
-                {...stat}
-                onClick={() => handleStatCardClick(stat.title)}
-              />
-            ))}
-          </div>
-        )}
-      {showCmAnalytics && (
-        <>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <CycleTimeCard
-              values={cmCycleTimeValues}
-              bottleneck={contractManagerCycleTime?.bottleneck}
-            />
-            <InvoiceStatusCard
-              approved={contractManagerInvoiceStatus?.approved}
-              pending={contractManagerInvoiceStatus?.pending}
-              rejected={contractManagerInvoiceStatus?.rejected}
-            />
-            <SpendCard
-              committed={contractManagerCommittedVsActualSpend?.committed}
-              actual={contractManagerCommittedVsActualSpend?.actual}
-              currency={contractManagerTotalCards?.totalContractValue?.currency}
-            />
-          </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <VendorsValueCard rows={contractManagerVendorContractValue} />
-            <ProjectValueCard rows={contractManagerProjectContractValue} />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <RiskDistributionCard values={contractManagerRiskDistribution} />
-            <ChangeOrdersImpactCard data={contractManagerChangeOrderImpact} />
-            <CategoryValueCard rows={contractManagerCategoryValue} />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <ComplianceStatusCard data={contractManagerComplianceStatus} />
-            <ClauseIntelligenceCard data={contractManagerClauseIntelligence} />
-            <ContractStatusCard data={contractManagerContractStatus} />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <VendorPerformanceSummaryCard data={contractManagerVendorSummary} />
-            <RenewalsTimelineCard data={contractManagerRenewals} />
-          </div>
-          <AiInsightsAlerts />
-        </>
-      )}
-
-      {/* Activities and Charts Section */}
-      {enhancedDashboardConfig.rows?.map?.((item, rowIndex) => {
-        if (showCmAnalytics) {
+      {/* Activities and Charts Section. Vendor's Contracts tab keeps only the
+          My Actions / General Updates activity row here (its own stat cards
+          and charts are rendered by VendorContractsView above). */}
+      {!isContractAnalyticsRole &&
+        !(userRole === "company_admin" && activeLandingTab === "contracts") &&
+        !(userRole === "procurement" && activeLandingTab === "contracts") &&
+        moduleFilteredConfig.rows?.map?.((item, rowIndex) => {
+        if (
+          userRole === "vendor" &&
+          activeLandingTab === "contracts" &&
+          item.type !== "activity"
+        ) {
           return null;
         }
         if (item.type === "activity") {

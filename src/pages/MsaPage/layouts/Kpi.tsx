@@ -15,14 +15,18 @@ type Props = {
 };
 
 const Kpi: React.FC<Props> = ({ contractId, isActive }) => {
-  const { isManager, isAdmin } = useUserRole();
+  const { isManager, isAdmin, isViewOnly } = useUserRole();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<unknown>(null);
   const canManageKpi = isManager || isAdmin;
+  // View-only reads the same KPI list from /user (QA #106); canManageKpi stays
+  // false so the Update/View row actions stay hidden.
   const basePath = canManageKpi
-    ? `/contract/manager/msa-contract/${contractId}/kpis`
-    : undefined;
+    ? `/contract/manager/msa-contracts/${contractId}/kpis`
+    : isViewOnly
+      ? `/contract/user/msa-contracts/${contractId}/kpis`
+      : undefined;
   const queryKey = useUserQueryKey(["msa-kpis", contractId, basePath || "none"]);
 
   const { data, isLoading, error } = useQuery({
@@ -51,38 +55,49 @@ const Kpi: React.FC<Props> = ({ contractId, isActive }) => {
 
   const rows: KpiRow[] = React.useMemo(
     () =>
-      (data ?? []).map((item: any) => ({
-        kpiId: item.kpiId ?? item.id ?? "",
-        category: item.category ?? "",
-        currentAvgScore:
-          typeof item.currentAvgScore === "number"
-            ? `${item.currentAvgScore}%`
-            : `${item.currentAvgScore ?? ""}`,
-        allTimeAvgScore:
-          typeof item.allTimeAvgScore === "number"
-            ? `${item.allTimeAvgScore}%`
-            : `${item.allTimeAvgScore ?? ""}`,
-        lastUpdated: item.lastUpdated
-          ? format(new Date(item.lastUpdated), "dd-MM-yyyy")
-          : "",
-        actions: canManageKpi ? ["Update", "View"] : [],
-      })),
+      (data ?? []).map((item: any) => {
+        // BE stamps `lastUpdated` at row-creation, so a Draft MSA that has
+        // never been scored still shows today's date. Suppress when there's
+        // no score to back it — the only signal exposed on the list row.
+        const neverScored =
+          (item.currentAvgScore === 0 || item.currentAvgScore == null) &&
+          (item.allTimeAvgScore === 0 || item.allTimeAvgScore == null);
+        return {
+          kpiId: item.kpiId ?? item.id ?? "",
+          category: item.category ?? "",
+          currentAvgScore:
+            typeof item.currentAvgScore === "number"
+              ? `${item.currentAvgScore}%`
+              : `${item.currentAvgScore ?? ""}`,
+          allTimeAvgScore:
+            typeof item.allTimeAvgScore === "number"
+              ? `${item.allTimeAvgScore}%`
+              : `${item.allTimeAvgScore ?? ""}`,
+          lastUpdated: (() => {
+            if (neverScored || !item.lastUpdated) return "";
+            const parsed = new Date(item.lastUpdated);
+            return isNaN(parsed.getTime()) ? "" : format(parsed, "dd-MM-yyyy");
+          })(),
+          actions: canManageKpi ? ["Update", "View"] : [],
+        };
+      }),
     [canManageKpi, data],
   );
 
   return (
     <TabsContent value="kpi" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-[#0F0F0F]">
+        <h3 className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
           Key Performance Indicator
         </h3>
         <button
           type="button"
-          className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] px-[15px] py-3 text-base font-semibold text-[#0F0F0F]"
+          className="inline-flex items-center gap-2 rounded-xl border border-[#E5E7EB] dark:border-slate-800 px-[15px] py-3 text-base font-semibold text-[#0F0F0F] dark:text-slate-100"
         >
           <img
             src="/assets/contract-management/kpi/share.svg"
             className="h-5 w-5"
+            alt=""
           />
           Export Report
         </button>

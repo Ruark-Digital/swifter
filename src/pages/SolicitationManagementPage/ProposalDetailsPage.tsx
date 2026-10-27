@@ -1,5 +1,6 @@
 import React from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useGoBack } from "@/hooks/useGoBack";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -30,7 +31,7 @@ import { useToastHandler } from "@/hooks/useToaster";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useState } from "react";
 import { isAfter, parseISO, isValid } from "date-fns";
-import { formatCurrency, formatDateTZ } from "@/lib/utils";
+import { formatCurrency, formatDateInZoneAbbrev, formatDateTZ } from "@/lib/utils";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import { getFileExtension, isViewableFile } from "@/lib/fileUtils.tsx";
 import EvaluationScorecardSheet from "@/pages/EvaluationManagementPage/components/EvaluationScorecardSheet";
@@ -153,6 +154,7 @@ const ProposalDetailsPage: React.FC = () => {
   const location = useLocation();
   const queryClient = useQueryClient();
   const toastHandlers = useToastHandler();
+  const currency = "USD";
   const [showAwardModal, setShowAwardModal] = useState(false);
   const [showAmendDialog, setShowAmendDialog] = useState(false);
   const [selectedDocumentForAmend, setSelectedDocumentForAmend] =
@@ -246,14 +248,14 @@ const ProposalDetailsPage: React.FC = () => {
       evaluatorName: evaluator.name,
       email: evaluator.email,
       assignedDate: evaluator.dateAssigned
-        ? formatDateTZ(
+        ? formatDateInZoneAbbrev(
             evaluator.dateAssigned,
             "MMM d, yyyy KK:mm a",
             solicitation?.timezone
           )
         : "N/A",
       submittedDate: evaluator.dateSubmitted
-        ? formatDateTZ(
+        ? formatDateInZoneAbbrev(
             evaluator.dateSubmitted,
             "MMM d, yyyy KK:mm a",
             solicitation?.timezone
@@ -267,9 +269,7 @@ const ProposalDetailsPage: React.FC = () => {
       commentSummary: "View details for comments", // Placeholder as API doesn't provide comment summary
     })) || [];
 
-  const handleBack = () => {
-    navigate(-1);
-  };
+  const handleBack = useGoBack(`/dashboard/solicitation/${id}`);
 
   const handleExport = async (type: "pdf" | "docx" = "pdf") => {
     if (!proposal) return;
@@ -573,7 +573,7 @@ const ProposalDetailsPage: React.FC = () => {
         return (
           <div className="text-sm text-gray-600 dark:text-gray-300">
             {document.uploadedAt
-              ? formatDateTZ(
+              ? formatDateInZoneAbbrev(
                   document.uploadedAt,
                   "MMM d, yyyy h:mm a",
                   solicitation?.timezone
@@ -712,10 +712,12 @@ const ProposalDetailsPage: React.FC = () => {
       header: "Amended Doc.",
       cell: ({ row }) => {
         const amendment = row.original;
-        const fileName = amendment.newFiles?.[0]?.name || "N/A";
+        // Document amendments carry the amended file; pricing amendments have
+        // no file, so label them "Pricing" instead of showing "N/A".
+        const label = amendment.newFiles?.[0]?.name || "Pricing";
         return (
           <div className="font-medium text-gray-900 dark:text-gray-100">
-            {fileName}
+            {label}
           </div>
         );
       },
@@ -753,11 +755,7 @@ const ProposalDetailsPage: React.FC = () => {
         return (
           <div className="text-sm text-gray-600 dark:text-gray-300">
             {amendment.createdAt
-              ? formatDateTZ(
-                  amendment.createdAt,
-                  "yyyy-MM-dd, h:mm a",
-                  solicitation?.timezone
-                )
+              ? formatDateTZ(amendment.createdAt, "MMM d, yyyy h:mm a")
               : "N/A"}
           </div>
         );
@@ -1025,7 +1023,7 @@ const ProposalDetailsPage: React.FC = () => {
                 {formatCurrency(
                   proposal?.proposalDetails?.total || 0,
                   "en-US",
-                  "USD"
+                  currency
                 ) || "N/A"}
               </p>
             </div>

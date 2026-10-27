@@ -1,0 +1,21 @@
+uid=69_0 RootWebArea "SwiftPro - Professional eProcurement Portal" url="http://localhost:5173/dashboard/contract-management/69ee719830e815b86bcbc5ad"
+  uid=73_0 dialog "Create Change"
+    uid=73_1 heading "Create Change" level="2"
+    uid=73_2 StaticText "Change Name"
+    uid=73_3 textbox "Enter Title" value="ADE-86 Test Directive"
+    uid=73_4 StaticText "Change Type"
+    uid=73_5 combobox expandable haspopup="listbox" value="Change Directive"
+    uid=73_6 StaticText "Amount"
+    uid=73_7 textbox "Change Proposal"
+    uid=73_8 StaticText "Level of Urgency"
+    uid=73_9 combobox expandable haspopup="listbox" value="High"
+    uid=73_10 StaticText "Description"
+    uid=73_11 textbox "Enter Detail" multiline value="Testing manager change type directive/proposal options."
+    uid=73_12 StaticText "Upload Files"
+    uid=73_13 generic
+      uid=73_14 generic
+        uid=73_15 StaticText "Drag & Drop or Click to choose files"
+        uid=73_16 StaticText "Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG"
+    uid=73_17 StaticText "Files will upload when you submit"
+    uid=73_18 button "Send Request" focusable focused
+    uid=73_19 button "Close"

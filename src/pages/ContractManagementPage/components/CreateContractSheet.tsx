@@ -8,11 +8,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Forge, useForge } from "@/lib/forge";
+import { Forge, useForge } from "@adexdsamson/forge";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { cn } from "@/lib/utils";
 import Step1BasicInfo from "./Step1BasicInfo";
+import {
+  findCombinationTypeId,
+  resolveContractTypePayload,
+} from "../lib/contractType";
 import Step2ContractTeam from "./Step2ContractTeam";
 import Step3ValuePayments from "./Step3ValuePayments";
 import Step4Timeline from "./Step4Timeline";
@@ -28,13 +32,19 @@ import { useProjectsList } from "@/pages/ProjectManagementPage/services/useProje
 import { useToastHandler } from "@/hooks/useToaster";
 import { useWatch } from "react-hook-form";
 import { Checkbox } from "@/components/ui/checkbox";
-import { X } from "lucide-react";
+import { X, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { useClearSession } from "@/store/solicitationFileSlice";
+import { useUser } from "@/store/authSlice";
 import { pruneEmptyValuesDeep } from "@/lib/pruneEmptyValuesDeep";
+import { getExchangeRate } from "@/lib/currencyUtils";
+import { resolveEnvFileUrl } from "@/config";
 import {
+  composeContractFiles,
+  fileKey,
   isEmailLike,
   isObjectIdLike,
+  toApproverUserKeyOrUndefined,
   toIdStringOrUndefined,
   toPersonnelOrUndefined,
 } from "@/lib/contractFormValues";
@@ -49,12 +59,20 @@ export const schema = yup.object({
   project: yup.string().optional(),
   awardedSolicitation: yup.string().optional(),
   type: yup.string().required("Contract type is required"),
+  // When the "Combination" contract type is selected, the user picks a
+  // combination of the other contract types here. On submit these are sent as a
+  // comma-separated id string in `contractType` (BE convention — #33). Each item
+  // is a { label, value } option from the type dropdown.
+  combinationTypes: yup.array().optional(),
   category: yup.string().required("Category is required"),
+  currency: yup.string().required("Currency is required"),
   manager: yup.string().optional(),
   projectManager: yup.string().optional(),
   jobTitle: yup.string().optional(),
   businessDivision: yup.string().required("Business Division is required"),
   contractId: yup.string().optional(),
+  msaContractId: yup.string().optional(),
+  msaCategory: yup.string().optional(),
   description: yup.string().required("Description is required"),
   vendor: yup
     .string()
@@ -94,18 +112,18 @@ export const schema = yup.object({
       }),
     )
     .optional(),
-  visibility: yup.string().optional(),
   contractValue: yup.mixed().optional(),
   contingency: yup.string().optional(),
   holdback: yup.string().optional(),
   paymentStructure: yup.string().optional(),
+  selectedDeliverable: yup.string().optional(),
   paymentTerm: yup.string().optional(),
   milestones: yup
     .array(
       yup.object({
         name: yup.string().optional(),
-        amount: yup.mixed().required("Milestone amount is required"),
-        dueDate: yup.date().typeError("Invalid date").required("Due date is required"),
+        amount: yup.mixed().optional(),
+        dueDate: yup.date().optional().nullable(),
         deliverable: yup.string().optional(),
       }),
     )
@@ -129,7 +147,7 @@ export const schema = yup.object({
     ),
   duration: yup.string().optional(),
   termType: yup.string().optional(),
-  documents: yup.array().optional(),
+  documents: yup.array().nullable().optional(),
   deliverables: yup
     .array(
       yup.object({
@@ -190,23 +208,27 @@ export const defaultValues = {
   project: "",
   awardedSolicitation: "",
   type: "",
+  combinationTypes: [],
   category: "",
+  currency: "",
   manager: "",
   projectManager: "",
   jobTitle: "",
   businessDivision: "",
   contractId: "",
+  msaContractId: "",
+  msaCategory: "",
   description: "",
   vendor: "",
   personnel: [],
   internalTeam: [],
   personnelMeta: [],
   internalTeamMeta: [],
-  visibility: "",
   contractValue: "",
   contingency: "",
   holdback: "",
   paymentStructure: "",
+  selectedDeliverable: "",
   paymentTerm: "",
   milestones: [{ name: "", amount: "", dueDate: undefined, deliverable: "" }],
   effectiveDate: undefined,
@@ -247,7 +269,52 @@ type ContractTerm = { _id: string; name: string; description?: string };
 type AwardedVendorItem = {
   _id: string;
   name: string;
+  // BE (docs.json) documents this as `categoryName` ("Name of the first
+  // category assigned to the solicitation"). The live payload has historically
+  // used shorter keys than the spec (e.g. `name` vs documented `solicitationName`),
+  // so we read `category` as a fallback.
+  categoryName?: string;
+  category?: string;
   vendor: { _id: string; name: string; email: string };
+  // RFP documents attached to the awarded solicitation. BE (docs.json) types
+  // these loosely (array of objects); keys are read defensively when mapping
+  // them into the Documents step. QA: RFP docs migrate into the new contract.
+  files?: unknown[];
+};
+
+// Map an awarded solicitation's RFP file (loosely typed by BE) into the
+// `DocumentType` shape the Documents step (`Step4Form`) hydrates. Reads keys
+// defensively because the live payload has historically differed from the
+// documented schema. Only files with a resolvable `url` are usable (the step
+// keys/renders by url), so callers drop the rest.
+const mapAwardedFileToDocument = (file: unknown) => {
+  const f = (file ?? {}) as Record<string, unknown>;
+  const url = (f.url ?? f.fileUrl ?? f.location ?? "") as string;
+  if (!url) return null;
+  const name = (f.name ??
+    f.originalName ??
+    f.fileName ??
+    "document") as string;
+  const rawSize = f.size;
+  const size =
+    typeof rawSize === "number"
+      ? String(rawSize)
+      : typeof rawSize === "string" && rawSize
+        ? rawSize
+        : "0 Bytes";
+  const type = (f.type ??
+    f.mimeType ??
+    "application/octet-stream") as string;
+  const id = (f._id ?? f.id ?? url) as string;
+  return {
+    _id: id,
+    name,
+    url,
+    size,
+    type,
+    originalName: name,
+    fileName: name,
+  };
 };
 
 const STEP_TITLES = [
@@ -403,26 +470,26 @@ const SendForApprovalDialog = React.memo(
         <DialogContent className="sm:max-w-2xl">
           <div className=" space-y-6">
             <div className="flex items-center justify-between">
-              <p className="text-xl font-semibold text-slate-900">
+              <p className="text-xl font-semibold text-slate-900 dark:text-slate-100">
                 Send for Approval
               </p>
             </div>
 
             <div className="space-y-3">
-              <p className="text-sm font-medium text-slate-900">
+              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                 Select Approvers For Contract Execution
               </p>
               <div className="relative">
                 <select
-                  className="w-full h-12 border border-gray-300 rounded-lg px-4 pr-10 text-sm text-slate-700 focus:border-[#2A4467] focus:ring-[#2A4467]"
+                  className="w-full h-12 border border-gray-300 dark:border-slate-700 rounded-lg px-4 pr-10 text-sm text-slate-700 dark:text-slate-300 dark:bg-slate-900 dark:[color-scheme:dark] focus:border-[#2A4467] focus:ring-[#2A4467]"
                   value={selectedApprovalGroup}
                   onChange={(event) =>
                     setSelectedApprovalGroup(event.target.value)
                   }
                 >
-                  <option value="">Select Group</option>
+                  <option value="" className="dark:bg-slate-900 dark:text-slate-100">Select Group</option>
                   {approvalGroupOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
+                    <option key={option.value} value={option.value} className="dark:bg-slate-900 dark:text-slate-100">
                       {option.label}
                     </option>
                   ))}
@@ -430,26 +497,43 @@ const SendForApprovalDialog = React.memo(
               </div>
             </div>
 
-            <div className="border border-gray-200 rounded-xl overflow-hidden">
-              <div className="grid grid-cols-[1fr_160px_140px] bg-slate-50 px-6 py-2 text-sm font-semibold text-[#2A4467]">
+            <div className="border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden">
+              <div className="grid grid-cols-[minmax(0,1fr)_92px_84px] sm:grid-cols-[1fr_160px_140px] bg-slate-50 dark:bg-slate-800/60 px-4 sm:px-6 py-2 text-sm font-semibold text-[#2A4467] dark:text-blue-300">
                 <p>Group</p>
                 <p className="text-center">Role</p>
                 <p className="text-center">Action</p>
               </div>
-              <div className="divide-y divide-gray-300">
+              <div className="divide-y divide-gray-300 dark:divide-slate-700">
                 {selectedApprovers.length === 0 && (
-                  <div className="px-6 py-6 text-sm text-slate-500">
+                  <div className="px-6 py-6 text-sm text-slate-500 dark:text-slate-400">
                     No approvers added for this group
                   </div>
                 )}
                 {selectedApprovers.map((approver, index) => {
                   const approverId = getApproverKey(approver, index);
-                  const name =
+                  const rawText =
                     approver?.text ||
                     approver?.name ||
                     approver?.label ||
-                    "Unnamed";
-                  const email = approver?.id || approver?.email || "";
+                    "";
+                  const metaEmail =
+                    (approver?.meta?.email as string | undefined) ?? "";
+                  const fallbackEmail = approver?.email ?? "";
+                  const email =
+                    metaEmail ||
+                    (typeof fallbackEmail === "string" && fallbackEmail.includes("@")
+                      ? fallbackEmail
+                      : "");
+                  const metaName =
+                    (approver?.meta?.name as string | undefined) ?? "";
+                  const nameFromText = email
+                    ? rawText.replace(
+                        new RegExp(`\\s*\\(${email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\)\\s*$`),
+                        "",
+                      )
+                    : rawText;
+                  const name =
+                    metaName.trim() || nameFromText.trim() || "Unnamed";
                   const role = approver?.meta?.role
                     ? approver.meta.role
                     : selectedGroup?.approvalLevel
@@ -458,17 +542,17 @@ const SendForApprovalDialog = React.memo(
                   return (
                     <div
                       key={approverId}
-                      className="grid grid-cols-[1fr_160px_140px] items-center px-6 py-4"
+                      className="grid grid-cols-[minmax(0,1fr)_92px_84px] sm:grid-cols-[1fr_160px_140px] items-center px-4 sm:px-6 py-4"
                     >
                       <div className="space-y-1">
-                        <p className="text-sm font-semibold text-slate-700">
+                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                           {name}
                         </p>
                         {email && (
-                          <p className="text-xs text-blue-600 ">{email}</p>
+                          <p className="text-xs text-blue-600 break-all">{email}</p>
                         )}
                       </div>
-                      <p className="text-sm text-slate-600 text-center">
+                      <p className="text-sm text-slate-600 dark:text-slate-400 text-center">
                         {role}
                       </p>
                       <div className="flex items-center justify-center gap-2">
@@ -478,7 +562,7 @@ const SendForApprovalDialog = React.memo(
                             toggleApprover(approverId, Boolean(checked))
                           }
                         />
-                        <span className="text-sm text-slate-700">Assign</span>
+                        <span className="text-sm text-slate-700 dark:text-slate-300">Assign</span>
                       </div>
                     </div>
                   );
@@ -487,30 +571,41 @@ const SendForApprovalDialog = React.memo(
             </div>
 
             <div className="space-y-3">
-              <p className="text-sm font-medium text-slate-900">
+              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                 Assigned Approvers
               </p>
-              <div className="flex flex-wrap gap-2 rounded-lg border border-gray-200 bg-slate-50 px-4 py-4">
+              <div className="flex flex-wrap gap-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-4 py-4">
                 {assignedApprovers.length === 0 && (
-                  <p className="text-sm text-slate-500">Search</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Search</p>
                 )}
                 {assignedApprovers.map((approver, index) => {
                   const approverId = getApproverKey(approver, index);
-                  const name =
+                  const metaName =
+                    (approver?.meta?.name as string | undefined) ?? "";
+                  const rawText =
                     approver?.text ||
                     approver?.name ||
                     approver?.label ||
-                    "Unnamed";
+                    "";
+                  const metaEmail =
+                    (approver?.meta?.email as string | undefined) ?? "";
+                  const stripped = metaEmail
+                    ? rawText.replace(
+                        new RegExp(`\\s*\\(${metaEmail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\)\\s*$`),
+                        "",
+                      )
+                    : rawText;
+                  const name = metaName.trim() || stripped.trim() || "Unnamed";
                   return (
                     <div
                       key={approverId}
-                      className="flex items-center gap-2 rounded-md bg-[#2A44671A] px-2 py-1 text-xs font-semibold text-[#2A4467]"
+                      className="flex items-center gap-2 rounded-md bg-[#2A44671A] dark:bg-blue-900/30 px-2 py-1 text-xs font-semibold text-[#2A4467] dark:text-blue-300"
                     >
                       <span>{name}</span>
                       <button
                         type="button"
                         onClick={() => toggleApprover(approverId, false)}
-                        className="text-[#2A4467]"
+                        className="text-[#2A4467] dark:text-blue-300"
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -520,7 +615,7 @@ const SendForApprovalDialog = React.memo(
               </div>
             </div>
 
-            <div className="flex items-center gap-6 justify-end">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-6 [&>button]:w-full sm:[&>button]:w-auto">
               <Button
                 type="button"
                 variant="outline"
@@ -564,7 +659,6 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
     reset,
     trigger: formTrigger,
     setError,
-    clearErrors,
     setValue
   } = useForge<CreateContractFormData>({
     resolver: yupResolver(schema),
@@ -576,6 +670,14 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
   const [open, setOpen] = React.useState(false);
   const [signatories, setSignatories] = React.useState<string[]>([]);
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
+  // RFP documents migrated from the awarded solicitation that the CM removed in
+  // step 7. Tracked here (independent of the shared Step4Form's `documents`
+  // field) so removals stick across re-renders and, crucially, survive a draft
+  // save/reload instead of being nulled out by the step's hydrate/sync race
+  // (QA #25/#26). Keyed by `fileKey`.
+  const [removedAwardedKeys, setRemovedAwardedKeys] = React.useState<Set<string>>(
+    () => new Set(),
+  );
 
   const totalSteps = STEP_TITLES.length;
   const handleSendForApproval = React.useCallback((sigs: string[]) => {
@@ -586,6 +688,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
   const qc = useQueryClient();
   const clearSession = useClearSession();
   const { success, error } = useToastHandler();
+  const currentUser = useUser();
 
   const typesQuery = useQuery<ApiListResponse<ContractType>>({
     queryKey: useUserQueryKey(["contract-types"]),
@@ -621,6 +724,17 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         url: "/contract/manager/awarded-solicitation",
       });
       return res.data as ApiListResponse<AwardedVendorItem>;
+    },
+    staleTime: 60_000,
+  });
+
+  const msaQuery = useQuery({
+    queryKey: useUserQueryKey(["msa-contracts-all"]),
+    queryFn: async () => {
+      const res = await getRequest({
+        url: "/contract/manager/msa-contracts",
+      });
+      return res.data;
     },
     staleTime: 60_000,
   });
@@ -668,10 +782,55 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
             value: a._id,
             vendorEmail: a.vendor.email,
             vendorId: a.vendor._id,
+            // Carried so Step 1 can auto-populate the contract name, vendor and
+            // category when an awarded solicitation is selected (QA #222/#242/#243).
+            solicitationName: a.name,
+            vendorName: a.vendor.name,
+            categoryName: a.categoryName ?? a.category,
           }))
         : [],
     [awardedQuery.data?.data],
   );
+
+  // RFP documents of the currently-selected awarded solicitation, mapped into
+  // the Documents step shape. When present, they pre-populate step 7 so the CM
+  // can review and remove any before saving (the migration request).
+  const selectedAwarded = useWatch({ control, name: "awardedSolicitation" });
+  const awardedDocuments = React.useMemo(() => {
+    if (!selectedAwarded) return [];
+    const match = awardedQuery.data?.data?.find(
+      (a) => a._id === selectedAwarded,
+    );
+    return (match?.files ?? [])
+      .map(mapAwardedFileToDocument)
+      .filter(
+        (doc): doc is NonNullable<ReturnType<typeof mapAwardedFileToDocument>> =>
+          doc !== null,
+      );
+  }, [selectedAwarded, awardedQuery.data?.data]);
+
+  // Migrated RFP documents still shown in step 7 (those the CM hasn't removed).
+  const visibleAwardedDocuments = React.useMemo(
+    () => awardedDocuments.filter((f) => !removedAwardedKeys.has(fileKey(f))),
+    [awardedDocuments, removedAwardedKeys],
+  );
+
+  // Switching to a different awarded solicitation brings in a fresh document
+  // set, so prior removals no longer apply — reset them.
+  React.useEffect(() => {
+    setRemovedAwardedKeys(new Set());
+  }, [selectedAwarded]);
+
+  const msaOptions = React.useMemo(() => {
+    const contracts = msaQuery.data?.data?.contracts || [];
+    return contracts.map((c: any) => ({
+      label: c.title || "Untitled MSA",
+      value: c._id,
+      // Carried so Step 1 auto-fills the vendor when an MSA is linked (QA #67).
+      vendorId: c?.vendor?._id,
+      vendorName: c?.vendor?.name,
+    }));
+  }, [msaQuery.data?.data?.contracts]);
 
   const mutation = useMutation({
     mutationFn: async (payload: any) => {
@@ -690,6 +849,9 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       qc.invalidateQueries({ queryKey: ["contracts-all"] });
       qc.invalidateQueries({ queryKey: ["contracts-me"] });
       qc.invalidateQueries({ queryKey: ["contracts-stats"] });
+      // Refresh the contract detail so a freshly published contract's
+      // status/publish date update immediately, not only after reload (QA #244).
+      qc.invalidateQueries({ queryKey: ["contract-manager-contracts"] });
       reset(defaultValues);
       setStep(1);
       clearSession();
@@ -708,14 +870,16 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       "awardedSolicitation",
       "type",
       "category",
+      "currency",
       "manager",
       "jobTitle",
       "contractId",
+      "msaContractId",
       "rating",
       "description",
       "businessDivision",
     ],
-    2: ["manager", "projectManager", "jobTitle", "vendor", "personnel", "internalTeam", "visibility"],
+    2: ["manager", "projectManager", "jobTitle", "vendor", "personnel", "internalTeam"],
     3: [
       "effectiveDate",
       "endDate",
@@ -759,39 +923,74 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       if (!fields.length) return true;
       const ok = await formTrigger(fields as any, { shouldFocus: true });
       if (!ok) return false;
+      if (currentStep === 1) {
+        // #33: a "Combination" contract type must name at least two sub-types.
+        const values = getValues();
+        const combinationTypeId = findCombinationTypeId(typeOptions);
+        if (combinationTypeId && values.type === combinationTypeId) {
+          const picked = Array.isArray(values.combinationTypes)
+            ? values.combinationTypes
+            : [];
+          if (picked.length < 2) {
+            setError("combinationTypes" as any, {
+              type: "required",
+              message: "Select at least two contract types for a combination.",
+            });
+            return false;
+          }
+        }
+      }
+      if (currentStep === 8) {
+        const approvalGroups = getValues().approvalGroups ?? [];
+        const seenApprovers = new Set<string>();
+        const hasDuplicateApprover = approvalGroups.some((group) =>
+          (group.approvers ?? []).some((approver) => {
+            const key = toApproverUserKeyOrUndefined(approver);
+            if (!key) return false;
+            if (seenApprovers.has(key)) return true;
+            seenApprovers.add(key);
+            return false;
+          }),
+        );
+        if (hasDuplicateApprover) {
+          error(
+            "Approval Groups",
+            "An approver can only be assigned to one approval group.",
+          );
+          return false;
+        }
+      }
       if (currentStep !== 5) return true;
+      // Step 5: when paymentStructure === "milestone", every row must
+      // have amount AND dueDate. Schema keeps them optional so the
+      // non-milestone payment structures aren't blocked.
       const values = getValues();
       if (values.paymentStructure !== "milestone") return true;
       const milestones = values.milestones ?? [];
-      let hasMilestoneError = false;
-      milestones.forEach((milestone, index) => {
-        const hasAmount =
-          milestone?.amount !== undefined &&
-          milestone?.amount !== null &&
-          String(milestone.amount).trim() !== "";
-        const hasDueDate = Boolean(milestone?.dueDate);
-        if (!hasAmount) {
-          setError(`milestones.${index}.amount`, {
+      let allValid = true;
+      milestones.forEach((m, index) => {
+        const amountMissing =
+          m?.amount === undefined ||
+          m?.amount === null ||
+          String(m.amount).trim() === "";
+        if (amountMissing) {
+          setError(`milestones.${index}.amount` as any, {
             type: "required",
-            message: "Milestone amount is required",
+            message: "Amount is required",
           });
-          hasMilestoneError = true;
-        } else {
-          clearErrors(`milestones.${index}.amount`);
+          allValid = false;
         }
-        if (!hasDueDate) {
-          setError(`milestones.${index}.dueDate`, {
+        if (!m?.dueDate) {
+          setError(`milestones.${index}.dueDate` as any, {
             type: "required",
-            message: "Milestone due date is required",
+            message: "Due date is required",
           });
-          hasMilestoneError = true;
-        } else {
-          clearErrors(`milestones.${index}.dueDate`);
+          allValid = false;
         }
       });
-      return !hasMilestoneError;
+      return allValid;
     },
-    [clearErrors, formTrigger, getValues, setError],
+    [error, formTrigger, getValues, setError, typeOptions],
   );
 
   const buildPayload = React.useCallback(
@@ -799,7 +998,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
       const relationship =
-        data.relationship === "msa"
+        data.relationship === "msa" || data.relationship === "msa_project"
           ? "msa_project"
           : data.relationship === "standalone"
             ? "standalone"
@@ -825,9 +1024,8 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         (data.approvalGroups ?? []).filter(item => item.name && item.approvers?.length).flatMap((g, i) => {
           const lvl = g.approvalLevel ? Number(g.approvalLevel) : i + 1;
           const amountValue = toNumberOrUndefined(g.amount);
-          // API expects user as array of strings
           const userIds = (g.approvers ?? [])
-            .map((u: any) => u?.value ?? u)
+            .map((u: any) => toApproverUserKeyOrUndefined(u))
             .filter(Boolean);
           return {
             user: userIds,
@@ -876,18 +1074,15 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         (t) => t._id === data.termType,
       )?.name;
 
-      const files =
-        (data.documents ?? [])
-          .map((f: any) => ({
-            name: typeof f?.name === "string" ? f.name : undefined,
-            url: typeof f?.url === "string" ? f.url : undefined,
-            type: typeof f?.type === "string" ? f.type : undefined,
-            size:
-              typeof f?.size === "number"
-                ? f.size
-                : toNumberOrUndefined(f?.size),
-          }))
-          .filter((f) => Boolean(f?.name && f?.url && f?.type)) ?? [];
+      // Compose the contract's files from the migrated RFP docs (minus any the
+      // CM removed in step 7) plus any newly-uploaded documents. Tracking the
+      // migrated docs independently of the shared Documents step keeps them from
+      // vanishing on a draft save/reload (QA #25/#26).
+      const files = composeContractFiles(
+        awardedDocuments,
+        removedAwardedKeys,
+        data.documents as any[] | null | undefined,
+      );
 
       const awardedMatch = awardedQuery.data?.data?.find(
         (a) => a._id === data.awardedSolicitation,
@@ -899,6 +1094,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         (vendorRaw && (isEmailLike(vendorRaw) || isObjectIdLike(vendorRaw))
           ? vendorRaw
           : undefined) ||
+        awardedMatch?.vendor?._id ||
         awardedMatch?.vendor?.email ||
         undefined;
 
@@ -970,14 +1166,25 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         description: data.description,
         category: data.category,
         timezone: tz,
-        contractType: data.type,
+        contractType: resolveContractTypePayload(
+          data.type,
+          findCombinationTypeId(typeOptions),
+          data.combinationTypes,
+        ),
         contractRelationship: relationship,
         businessDivision: data.businessDivision,
+        currency: data.currency,
         projectId:
-          relationship === "project" ? data.project || undefined : undefined,
+          relationship === "project" || relationship === "msa_project"
+            ? data.project || undefined
+            : undefined,
         msaContractId:
           relationship === "msa_project"
-            ? data.project || undefined
+            ? data.msaContractId || undefined
+            : undefined,
+        msaCategory:
+          data.relationship === "msa" || data.relationship === "msa_project"
+            ? data.msaCategory || undefined
             : undefined,
         solicitationId: data.awardedSolicitation || undefined,
         contractId: data.contractId || undefined,
@@ -1000,14 +1207,13 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
             : (data.internalTeam ?? [])
                 .map((t: any) => toIdStringOrUndefined(t?.value ?? t))
                 .filter(Boolean)) ?? undefined,
-        visibility: data.visibility || "private",
         contractAmount:
           typeof data.contractValue === "number"
             ? Number.isFinite(data.contractValue)
               ? data.contractValue
               : undefined
             : toNumberOrUndefined(data.contractValue),
-        contigency: data.contingency || undefined,
+        contingency: data.contingency || undefined,
         holdBack,
         contractPaymentTerm: data.paymentTerm || undefined,
         paymentTerm: paymentTermName || undefined,
@@ -1043,10 +1249,38 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       formData: CreateContractFormData,
       status: "draft" | "publish" = "publish",
     ) => {
-      const payload = buildPayload(formData, status);
-      mutation.mutate(payload);
+      const submitAsync = async () => {
+        const payload = buildPayload(formData, status) as any;
+
+        const baseCurrency = currentUser?.currency;
+        const selectedCurrency = payload?.currency;
+        if (
+          typeof baseCurrency === "string" &&
+          typeof selectedCurrency === "string" &&
+          baseCurrency &&
+          selectedCurrency &&
+          baseCurrency !== selectedCurrency
+        ) {
+          try {
+            payload.currencyRate = await getExchangeRate(
+              baseCurrency,
+              selectedCurrency,
+            );
+          } catch (err) {
+            error(
+              "Failed to create contract",
+              err instanceof Error ? err.message : "Unable to fetch currency rate",
+            );
+            return;
+          }
+        }
+
+        mutation.mutate(payload);
+      };
+
+      void submitAsync();
     },
-    [buildPayload, mutation],
+    [buildPayload, currentUser?.currency, error, mutation],
   );
 
   const resetAndClose = React.useCallback(() => {
@@ -1058,14 +1292,18 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
 
   const handleOpenChange = React.useCallback(
     (nextOpen: boolean) => {
-      if (!nextOpen) {
-        reset(defaultValues);
-        setStep(1);
-        clearSession();
-      }
+      // Clear the persisted solicitation-files store on BOTH open and close.
+      // On close: Escape / outside-click dismiss skips the Cancel + onSuccess
+      // paths that explicitly call clearSession(). On open: a prior Edit (or
+      // MSA / solicitation / evaluation) wizard that closed without clearing
+      // leaks its uploaded files into this fresh Create session, since the
+      // Documents step rehydrates the shared store from localStorage. Clearing
+      // on open guarantees a clean slate the moment "Create Contracts" is
+      // clicked. QA bug #96.
+      clearSession();
       setOpen(nextOpen);
     },
-    [clearSession, reset],
+    [clearSession],
   );
 
   return (
@@ -1082,7 +1320,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         <button
           type="button"
           onClick={resetAndClose}
-          className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-slate-100 data-[state=open]:text-slate-500 dark:ring-offset-slate-950 dark:focus:ring-slate-300 dark:data-[state=open]:bg-slate-800 dark:data-[state=open]:text-slate-400"
+          className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-slate-100 data-[state=open]:text-slate-500 dark:text-slate-400 dark:ring-offset-slate-950 dark:focus:ring-slate-300 dark:data-[state=open]:bg-slate-800 dark:data-[state=open]:text-slate-400"
         >
           <X className="h-4 w-4" />
           <span className="sr-only">Close</span>
@@ -1093,7 +1331,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
           </DialogHeader>
 
           <div className="px-4 pb-8">
-            <p className="text-sm font-medium text-slate-700">
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-300 dark:text-slate-200">
               {STEP_TITLES[step - 1]}
             </p>
 
@@ -1101,13 +1339,14 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
               control={control}
               onSubmit={submit}
               className="mt-4 space-y-6"
-              // debug
             >
               {step === 1 && (
                 <Step1BasicInfo
                   typeOptions={typeOptions}
                   projectOptions={projectOptions}
                   awardedOptions={awardedOptions}
+                  msaOptions={msaOptions}
+                  enableAwardedPrefill
                 />
               )}
 
@@ -1131,7 +1370,64 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
 
               {step === 6 && <Step6ComplianceSecurity control={control} />}
 
-              {step === 7 && <Step4Form control={control} documents={[]} />}
+              {step === 7 && (
+                <div className="space-y-4">
+                  {visibleAwardedDocuments.length > 0 && (
+                    <div className="px-6">
+                      <p className="mb-2 text-sm font-medium text-foreground">
+                        Migrated from awarded solicitation
+                      </p>
+                      <div className="space-y-2">
+                        {visibleAwardedDocuments.map((f) => {
+                          const key = fileKey(f);
+                          return (
+                            <div
+                              key={key}
+                              className="flex items-center justify-between rounded-lg border border-border bg-secondary p-3"
+                            >
+                              <a
+                                href={resolveEnvFileUrl(f.url)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex min-w-0 items-center gap-3"
+                              >
+                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-blue-100 dark:bg-blue-900/30">
+                                  <FileText className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+                                </span>
+                                <span className="min-w-0">
+                                  <span className="block truncate text-sm font-medium text-foreground">
+                                    {f.name || "Document"}
+                                  </span>
+                                  {f.size && (
+                                    <span className="block text-xs text-muted-foreground">
+                                      {f.size}
+                                    </span>
+                                  )}
+                                </span>
+                              </a>
+                              <button
+                                type="button"
+                                aria-label={`Remove ${f.name || "document"}`}
+                                onClick={() =>
+                                  setRemovedAwardedKeys((prev) => {
+                                    const next = new Set(prev);
+                                    next.add(key);
+                                    return next;
+                                  })
+                                }
+                                className="ml-3 shrink-0 text-muted-foreground transition-colors hover:text-red-500"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  <Step4Form control={control} documents={[]} />
+                </div>
+              )}
 
               {step === 8 && <Step7ApprovalLevel control={control} />}
 
@@ -1178,7 +1474,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
                     <Button
                       type="button"
                       variant="outline"
-                      className="w-24 h-12 rounded-xl bg-slate-300"
+                      className="w-24 h-12 rounded-xl bg-slate-300 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-600"
                       onClick={() => setStep(Math.max(1, step - 1))}
                     >
                       Back

@@ -4,6 +4,12 @@ import { getRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { IconMap } from "@/components/layouts/RoleBasedDashboard/components/StatsCard";
+import { useUser } from "@/store/authSlice";
+import { isModuleEnabled } from "@/lib/moduleFlags";
+
+// Per-role breakdown cards. Redundant for companies running the CLM module —
+// they only make sense for solicitation-only companies (QA #282).
+const ROLE_CARD_TITLES = ["Admins", "Procurement Leads", "Evaluators"];
 
 interface StatCardProps {
   title: string;
@@ -80,6 +86,11 @@ const UserStats: React.FC<UserStatsProps> = ({
   onFilterChange,
   activeFilter,
 }) => {
+  const modules = useUser()?.module;
+  const showRoleCards =
+    isModuleEnabled(modules?.solicitationManagement) &&
+    !isModuleEnabled(modules?.contractManagement);
+
   // Fetch user dashboard stats from API
   const {
     data: dashboardData,
@@ -302,9 +313,13 @@ const UserStats: React.FC<UserStatsProps> = ({
     );
   }
 
+  const visibleStats = showRoleCards
+    ? stats
+    : stats.filter((stat) => !ROLE_CARD_TITLES.includes(stat.title));
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-      {stats.map((stat) => (
+      {visibleStats.map((stat) => (
         <StatCard
           key={stat.title}
           title={stat.title}

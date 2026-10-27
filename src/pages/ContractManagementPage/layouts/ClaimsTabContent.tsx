@@ -10,32 +10,44 @@ import { getRequest } from "@/lib/axiosInstance";
 import type { PaginationState } from "@tanstack/react-table";
 import { type ManagerListClaimsQuery } from "../api/contractManagerApi";
 import { useUserRole } from "@/hooks/useUserRole";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type Props = {
   contractId: string;
+  currency?: string;
   isActive?: boolean;
   actionsDisabled?: boolean;
+  /** BE-computed flag: is the logged-in user the contract's owner/manager.
+   *  Gates the manager (CM) create action — a manager who doesn't own the
+   *  contract can view but not act on it (they'd need to take it over). */
+  owner?: boolean;
 };
 
 const ClaimsTabContent: React.FC<Props> = ({
   contractId,
+  currency,
   isActive,
   actionsDisabled,
+  owner,
 }) => {
-  const { isApprover, isVendor, isManager, isAdmin, isViewOnly } =
+  const { isApprover, isVendor, isProjectManager, isManager, isAdmin, isViewOnly } =
     useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
 
   const getBasePath = () => {
-    if (isVendor) return `/contract/vendor/contracts/${contractId}/claim`;
-    if (isApprover) return `/contract/approver/contracts/${contractId}/claim`;
-    if (isManager) return `/contract/manager/contracts/${contractId}/claims`;
-    if (isAdmin || isViewOnly)
-      return `/contract/user/contracts/${contractId}/claim`;
-    return `/contract/user/contracts/${contractId}/claim`; // Default fallback
+    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/claims`;
+    if (isApprover) return `/contract/approver/contracts/${contractId}/claims`;
+    // QA #298: company/super admins read via the manager (org-scoped) endpoint,
+    // like the main contract fetch. The /contract/user endpoint is
+    // participant-scoped and returns empty for admins.
+    if (isManager || isAdmin) return `/contract/manager/contracts/${contractId}/claims`;
+    if (isViewOnly)
+      return `/contract/user/contracts/${contractId}/claims`;
+    return `/contract/user/contracts/${contractId}/claims`; // Default fallback
   };
 
   const basePath = getBasePath();
@@ -83,19 +95,21 @@ const ClaimsTabContent: React.FC<Props> = ({
   return (
     <TabsContent value="claims" className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-[#1F2937]">Claims</h3>
+        <h3 className="text-lg font-semibold text-[#1F2937] dark:text-slate-100">Claims</h3>
         <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            className="h-10 rounded-xl border-[#E5E7EB] bg-white px-4 text-sm font-medium text-[#111827] hover:bg-[#F9FAFB]"
-          >
-            <Share2 className="mr-2 h-4 w-4" /> Export Report
-          </Button>
+          <ExportReportSheet contractId={contractId} contractType="Contract">
+            <Button
+              variant="outline"
+              className="h-10 rounded-xl border-[#E5E7EB] bg-white px-4 text-sm font-medium text-[#111827] dark:text-slate-100 hover:bg-[#F9FAFB]"
+            >
+              <Share2 className="mr-2 h-4 w-4" /> Export Report
+            </Button>
+          </ExportReportSheet>
 
-          {!isApprover && (
+          {(isProjectManager || (isManager && Boolean(owner))) && (
             <RequestClaimDialog
               createPath={basePath}
-              invalidateQueryKey={["contractClaims", contractId, basePath]}
+              invalidateQueryKey={["contractClaims"]}
               trigger={
                 <Button
                   className="h-10 rounded-xl bg-[#2A4467] px-4 text-sm font-medium text-white hover:bg-[#1f3552]"
@@ -112,11 +126,15 @@ const ClaimsTabContent: React.FC<Props> = ({
       <ClaimsStatsCards stats={statsRes?.data} isLoading={isStatsLoading} />
 
       <ClaimsTable
+        contractId={contractId}
+        basePath={basePath}
         rows={claimRows}
         isLoading={isClaimsLoading}
         totalCount={totalCount}
         pagination={pagination}
         setPagination={setPagination}
+        currency={currency}
+        owner={owner}
       />
     </TabsContent>
   );

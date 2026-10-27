@@ -8,6 +8,14 @@ import * as XLSX from 'xlsx';
 import mammoth from 'mammoth';
 import { getFileExtension } from '../../lib/fileUtils';
 import { useTheme } from '../../contexts/ThemeContext';
+import { resolveEnvFileUrl } from '@/config';
+
+// Lazy so the SuperDoc bridge (which resolves VITE_SUPERDOC_APP_URL at module
+// load and throws in prod when unset) only evaluates when a Word preview is
+// actually rendered — never at DocumentViewer import time.
+const IframeEditorPane = React.lazy(
+  () => import('@/pages/CollaborationToolPage/components/IframeEditorPane'),
+);
 
 // Set up PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc =`//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -36,19 +44,44 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [numPages, setNumPages] = useState<number | null>(null);
-  const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1.0);
   const [excelData, setExcelData] = useState<ExcelData | null>(null);
   const [activeSheet, setActiveSheet] = useState<string>('');
   const [docxContent, setDocxContent] = useState<string>('');
+  // Word docs render in the high-fidelity SuperDoc iframe (read-only). If that
+  // can't load (app unreachable / fetch fails), fall back to the mammoth
+  // HTML render. `superdocFailed` flips the Word branch to the fallback.
+  const [superdocFailed, setSuperdocFailed] = useState(false);
 
   const extension = getFileExtension(fileName, fileType || '');
+  const isWord = extension === 'DOC' || extension === 'DOCX';
+
+  // Stored file URLs bake in whatever API host was active at upload time, which
+  // may differ from the current environment (bug/staging/prod) and be
+  // CORS-blocked for a cross-fetch/preview. Re-home the URL onto the active
+  // environment's API base so `fetch`, react-pdf, and the SuperDoc iframe all
+  // hit a reachable, same-environment host. `resolveEnvFileUrl` is a no-op for
+  // relative/blob/already-current/external URLs, so every caller is safe.
+  const resolvedUrl = resolveEnvFileUrl(fileUrl);
 
   useEffect(() => {
     if (isOpen && fileUrl) {
+      setSuperdocFailed(false);
+      setDocxContent('');
       loadDocument();
     }
   }, [isOpen, fileUrl, fileName]);
+
+  // Lazy-load the mammoth fallback only when SuperDoc has failed.
+  useEffect(() => {
+    if (superdocFailed && isWord && !docxContent) {
+      loadWordFile().catch((err) =>
+        setError(
+          `Failed to load DOCX preview: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        ),
+      );
+    }
+  }, [superdocFailed, isWord, docxContent]);
 
   const loadDocument = async () => {
     setLoading(true);
@@ -57,9 +90,9 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     try {
       if (extension === 'XLS' || extension === 'XLSX') {
         await loadExcelFile();
-      } else if (extension === 'DOC' || extension === 'DOCX') {
-        await loadWordFile();
       }
+      // Word docs are rendered by the SuperDoc iframe (see renderWordViewer);
+      // mammoth is only loaded as a fallback when SuperDoc fails.
       // PDF files are handled by react-pdf component directly
     } catch (err) {
       setError(`Failed to load ${extension} file: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -69,7 +102,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   };
 
   const loadExcelFile = async () => {
-    const response = await fetch(fileUrl);
+    const response = await fetch(resolvedUrl);
     const arrayBuffer = await response.arrayBuffer();
     const workbook = XLSX.read(arrayBuffer, { type: 'array' });
     
@@ -87,7 +120,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   };
 
   const loadWordFile = async () => {
-    const response = await fetch(fileUrl);
+    const response = await fetch(resolvedUrl);
     const arrayBuffer = await response.arrayBuffer();
     const result = await mammoth.convertToHtml({ arrayBuffer });
     setDocxContent(result.value);
@@ -115,7 +148,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
   const handleDownload = () => {
     const link = document.createElement('a');
-    link.href = fileUrl;
+    link.href = resolvedUrl;
     link.download = fileName;
     document.body.appendChild(link);
     link.click();
@@ -126,25 +159,11 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPageNumber(Math.max(1, pageNumber - 1))}
-            disabled={pageNumber <= 1}
-          >
-            Previous
-          </Button>
           <span className="text-sm text-foreground">
-            Page {pageNumber} of {numPages || '?'}
+            {numPages
+              ? `${numPages} page${numPages === 1 ? '' : 's'}`
+              : 'Loading…'}
           </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPageNumber(Math.min(numPages || 1, pageNumber + 1))}
-            disabled={pageNumber >= (numPages || 1)}
-          >
-            Next
-          </Button>
         </div>
         <div className="flex items-center space-x-2">
           <Button
@@ -165,19 +184,25 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
         </div>
       </div>
       <div className={`flex-1 overflow-auto p-4 ${actualTheme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}`}>
-        <div className="flex justify-center dark:text-gray-400">
+        {/* All pages stacked so the viewer scrolls continuously rather than
+            paging with Previous/Next (QA #17). */}
+        <div className="flex flex-col items-center gap-4 dark:text-gray-400">
           <Document
-            file={fileUrl}
+            file={resolvedUrl}
             onLoadSuccess={onDocumentLoadSuccess}
             onLoadError={onDocumentLoadError}
             loading={<Loader2 className="h-8 w-8 animate-spin text-foreground" />}
           >
-            <Page
-              pageNumber={pageNumber}
-              scale={scale}
-              renderTextLayer={false}
-              renderAnnotationLayer={false}
-            />
+            {Array.from({ length: numPages ?? 0 }, (_, i) => (
+              <div key={i + 1} className="shadow-sm">
+                <Page
+                  pageNumber={i + 1}
+                  scale={scale}
+                  renderTextLayer={false}
+                  renderAnnotationLayer={false}
+                />
+              </div>
+            ))}
           </Document>
         </div>
       </div>
@@ -229,16 +254,58 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     );
   };
 
-  const renderWordViewer = () => (
-    <div className="flex-1 overflow-auto p-6 h-full">
-      <div
-        className={`prose max-w-none dark:text-gray-400 ${
-          actualTheme === 'dark' ? 'prose-invert' : ''
-        }`}
-        dangerouslySetInnerHTML={{ __html: docxContent }}
-      />
-    </div>
-  );
+  const renderWordViewer = () => {
+    // High-fidelity render via the SuperDoc iframe (read-only "viewing" mode,
+    // collaboration disabled). Falls back to mammoth HTML if SuperDoc fails.
+    if (!superdocFailed) {
+      return (
+        <div className="flex-1 h-full min-h-0">
+          <React.Suspense
+            fallback={
+              <div className="flex items-center justify-center h-96">
+                <Loader2 className="h-8 w-8 animate-spin text-foreground" />
+                <span className="ml-2 text-foreground">Loading document...</span>
+              </div>
+            }
+          >
+            <IframeEditorPane
+              importMeta={{ sourceUrl: resolvedUrl, fileName, fileType: fileType || '' }}
+              collabMeta={{
+                wsUrl: '',
+                roomId: '',
+                token: '',
+                disable: true,
+                presenceActive: false,
+              }}
+              documentMode="viewing"
+              onEditorReady={() => {}}
+              onError={() => setSuperdocFailed(true)}
+            />
+          </React.Suspense>
+        </div>
+      );
+    }
+
+    if (!docxContent) {
+      return (
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin text-foreground" />
+          <span className="ml-2 text-foreground">Loading document...</span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex-1 overflow-auto p-6 h-full">
+        <div
+          className={`prose max-w-none dark:text-gray-400 ${
+            actualTheme === 'dark' ? 'prose-invert' : ''
+          }`}
+          dangerouslySetInnerHTML={{ __html: docxContent }}
+        />
+      </div>
+    );
+  };
 
   const renderContent = () => {
     if (loading) {

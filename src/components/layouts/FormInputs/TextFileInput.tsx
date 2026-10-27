@@ -78,7 +78,7 @@ export const TextFileUploader = ({
   return (
     <div className={cn("", containerClass)}>
       {label && (
-        <Label className="text-sm font-medium text-gray-700 mb-2">
+        <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           {label}
         </Label>
       )}

@@ -10,6 +10,7 @@ import type { PaginationState } from "@tanstack/react-table";
 import { getRequest } from "@/lib/axiosInstance";
 import {
   ContractChangeDTO,
+  type ContractChangeStatsDTO,
   type ManagerListChangesQuery,
 } from "../api/contractManagerApi";
 import {
@@ -18,6 +19,7 @@ import {
 } from "@/pages/ContractManagementPage/lib/contractChanges";
 import { useUserRole } from "@/hooks/useUserRole";
 import { ApiResponse } from "@/types";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 export interface ChangesDataResponse {
   changes: Change[];
@@ -66,16 +68,24 @@ export interface Manager {
 
 type Props = {
   contractId: string;
+  currency?: string;
   isActive?: boolean;
   actionsDisabled?: boolean;
+  /** BE-computed flag: is the logged-in user the contract's owner. Gates the
+   *  manager-side Create Change action (vendor/PM keep their own flow). */
+  owner?: boolean;
 };
 
 const ChangeTabContent: React.FC<Props> = ({
   contractId,
+  currency,
   isActive,
   actionsDisabled,
+  owner,
 }) => {
-  const { isVendor, isManager, isApprover, isAdmin, isViewOnly } = useUserRole();
+  const { isVendor, isProjectManager, isManager, isApprover, isAdmin, isViewOnly } =
+    useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   const [activeTab, setActiveTab] = React.useState<ChangeTabValue>("all");
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -83,31 +93,50 @@ const ChangeTabContent: React.FC<Props> = ({
   });
 
   const getBasePath = () => {
-    if (isVendor) return `/contract/vendor/contracts/${contractId}/change`;
-    if (isApprover) return `/contract/approver/contracts/${contractId}/change`;
-    if (isManager) return `/contract/manager/contracts/${contractId}/changes`;
-    if (isAdmin || isViewOnly) return `/contract/user/contracts/${contractId}/change`;
-    return `/contract/user/contracts/${contractId}/change`; // Default fallback
+    if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/changes`;
+    if (isApprover) return `/contract/approver/contracts/${contractId}/changes`;
+    // QA #298: company/super admins read via the manager (org-scoped) endpoint,
+    // like the main contract fetch. The /contract/user endpoint is
+    // participant-scoped and returns empty for admins.
+    if (isManager || isAdmin) return `/contract/manager/contracts/${contractId}/changes`;
+    if (isViewOnly) return `/contract/user/contracts/${contractId}/changes`;
+    return `/contract/user/contracts/${contractId}/changes`; // Default fallback
   };
 
   const basePath = getBasePath();
 
-  const { data: statsRes, isLoading: isStatsLoading } = useQuery({
-    queryKey: [
-      "contractChanges",
-      "stats",
-      contractId,
-      basePath
-    ],
+  const statsQueryKey = ["contractChanges", "stats", contractId, basePath] as const;
+  const listQueryKey = ["contractChanges", contractId] as const;
+
+  const { data: stats, isLoading: isStatsLoading } = useQuery({
+    queryKey: statsQueryKey,
     queryFn: async () => {
-      const response = await getRequest({
-        url: `${basePath}/stats`,
-      });
-      return response.data;
+      const response = await getRequest({ url: `${basePath}/stats` });
+      // Server envelope: { status, message, data: {...} }. Axios already
+      // strips one level so `response.data` is the server body. Strip the
+      // inner `.data` here so the queryFn returns the stats object
+      // directly — avoids ambiguous unwrap at the call site.
+      const body = response?.data as
+        | { data?: ContractChangeStatsDTO }
+        | ContractChangeStatsDTO
+        | undefined;
+      return (
+        ((body as { data?: ContractChangeStatsDTO })?.data ??
+          (body as ContractChangeStatsDTO) ??
+          {}) as ContractChangeStatsDTO
+      );
     },
     enabled: Boolean(contractId) && !!isActive,
     staleTime: 60000,
   });
+
+  // Reused by all 5 <ChangeTable> instances below — see comments inside
+  // ChangeDetailsSheet for the trap class this closes (memory
+  // [[feedback-shared-component-hidden-invalidation-keys]]).
+  const tableInvalidationProps = {
+    listInvalidateQueryKey: listQueryKey,
+    statsInvalidateQueryKey: statsQueryKey,
+  } as const;
 
   const { data: changesRes, isLoading: isChangesLoading } = useQuery({
     queryKey: [
@@ -148,26 +177,33 @@ const ChangeTabContent: React.FC<Props> = ({
     urgency: change.urgency as ContractChangeDTO['urgency'],
     status: change.status as ContractChangeDTO['status'],
     proposalCategory: change.changeRefModel,
+    // "Submitted" column (QA #246): BE change objects carry createdAt as the
+    // submission time; surface it as submittedAt when the field is absent.
+    submittedAt:
+      (change as { submittedAt?: string }).submittedAt ??
+      (change.createdAt as unknown as string),
   }));
 
   return (
     <TabsContent value="change" className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-[#1F2937]">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h3 className="text-lg font-semibold text-[#1F2937] dark:text-slate-100">
           Change Management
         </h3>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            className="h-10 rounded-xl border-[#E5E7EB] bg-white px-4 text-sm font-medium text-[#111827] hover:bg-[#F9FAFB]"
-          >
-            <Share2 className="mr-2 h-4 w-4" /> Export Report
-          </Button>
-          {(isManager || isVendor) && (
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+          <ExportReportSheet contractId={contractId} contractType="Contract">
+            <Button
+              variant="outline"
+              className="h-10 w-full rounded-xl border-[#E5E7EB] bg-white px-4 text-sm font-medium text-[#111827] hover:bg-[#F9FAFB] sm:w-auto dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+            >
+              <Share2 className="mr-2 h-4 w-4" /> Export Report
+            </Button>
+          </ExportReportSheet>
+          {((isManager && Boolean(owner)) || isProjectManager) && (
             <CreateChangeDialog
               trigger={
                 <Button
-                  className="h-10 rounded-xl bg-[#F3F4F6] px-4 text-sm font-medium text-[#111827] hover:bg-[#E5E7EB]"
+                  className="h-10 w-full rounded-xl bg-[#2A4467] px-4 text-sm font-semibold text-white hover:bg-[#2A4467]/90 sm:w-auto"
                   disabled={!!actionsDisabled}
                 >
                   Create Change
@@ -180,16 +216,12 @@ const ChangeTabContent: React.FC<Props> = ({
         </div>
       </div>
 
-      {(() => {
-        const stats = (statsRes as any)?.data?.data ?? (statsRes as any)?.data;
-        return (
-          <ChangeStatsCards
-            stats={stats}
-            isLoading={isStatsLoading}
-            variant={isApprover ? "approver" : "manager"}
-          />
-        );
-      })()}
+      <ChangeStatsCards
+        stats={stats}
+        isLoading={isStatsLoading}
+        variant={isApprover ? "approver" : "manager"}
+      />
+
 
       <Tabs
         value={activeTab}
@@ -199,34 +231,34 @@ const ChangeTabContent: React.FC<Props> = ({
         }}
         className="w-full bg-transparent"
       >
-        <TabsList className="inline-flex w-fit items-center gap-1 rounded-full bg-[#EEF1F4] p-1 mb-3">
+        <TabsList className="inline-flex w-fit max-w-full items-center gap-1 overflow-x-auto rounded-full bg-[#EEF1F4] p-1 mb-3">
           <TabsTrigger
             value="all"
-            className="rounded-full px-5 py-4 text-sm font-medium text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            className="shrink-0 whitespace-nowrap rounded-full px-5 py-4 text-sm font-medium text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
           >
             All Changes
           </TabsTrigger>
           <TabsTrigger
             value="requests"
-            className="rounded-full px-5 py-4 text-sm font-medium text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            className="shrink-0 whitespace-nowrap rounded-full px-5 py-4 text-sm font-medium text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
           >
             Change Requests
           </TabsTrigger>
           <TabsTrigger
             value="orders"
-            className="rounded-full px-5 py-4 text-sm font-medium text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            className="shrink-0 whitespace-nowrap rounded-full px-5 py-4 text-sm font-medium text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
           >
             Change Orders
           </TabsTrigger>
           <TabsTrigger
             value="directive"
-            className="rounded-full px-5 py-4 text-sm font-medium text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            className="shrink-0 whitespace-nowrap rounded-full px-5 py-4 text-sm font-medium text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
           >
             Change Directive
           </TabsTrigger>
           <TabsTrigger
             value="proposal"
-            className="rounded-full px-5 py-4 text-sm font-medium text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
+            className="shrink-0 whitespace-nowrap rounded-full px-5 py-4 text-sm font-medium text-[#6B6B6B] data-[state=active]:bg-[#2A4467] data-[state=active]:text-white"
           >
             Change Proposal
           </TabsTrigger>
@@ -235,54 +267,75 @@ const ChangeTabContent: React.FC<Props> = ({
         <TabsContent value="all">
           <ChangeTable
             contractId={contractId}
+            basePath={basePath}
             variant={isApprover ? "approver" : "manager"}
             rows={filteredRows}
             isLoading={isChangesLoading}
             totalCount={totalCount}
             pagination={pagination}
             setPagination={setPagination}
+            currency={currency}
+            owner={owner}
+            {...tableInvalidationProps}
           />
         </TabsContent>
         <TabsContent value="requests">
           <ChangeTable
             contractId={contractId}
+            basePath={basePath}
             variant={isApprover ? "approver" : "manager"}
             rows={filteredRows.filter((row) => row.type === "request")}
             isLoading={isChangesLoading}
             totalCount={totalCount}
             pagination={pagination}
             setPagination={setPagination}
+            currency={currency}
+            owner={owner}
+            {...tableInvalidationProps}
           />
         </TabsContent>
         <TabsContent value="orders">
           <ChangeTable
             contractId={contractId}
+            basePath={basePath}
+            variant={isApprover ? "approver" : "manager"}
             rows={filteredRows.filter((row) => row.type === "order")}
             isLoading={isChangesLoading}
             totalCount={totalCount}
             pagination={pagination}
             setPagination={setPagination}
+            currency={currency}
+            owner={owner}
+            {...tableInvalidationProps}
           />
         </TabsContent>
         <TabsContent value="directive">
           <ChangeTable
             contractId={contractId}
+            basePath={basePath}
             rows={filteredRows.filter((row) => row.type === "directive")}
             isLoading={isChangesLoading}
             totalCount={totalCount}
             pagination={pagination}
             setPagination={setPagination}
+            currency={currency}
+            owner={owner}
+            {...tableInvalidationProps}
           />
         </TabsContent>
         <TabsContent value="proposal">
           <ChangeTable
             contractId={contractId}
+            basePath={basePath}
             variant={isApprover ? "approver" : "manager"}
             rows={filteredRows.filter((row) => row.type === "proposal")}
             isLoading={isChangesLoading}
             totalCount={totalCount}
             pagination={pagination}
             setPagination={setPagination}
+            currency={currency}
+            owner={owner}
+            {...tableInvalidationProps}
           />
         </TabsContent>
       </Tabs>

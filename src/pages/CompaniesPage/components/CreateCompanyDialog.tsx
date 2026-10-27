@@ -1,3 +1,4 @@
+import React from "react";
 import {
   Dialog,
   DialogContent,
@@ -11,13 +12,19 @@ import {
   TextTagInput,
 } from "@/components/layouts/FormInputs/TextInput";
 import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
-import { useForge, Forger, Forge } from "@/lib/forge";
+import { TextSelectWithSearch } from "@/components/layouts/FormInputs/TextSelectWithSearch";
+import { useForge, Forger, Forge } from "@adexdsamson/forge";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { postRequest, getRequest } from "@/lib/axiosInstance";
-import { ApiList, ApiResponse, ApiResponseError, SubscriptionPlan } from "@/types";
+import {
+  ApiList,
+  ApiResponse,
+  ApiResponseError,
+  SubscriptionPlan,
+} from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 import * as yup from "yup";
 
@@ -25,17 +32,27 @@ const schema = yup.object().shape({
   name: yup.string().required("Company name is required"),
   domain: yup.string().required("Company domain is required"),
   planName: yup.string().required("Subscription plan is required"),
-  duration: yup.number().positive().integer().required("Subscription duration is required"),
+  duration: yup.string().required("Subscription duration is required"),
+  currency: yup.string().required("Currency is required"),
   adminEmails: yup
     .array()
     .of(
       yup.object().shape({
         id: yup.string().required(),
         text: yup.string().email().required(),
-      })
+      }),
     )
     .min(1, "At least one admin is required")
     .max(3, "Maximum 3 admins allowed"),
+  apEmails: yup
+    .array()
+    .of(
+      yup.object().shape({
+        id: yup.string().required(),
+        text: yup.string().email().required(),
+      }),
+    )
+    .optional(),
 });
 
 type CreateCompanyData = yup.InferType<typeof schema>;
@@ -51,13 +68,17 @@ const CreateCompanyDialog = () => {
       name: "",
       domain: "",
       planName: "",
-      duration: 1,
+      duration: "1",
+      currency: "",
       adminEmails: [],
+      apEmails: [],
     },
   });
 
   // Fetch subscription plans
-  const { data: plansData, isLoading: plansLoading } = useQuery<ApiResponse<ApiList<SubscriptionPlan>>>({
+  const { data: plansData, isLoading: plansLoading } = useQuery<
+    ApiResponse<ApiList<SubscriptionPlan>>
+  >({
     queryKey: ["subscriptionPlans"],
     queryFn: async () => {
       return await getRequest({ url: "/subscriptions/plans" });
@@ -76,10 +97,14 @@ const CreateCompanyDialog = () => {
         name: data.name,
         domain: data.domain,
         planName: data.planName,
-        duration: data.duration,
-        adminEmails: data.adminEmails?.map(admin => admin.text), // Extract email addresses
+        duration: Number(data.duration),
+        adminEmails: data.adminEmails?.map((admin) => admin.text), // Extract email addresses
+        apEmails: data.apEmails?.map((ap) => ap.text), // AP recipients for invoice-lifecycle emails
       };
-      return await postRequest({ url: "/onboarding/company", payload: transformedData });
+      return await postRequest({
+        url: "/onboarding/company",
+        payload: transformedData,
+      });
     },
     onSuccess: () => {
       toast.success("Success", "Company created successfully");
@@ -92,7 +117,7 @@ const CreateCompanyDialog = () => {
       const err = error as ApiResponseError;
       toast.error(
         "Error",
-        err?.response?.data?.message ?? "Failed to create company"
+        err?.response?.data?.message ?? "Failed to create company",
       );
     },
   });
@@ -102,18 +127,77 @@ const CreateCompanyDialog = () => {
   };
 
   // Transform subscription plans data for select options
-  const subscriptionOptions = plansData?.data?.data.data?.map?.(plan => ({
-    label: `${plan.name}`,
-    value: plan.name,
-  })) || [];
+  const subscriptionOptions =
+    plansData?.data?.data.data?.map?.((plan) => ({
+      label: `${plan.name}`,
+      value: plan.name,
+    })) || [];
 
   const subscriptionDurationOptions = [
-    { label: "1 year", value: 1 },
-    { label: "2 years", value: 2 },
-    { label: "3 years", value: 3 },
-    { label: "4 years", value: 4 },
-    { label: "5 years", value: 5 },
+    { label: "1 year", value: "1" },
+    { label: "2 years", value: "2" },
+    { label: "3 years", value: "3" },
+    { label: "4 years", value: "4" },
+    { label: "5 years", value: "5" },
   ];
+
+  const currencyOptions = React.useMemo(() => {
+    const supportedValuesOf = (Intl as any).supportedValuesOf as
+      | undefined
+      | ((type: string) => string[]);
+
+    const supportedCurrencies =
+      typeof supportedValuesOf === "function"
+        ? supportedValuesOf("currency")
+        : [];
+
+    const fallbackCurrencies = ["CAD", "USD", "EUR", "GBP"];
+
+    const codes =
+      Array.isArray(supportedCurrencies) && supportedCurrencies.length > 0
+        ? supportedCurrencies
+        : fallbackCurrencies;
+
+    const displayNames =
+      typeof (Intl as any).DisplayNames === "function"
+        ? new (Intl as any).DisplayNames(["en"], { type: "currency" })
+        : null;
+
+    const getCurrencyName = (code: string) => {
+      try {
+        const name = displayNames?.of(code);
+        if (typeof name === "string" && name.trim() && name !== code)
+          return name;
+      } catch (err) {
+        void err;
+      }
+
+      try {
+        const parts = new Intl.NumberFormat("en", {
+          style: "currency",
+          currency: code,
+          currencyDisplay: "name",
+        }).formatToParts(0);
+        const name = parts.find((p) => p.type === "currency")?.value;
+        if (typeof name === "string" && name.trim() && name !== code)
+          return name;
+      } catch (err) {
+        void err;
+      }
+
+      return undefined;
+    };
+
+    return Array.from(new Set(codes))
+      .map((code) => {
+        const name = getCurrencyName(code);
+        return {
+          value: code,
+          label: name ? `${code} — ${name}` : code,
+        };
+      })
+      .sort((a, b) => a.value.localeCompare(b.value));
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -123,7 +207,7 @@ const CreateCompanyDialog = () => {
           Create New Company
         </Button>
       </DialogTrigger>
-      <DialogContent className=" transition-colors duration-200">
+      <DialogContent className="max-h-[90vh] overflow-y-auto transition-colors duration-200">
         <DialogHeader className="flex flex-row items-center justify-between  pb-4">
           <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-white">
             Create New Company
@@ -163,11 +247,28 @@ const CreateCompanyDialog = () => {
           />
 
           <Forger
+            name="currency"
+            label="Currency"
+            placeholder="Select currency"
+            searchPlaceholder="Search currency..."
+            emptyMessage="No currency found."
+            component={TextSelectWithSearch}
+            options={currencyOptions}
+          />
+
+          <Forger
             name="adminEmails"
             component={TextTagInput}
             label="Assign Admins (Multi-Select)"
             // tags={adminTags}
             helperText="Add up to 3 admins. separate each emails with a comma or enter button"
+          />
+
+          <Forger
+            name="apEmails"
+            component={TextTagInput}
+            label="Accounts Payable Email(s)"
+            helperText="Invoice emails (submitted, approved, rejected) are sent here. Separate each email with a comma or enter button."
           />
 
           <div className="flex justify-between pt-6  mt-6">

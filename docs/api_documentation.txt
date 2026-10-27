@@ -8893,7 +8893,7 @@
         }
       }
     },
-    "/approver/msa-contract/stats": {
+    "/approver/msa-contracts/stats": {
       "get": {
         "summary": "Get MSA contract statistics",
         "description": "Returns statistics of MSA contracts for the authenticated approver's company.",
@@ -8927,7 +8927,7 @@
         }
       }
     },
-    "/approver/msa-contract": {
+    "/approver/msa-contracts": {
       "get": {
         "summary": "List MSA contracts",
         "description": "Returns a list of MSA contracts with pagination and filters.",
@@ -9006,7 +9006,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}": {
+    "/approver/msa-contracts/{contractId}": {
       "get": {
         "summary": "Get MSA contract details",
         "description": "Returns details for a specific MSA contract.",
@@ -9054,7 +9054,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/approve/status": {
+    "/approver/msa-contracts/{contractId}/approve/status": {
       "get": {
         "summary": "Check approver status for MSA contract",
         "description": "Returns whether the current approver can approve the MSA contract.",
@@ -9099,7 +9099,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/approve": {
+    "/approver/msa-contracts/{contractId}/approve": {
       "post": {
         "summary": "Approve or reject MSA contract",
         "description": "Approve or reject a specific MSA contract.",
@@ -9154,7 +9154,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/payment-holdbacks": {
+    "/approver/msa-contracts/{contractId}/payment-holdbacks": {
       "get": {
         "summary": "List holdbacks",
         "description": "List all holdbacks for a specific MSA contract.",
@@ -9202,7 +9202,7 @@
         }
       }
     },
-    "/approver/msa-contract/payment-holdbacks/{holdBackId}": {
+    "/approver/msa-contracts/payment-holdbacks/{holdBackId}": {
       "get": {
         "summary": "Get holdback details",
         "description": "Get details of a specific holdback.",
@@ -9247,7 +9247,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/payment-savings": {
+    "/approver/msa-contracts/{contractId}/payment-savings": {
       "get": {
         "summary": "List savings",
         "description": "List all savings for a specific MSA contract.",
@@ -9295,7 +9295,7 @@
         }
       }
     },
-    "/approver/msa-contract/payment-savings/{savingId}": {
+    "/approver/msa-contracts/payment-savings/{savingId}": {
       "get": {
         "summary": "Get saving details",
         "description": "Get details of a specific saving.",
@@ -9340,7 +9340,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/compliance": {
+    "/approver/msa-contracts/{contractId}/compliance": {
       "get": {
         "summary": "Get MSA contract compliance details",
         "description": "Returns compliance summary, policy list, and security list for an MSA contract.",
@@ -9397,7 +9397,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/change/stats": {
+    "/approver/msa-contracts/{contractId}/change/stats": {
       "get": {
         "summary": "Get MSA contract change statistics",
         "description": "Returns statistics of changes for a specific MSA contract.",
@@ -9442,7 +9442,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/change": {
+    "/approver/msa-contracts/{contractId}/change": {
       "get": {
         "summary": "List MSA contract changes",
         "description": "Returns a list of changes for a specific MSA contract with pagination and filtering.",
@@ -9521,7 +9521,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/change/{changeId}": {
+    "/approver/msa-contracts/{contractId}/change/{changeId}": {
       "get": {
         "summary": "Get an MSA contract change by ID",
         "description": "Returns details of a specific MSA contract change.",
@@ -9575,7 +9575,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/change/{changeId}/comment": {
+    "/approver/msa-contracts/{contractId}/change/{changeId}/comment": {
       "get": {
         "summary": "Get comments for an MSA contract change",
         "description": "Returns a list of comments for a specific MSA contract change.",
@@ -9661,7 +9661,7 @@
         }
       }
     },
-    "/approver/msa-contract/change/{changeId}/comment/{commentId}/reply": {
+    "/approver/msa-contracts/change/{changeId}/comment/{commentId}/reply": {
       "post": {
         "summary": "Reply to an MSA contract change comment",
         "description": "Adds a reply to a specific comment on an MSA contract change.",
@@ -9710,7 +9710,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/change/{changeId}/approve/status": {
+    "/approver/msa-contracts/{contractId}/change/{changeId}/approve/status": {
       "get": {
         "summary": "Check if MSA contract change can be approved",
         "description": "Checks if the current user can approve the MSA contract change at the current level.",
@@ -9749,7 +9749,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/change/{changeId}/approve": {
+    "/approver/msa-contracts/{contractId}/change/{changeId}/approve": {
       "post": {
         "summary": "Approve or reject an MSA contract change",
         "description": "Submit an approval action (approve/reject) for the MSA contract change.",
@@ -9798,7 +9798,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/claim/stats": {
+    "/approver/msa-contracts/{contractId}/claim/stats": {
       "get": {
         "summary": "Get MSA contract claim statistics",
         "description": "Returns statistics of claims for a specific MSA contract.",
@@ -9843,7 +9843,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/claim": {
+    "/approver/msa-contracts/{contractId}/claim": {
       "get": {
         "summary": "List MSA contract claims",
         "description": "Returns a list of claims for a specific MSA contract with pagination and filtering.",
@@ -9922,7 +9922,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/claim/{claimId}": {
+    "/approver/msa-contracts/{contractId}/claim/{claimId}": {
       "get": {
         "summary": "Get an MSA contract claim by ID",
         "description": "Returns details of a specific MSA contract claim.",
@@ -9976,7 +9976,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/claim/{claimId}/comment": {
+    "/approver/msa-contracts/{contractId}/claim/{claimId}/comment": {
       "get": {
         "summary": "Get comments for an MSA contract claim",
         "description": "Returns a list of comments for a specific MSA contract claim.",
@@ -10062,7 +10062,7 @@
         }
       }
     },
-    "/approver/msa-contract/claim/{claimId}/comment/{commentId}/reply": {
+    "/approver/msa-contracts/claim/{claimId}/comment/{commentId}/reply": {
       "post": {
         "summary": "Reply to an MSA contract claim comment",
         "description": "Adds a reply to a specific comment on an MSA contract claim.",
@@ -10111,7 +10111,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/claim/{claimId}/approve": {
+    "/approver/msa-contracts/{contractId}/claim/{claimId}/approve": {
       "post": {
         "summary": "Approve or reject an MSA contract claim",
         "description": "Submit an approval action (approve/reject) for the MSA contract claim.",
@@ -10160,7 +10160,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/rfi/stats": {
+    "/approver/msa-contracts/{contractId}/rfi/stats": {
       "get": {
         "summary": "Get MSA contract RFI statistics",
         "description": "Returns counts of all, issue, and receive RFIs for a specific MSA contract.",
@@ -10225,7 +10225,7 @@
         }
       }
     },
-    "/approver/msa-contract/{dataId}/rfi": {
+    "/approver/msa-contracts/{dataId}/rfi": {
       "post": {
         "summary": "Create a new RFI issue",
         "description": "Creates a new RFI issue for an MSA contract.",
@@ -10292,7 +10292,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/rfi": {
+    "/approver/msa-contracts/{contractId}/rfi": {
       "get": {
         "summary": "List contract RFIs",
         "description": "Returns a paginated list of RFIs for a specific MSA contract.",
@@ -10380,7 +10380,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/rfi/{rfiId}": {
+    "/approver/msa-contracts/{contractId}/rfi/{rfiId}": {
       "get": {
         "summary": "Get a specific RFI",
         "description": "Returns details for a specific RFI.",
@@ -10451,7 +10451,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/rfi/{rfiId}/response": {
+    "/approver/msa-contracts/{contractId}/rfi/{rfiId}/response": {
       "get": {
         "summary": "Get RFI responses",
         "description": "Returns responses for a specific RFI.",
@@ -10517,7 +10517,7 @@
         }
       }
     },
-    "/approver/msa-contract/{dataId}/rfi/{rfiId}/response": {
+    "/approver/msa-contracts/{dataId}/rfi/{rfiId}/response": {
       "post": {
         "summary": "Create RFI response",
         "description": "Creates a response for a specific RFI.",
@@ -10590,7 +10590,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/rfi/{rfiId}/comment": {
+    "/approver/msa-contracts/{contractId}/rfi/{rfiId}/comment": {
       "get": {
         "summary": "Get contract RFI comments",
         "description": "Returns comments for a specific contract RFI.",
@@ -10726,7 +10726,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/rfi/{rfiId}/comment/{commentId}/reply": {
+    "/approver/msa-contracts/{contractId}/rfi/{rfiId}/comment/{commentId}/reply": {
       "post": {
         "summary": "Reply to a contract RFI comment",
         "description": "Adds a reply to a specific comment on a contract RFI.",
@@ -10796,7 +10796,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/invoice/stats": {
+    "/approver/msa-contracts/{contractId}/invoice/stats": {
       "get": {
         "summary": "Get MSA contract invoice statistics",
         "description": "Returns statistics for invoices associated with a specific MSA contract",
@@ -10841,7 +10841,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/invoice": {
+    "/approver/msa-contracts/{contractId}/invoice": {
       "get": {
         "summary": "List MSA contract invoices",
         "description": "Returns a paginated list of invoices for a specific MSA contract",
@@ -10920,7 +10920,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/invoice/{invoiceId}": {
+    "/approver/msa-contracts/{contractId}/invoice/{invoiceId}": {
       "get": {
         "summary": "Get MSA contract invoice details",
         "description": "Returns detailed information for a specific MSA contract invoice",
@@ -10977,7 +10977,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/invoice/{invoiceId}/approve/status": {
+    "/approver/msa-contracts/{contractId}/invoice/{invoiceId}/approve/status": {
       "get": {
         "summary": "Check if MSA contract invoice can be approved",
         "description": "Checks if the current user can approve the MSA contract invoice at the current level",
@@ -11036,7 +11036,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/invoice/{invoiceId}/approve": {
+    "/approver/msa-contracts/{contractId}/invoice/{invoiceId}/approve": {
       "post": {
         "summary": "Approve or reject an MSA contract invoice",
         "description": "Submit an approval action (approve/reject) for the MSA contract invoice",
@@ -11100,7 +11100,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/amendment/stats": {
+    "/approver/msa-contracts/{contractId}/amendment/stats": {
       "get": {
         "summary": "Get MSA contract amendment statistics",
         "description": "Returns statistics for amendments associated with a specific MSA contract.",
@@ -11157,7 +11157,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/amendment": {
+    "/approver/msa-contracts/{contractId}/amendment": {
       "get": {
         "summary": "List MSA contract amendments",
         "description": "Returns a list of amendments for a specific MSA contract.",
@@ -11217,7 +11217,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/amendment/{amendmentId}": {
+    "/approver/msa-contracts/{contractId}/amendment/{amendmentId}": {
       "get": {
         "summary": "Get MSA contract amendment details",
         "description": "Returns detailed information for a specific MSA contract amendment.",
@@ -11283,7 +11283,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/amendment/{amendmentId}/approve/status": {
+    "/approver/msa-contracts/{contractId}/amendment/{amendmentId}/approve/status": {
       "get": {
         "summary": "Check if MSA contract amendment can be approved",
         "description": "Checks if the current user can approve the MSA contract amendment at the current level.",
@@ -11354,7 +11354,7 @@
         }
       }
     },
-    "/approver/msa-contract/{contractId}/amendment/{amendmentId}/approve": {
+    "/approver/msa-contracts/{contractId}/amendment/{amendmentId}/approve": {
       "post": {
         "summary": "Approve or reject an MSA contract amendment",
         "description": "Submit an approval action (approve/reject) for the MSA contract amendment.",
@@ -12458,7 +12458,7 @@
         }
       }
     },
-    "/manager/msa-contract": {
+    "/manager/msa-contracts": {
       "get": {
         "summary": "List MSA contracts",
         "description": "Returns a paginated list of MSA contracts for the authenticated manager.",
@@ -25780,7 +25780,7 @@
         }
       }
     },
-    "/manager/msa-contract/stats": {
+    "/manager/msa-contracts/stats": {
       "get": {
         "summary": "Get MSA contract statistics",
         "description": "Returns statistics of MSA contracts for the authenticated manager.",
@@ -25829,7 +25829,7 @@
         }
       }
     },
-    "/manager/msa-contract/me": {
+    "/manager/msa-contracts/me": {
       "get": {
         "summary": "List MSA contracts assigned to current user",
         "description": "Returns a paginated list of MSA contracts where the user is creator or manager.",
@@ -25923,7 +25923,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}": {
+    "/manager/msa-contracts/{contractId}": {
       "put": {
         "summary": "Update MSA contract",
         "description": "Updates an existing MSA contract.",
@@ -26041,7 +26041,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/linked-contract": {
+    "/manager/msa-contracts/{contractId}/linked-contract": {
       "get": {
         "summary": "Get linked contract for an MSA contract",
         "description": "Returns the linked contract details for a specific MSA contract.",
@@ -26104,7 +26104,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/payment-holdbacks": {
+    "/manager/msa-contracts/{contractId}/payment-holdbacks": {
       "post": {
         "summary": "Create a new holdback",
         "description": "Creates a new holdback for a specific MSA contract.",
@@ -26235,7 +26235,7 @@
         }
       }
     },
-    "/manager/msa-contract/payment-holdbacks/{holdBackId}": {
+    "/manager/msa-contracts/payment-holdbacks/{holdBackId}": {
       "get": {
         "summary": "Get holdback details",
         "description": "Get details of a specific holdback for MSA contracts.",
@@ -26295,7 +26295,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/payment-savings": {
+    "/manager/msa-contracts/{contractId}/payment-savings": {
       "post": {
         "summary": "Create a new saving",
         "description": "Creates a new saving for a specific MSA contract.",
@@ -26426,7 +26426,7 @@
         }
       }
     },
-    "/manager/msa-contract/payment-savings/{savingId}": {
+    "/manager/msa-contracts/payment-savings/{savingId}": {
       "get": {
         "summary": "Get saving details",
         "description": "Get details of a specific saving for MSA contracts.",
@@ -26486,7 +26486,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/kpis": {
+    "/manager/msa-contracts/{contractId}/kpis": {
       "get": {
         "summary": "List MSA contract KPI dashboard rows",
         "description": "Returns KPI categories with current and all-time average scores for an MSA contract.",
@@ -26603,7 +26603,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/kpis/{kpiId}": {
+    "/manager/msa-contracts/{contractId}/kpis/{kpiId}": {
       "get": {
         "summary": "Get KPI detail",
         "description": "Returns KPI detail with metric breakdown and history for an MSA contract.",
@@ -26812,7 +26812,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/compliance": {
+    "/manager/msa-contracts/{contractId}/compliance": {
       "get": {
         "summary": "Get MSA contract compliance details",
         "description": "Returns compliance summary, policy list, and security list for an MSA contract.",
@@ -26877,7 +26877,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/compliance/approve": {
+    "/manager/msa-contracts/{contractId}/compliance/approve": {
       "post": {
         "summary": "Approve or reject an MSA contract compliance item",
         "description": "Submit an approval action for a compliance entry.",
@@ -26955,7 +26955,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/changes/stats": {
+    "/manager/msa-contracts/{contractId}/changes/stats": {
       "get": {
         "summary": "Get MSA contract change statistics",
         "description": "Returns statistics about changes for a specific MSA contract.",
@@ -27014,7 +27014,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/changes": {
+    "/manager/msa-contracts/{contractId}/changes": {
       "get": {
         "summary": "List MSA contract changes",
         "description": "Returns a list of changes for a specific MSA contract with filtering options.",
@@ -27107,7 +27107,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/changes/{changeId}": {
+    "/manager/msa-contracts/{contractId}/changes/{changeId}": {
       "get": {
         "summary": "Get an MSA contract change",
         "description": "Returns details of a specific MSA contract change.",
@@ -27175,7 +27175,7 @@
         }
       }
     },
-    "/manager/msa-contract/{dataId}/change/{type}": {
+    "/manager/msa-contracts/{dataId}/change/{type}": {
       "post": {
         "summary": "Request an MSA contract change",
         "description": "Creates a new contract change request for an MSA contract.",
@@ -27257,7 +27257,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/changes/{changeId}/approve": {
+    "/manager/msa-contracts/{contractId}/changes/{changeId}/approve": {
       "post": {
         "summary": "Approve or reject an MSA contract change (Manager)",
         "description": "Allows a manager or creator to approve/reject a contract change.",
@@ -27323,7 +27323,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/changes/{changeId}/approve/status": {
+    "/manager/msa-contracts/{contractId}/changes/{changeId}/approve/status": {
       "get": {
         "summary": "Check manager approval status for an MSA contract change",
         "description": "Returns the current manager approval status for a specific MSA contract change.",
@@ -27376,7 +27376,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/changes/{changeId}/approvers": {
+    "/manager/msa-contracts/{contractId}/changes/{changeId}/approvers": {
       "get": {
         "summary": "Get MSA contract change approvers",
         "description": "Returns the list of approvers for a specific MSA contract change.",
@@ -27429,7 +27429,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/claims/stats": {
+    "/manager/msa-contracts/{contractId}/claims/stats": {
       "get": {
         "summary": "Get MSA contract claim statistics",
         "description": "Returns statistics about claims for a specific MSA contract.",
@@ -27488,7 +27488,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/claims": {
+    "/manager/msa-contracts/{contractId}/claims": {
       "get": {
         "summary": "List MSA contract claims",
         "description": "Returns a list of claims for a specific MSA contract with filtering options.",
@@ -27581,7 +27581,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/claims/{claimId}": {
+    "/manager/msa-contracts/{contractId}/claims/{claimId}": {
       "get": {
         "summary": "Get an MSA contract claim",
         "description": "Returns details of a specific MSA contract claim.",
@@ -27649,7 +27649,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/claims/{claimId}/comments": {
+    "/manager/msa-contracts/{contractId}/claims/{claimId}/comments": {
       "get": {
         "summary": "Get MSA contract claim comments",
         "description": "Returns comments for a specific MSA contract claim.",
@@ -27778,7 +27778,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/claims/{claimId}/comments/{commentId}/reply": {
+    "/manager/msa-contracts/{contractId}/claims/{claimId}/comments/{commentId}/reply": {
       "post": {
         "summary": "Reply to an MSA contract claim comment",
         "description": "Adds a reply to a specific comment on an MSA contract claim.",
@@ -27850,7 +27850,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/claims/{claimId}/approve": {
+    "/manager/msa-contracts/{contractId}/claims/{claimId}/approve": {
       "post": {
         "summary": "Approve or reject an MSA contract claim (Manager)",
         "description": "Allows a manager or creator to approve/reject a contract claim.",
@@ -27913,7 +27913,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/claims/{claimId}/approve/status": {
+    "/manager/msa-contracts/{contractId}/claims/{claimId}/approve/status": {
       "get": {
         "summary": "Check manager approval status for an MSA contract claim",
         "description": "Returns the current manager approval status for a specific MSA contract claim.",
@@ -27966,7 +27966,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/claims/{claimId}/approvers": {
+    "/manager/msa-contracts/{contractId}/claims/{claimId}/approvers": {
       "get": {
         "summary": "Get MSA contract claim approvers",
         "description": "Returns the list of approvers for a specific MSA contract claim.",
@@ -28080,7 +28080,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/rfi/stats": {
+    "/manager/msa-contracts/{contractId}/rfi/stats": {
       "get": {
         "summary": "Get MSA contract RFI statistics",
         "description": "Returns counts of all, issue, and receive RFIs for a specific MSA contract.",
@@ -28150,7 +28150,7 @@
         }
       }
     },
-    "/manager/msa-contract/{dataId}/rfi": {
+    "/manager/msa-contracts/{dataId}/rfi": {
       "post": {
         "summary": "Create a new RFI issue",
         "description": "Creates a new RFI issue for an MSA contract.",
@@ -28204,7 +28204,7 @@
         }
       }
     },
-    "/manager/msa-contract/{dataId}/rfi/{rfiId}/response": {
+    "/manager/msa-contracts/{dataId}/rfi/{rfiId}/response": {
       "post": {
         "summary": "Create RFI response",
         "description": "Creates a response for a specific RFI.",
@@ -28267,7 +28267,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/rfi": {
+    "/manager/msa-contracts/{contractId}/rfi": {
       "get": {
         "summary": "List contract RFIs",
         "description": "Returns a paginated list of RFIs for a specific MSA contract.",
@@ -28345,7 +28345,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/rfi/{rfiId}": {
+    "/manager/msa-contracts/{contractId}/rfi/{rfiId}": {
       "get": {
         "summary": "Get a specific RFI",
         "description": "Returns details for a specific RFI.",
@@ -28398,7 +28398,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/rfi/{rfiId}/response": {
+    "/manager/msa-contracts/{contractId}/rfi/{rfiId}/response": {
       "get": {
         "summary": "Get RFI responses",
         "description": "Returns responses for a specific RFI.",
@@ -28451,7 +28451,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/rfi/{rfiId}/comment": {
+    "/manager/msa-contracts/{contractId}/rfi/{rfiId}/comment": {
       "get": {
         "summary": "Get contract RFI comments",
         "description": "Returns comments for a specific contract RFI.",
@@ -28565,7 +28565,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/rfi/{rfiId}/comment/{commentId}/reply": {
+    "/manager/msa-contracts/{contractId}/rfi/{rfiId}/comment/{commentId}/reply": {
       "post": {
         "summary": "Reply to a contract RFI comment",
         "description": "Adds a reply to a specific comment on a contract RFI.",
@@ -28637,7 +28637,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/invoice/stats": {
+    "/manager/msa-contracts/{contractId}/invoice/stats": {
       "get": {
         "summary": "Get MSA contract invoice statistics",
         "description": "Returns statistics for invoices associated with a specific MSA contract",
@@ -28710,7 +28710,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/invoice": {
+    "/manager/msa-contracts/{contractId}/invoice": {
       "get": {
         "summary": "List MSA contract invoices",
         "description": "Returns a paginated list of invoices for a specific MSA contract",
@@ -28806,7 +28806,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/invoice/{invoiceId}": {
+    "/manager/msa-contracts/{contractId}/invoice/{invoiceId}": {
       "get": {
         "summary": "Get MSA contract invoice details",
         "description": "Returns detailed information for a specific MSA contract invoice",
@@ -28874,7 +28874,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/amendments": {
+    "/manager/msa-contracts/{contractId}/amendments": {
       "post": {
         "summary": "Create amendment",
         "description": "Create a new amendment for an MSA contract.",
@@ -28943,7 +28943,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/amendments/{amendmentId}": {
+    "/manager/msa-contracts/{contractId}/amendments/{amendmentId}": {
       "get": {
         "summary": "Get amendment details",
         "description": "Returns details of a specific MSA contract amendment.",
@@ -29014,7 +29014,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/amendments/{amendmentId}/approvers": {
+    "/manager/msa-contracts/{contractId}/amendments/{amendmentId}/approvers": {
       "post": {
         "summary": "Add approvers to amendment",
         "description": "Manually add approvers to an MSA contract amendment.",
@@ -29092,7 +29092,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/amendments/{amendmentId}/approve": {
+    "/manager/msa-contracts/{contractId}/amendments/{amendmentId}/approve": {
       "post": {
         "summary": "Approve/Reject amendment",
         "description": "Approve or reject an MSA contract amendment.",
@@ -29170,7 +29170,7 @@
         }
       }
     },
-    "/manager/msa-contract/{contractId}/clauses": {
+    "/manager/msa-contracts/{contractId}/clauses": {
       "get": {
         "summary": "Get MSA contract clause library",
         "description": "Returns clause library data for an MSA contract.",
@@ -33018,7 +33018,7 @@
         }
       }
     },
-    "/user/msa-contract/stats": {
+    "/user/msa-contracts/stats": {
       "get": {
         "summary": "Get MSA contract statistics",
         "description": "Returns statistics of MSA contracts for the authenticated user's company (view_only role context).",
@@ -33063,7 +33063,7 @@
         }
       }
     },
-    "/user/msa-contract": {
+    "/user/msa-contracts": {
       "get": {
         "summary": "List MSA contracts",
         "description": "Returns a paginated list of MSA contracts for the authenticated user's company.",
@@ -33153,7 +33153,7 @@
         }
       }
     },
-    "/user/msa-contract/{contractId}": {
+    "/user/msa-contracts/{contractId}": {
       "get": {
         "summary": "Get MSA contract details",
         "description": "Returns details of a specific MSA contract.",
@@ -33212,7 +33212,7 @@
         }
       }
     },
-    "/user/msa-contract/{contractId}/change/stats": {
+    "/user/msa-contracts/{contractId}/change/stats": {
       "get": {
         "summary": "Get MSA contract change statistics",
         "description": "Returns statistics for changes associated with a specific MSA contract.",
@@ -33269,7 +33269,7 @@
         }
       }
     },
-    "/user/msa-contract/{contractId}/change": {
+    "/user/msa-contracts/{contractId}/change": {
       "get": {
         "summary": "List MSA contract changes",
         "description": "Returns a paginated list of changes for a specific MSA contract.",
@@ -33360,7 +33360,7 @@
         }
       }
     },
-    "/user/msa-contract/{contractId}/change/{changeId}": {
+    "/user/msa-contracts/{contractId}/change/{changeId}": {
       "get": {
         "summary": "Get MSA contract change details",
         "description": "Returns detailed information for a specific MSA contract change.",
@@ -33426,7 +33426,7 @@
         }
       }
     },
-    "/user/msa-contract/{contractId}/change/{changeId}/comment": {
+    "/user/msa-contracts/{contractId}/change/{changeId}/comment": {
       "get": {
         "summary": "Get MSA contract change comments",
         "description": "Returns comments for a specific MSA contract change.",
@@ -33492,7 +33492,7 @@
         }
       }
     },
-    "/user/msa-contract/{contractId}/claim/stats": {
+    "/user/msa-contracts/{contractId}/claim/stats": {
       "get": {
         "summary": "Get MSA contract claim statistics",
         "description": "Returns statistics for claims associated with a specific MSA contract.",
@@ -33549,7 +33549,7 @@
         }
       }
     },
-    "/user/msa-contract/{contractId}/claim": {
+    "/user/msa-contracts/{contractId}/claim": {
       "get": {
         "summary": "List MSA contract claims",
         "description": "Returns a paginated list of claims for a specific MSA contract.",
@@ -33640,7 +33640,7 @@
         }
       }
     },
-    "/user/msa-contract/{contractId}/claim/{claimId}": {
+    "/user/msa-contracts/{contractId}/claim/{claimId}": {
       "get": {
         "summary": "Get MSA contract claim details",
         "description": "Returns detailed information for a specific MSA contract claim.",
@@ -33706,7 +33706,7 @@
         }
       }
     },
-    "/user/msa-contract/{contractId}/rfi/stats": {
+    "/user/msa-contracts/{contractId}/rfi/stats": {
       "get": {
         "summary": "Get MSA contract RFI statistics",
         "description": "Returns counts of all, issue, and receive RFIs for a specific MSA contract.",
@@ -33774,7 +33774,7 @@
         }
       }
     },
-    "/user/msa-contract/{contractId}/rfi": {
+    "/user/msa-contracts/{contractId}/rfi": {
       "get": {
         "summary": "List contract RFIs",
         "description": "Returns a paginated list of RFIs for a specific MSA contract.",
@@ -33865,7 +33865,7 @@
         }
       }
     },
-    "/user/msa-contract/{contractId}/rfi/{rfiId}": {
+    "/user/msa-contracts/{contractId}/rfi/{rfiId}": {
       "get": {
         "summary": "Get a specific RFI",
         "description": "Returns details for a specific RFI.",
@@ -33939,7 +33939,7 @@
         }
       }
     },
-    "/user/msa-contract/{contractId}/rfi/{rfiId}/comment": {
+    "/user/msa-contracts/{contractId}/rfi/{rfiId}/comment": {
       "get": {
         "summary": "Get contract RFI comments",
         "description": "Returns comments for a specific contract RFI.",
@@ -34019,7 +34019,7 @@
         }
       }
     },
-    "/user/msa-contract/{contractId}/invoice/stats": {
+    "/user/msa-contracts/{contractId}/invoice/stats": {
       "get": {
         "summary": "Get MSA contract invoice statistics",
         "description": "Returns statistics for invoices associated with a specific MSA contract.",
@@ -34076,7 +34076,7 @@
         }
       }
     },
-    "/user/msa-contract/{contractId}/invoice": {
+    "/user/msa-contracts/{contractId}/invoice": {
       "get": {
         "summary": "List MSA contract invoices",
         "description": "Returns a paginated list of invoices for a specific MSA contract.",
@@ -34167,7 +34167,7 @@
         }
       }
     },
-    "/user/msa-contract/{contractId}/invoice/{invoiceId}": {
+    "/user/msa-contracts/{contractId}/invoice/{invoiceId}": {
       "get": {
         "summary": "Get MSA contract invoice details",
         "description": "Returns detailed information for a specific MSA contract invoice.",
@@ -34233,7 +34233,7 @@
         }
       }
     },
-    "/user/msa-contract/{contractId}/payment-holdbacks": {
+    "/user/msa-contracts/{contractId}/payment-holdbacks": {
       "get": {
         "summary": "List holdbacks",
         "description": "List all holdbacks for a specific MSA contract.",
@@ -34295,7 +34295,7 @@
         }
       }
     },
-    "/user/msa-contract/payment-holdbacks/{holdBackId}": {
+    "/user/msa-contracts/payment-holdbacks/{holdBackId}": {
       "get": {
         "summary": "Get holdback details",
         "description": "Get details of a specific holdback.",
@@ -34354,7 +34354,7 @@
         }
       }
     },
-    "/user/msa-contract/{contractId}/payment-savings": {
+    "/user/msa-contracts/{contractId}/payment-savings": {
       "get": {
         "summary": "List savings",
         "description": "List all savings for a specific MSA contract.",
@@ -34416,7 +34416,7 @@
         }
       }
     },
-    "/user/msa-contract/payment-savings/{savingId}": {
+    "/user/msa-contracts/payment-savings/{savingId}": {
       "get": {
         "summary": "Get saving details",
         "description": "Get details of a specific saving.",
@@ -34475,7 +34475,7 @@
         }
       }
     },
-    "/user/msa-contract/{contractId}/compliance": {
+    "/user/msa-contracts/{contractId}/compliance": {
       "get": {
         "summary": "Get MSA contract compliance details",
         "description": "Returns compliance summary, policy list, and security list for an MSA contract.",
@@ -34532,7 +34532,7 @@
         }
       }
     },
-    "/user/msa-contract/{contractId}/amendment/stats": {
+    "/user/msa-contracts/{contractId}/amendment/stats": {
       "get": {
         "summary": "Get MSA contract amendment statistics",
         "description": "Returns statistics for amendments associated with a specific MSA contract.",
@@ -34591,7 +34591,7 @@
         }
       }
     },
-    "/user/msa-contract/{contractId}/amendment": {
+    "/user/msa-contracts/{contractId}/amendment": {
       "get": {
         "summary": "List MSA contract amendments",
         "description": "Returns a list of amendments for a specific MSA contract.",
@@ -34653,7 +34653,7 @@
         }
       }
     },
-    "/user/msa-contract/{contractId}/amendment/{amendmentId}": {
+    "/user/msa-contracts/{contractId}/amendment/{amendmentId}": {
       "get": {
         "summary": "Get MSA contract amendment details",
         "description": "Returns detailed information for a specific MSA contract amendment.",
@@ -40535,7 +40535,7 @@
         }
       }
     },
-    "/vendor/msa-contract/stats": {
+    "/vendor/msa-contracts/stats": {
       "get": {
         "summary": "Vendor MSA contract stats",
         "description": "Returns MSA contract statistics for the authenticated vendor.",
@@ -40576,7 +40576,7 @@
         }
       }
     },
-    "/vendor/msa-contract/{contractId}/approve": {
+    "/vendor/msa-contracts/{contractId}/approve": {
       "post": {
         "summary": "Approve or reject an MSA contract as vendor",
         "description": "Allows the authenticated vendor assigned to the MSA contract to approve or reject it while it is pending approval.",
@@ -40650,7 +40650,7 @@
         }
       }
     },
-    "/vendor/msa-contract/{contractId}": {
+    "/vendor/msa-contracts/{contractId}": {
       "get": {
         "summary": "Get vendor MSA contract",
         "description": "Returns details of a specific MSA contract for a vendor.",
@@ -40705,7 +40705,7 @@
         }
       }
     },
-    "/vendor/msa-contract/{contractId}/payment-holdbacks": {
+    "/vendor/msa-contracts/{contractId}/payment-holdbacks": {
       "get": {
         "summary": "List holdbacks",
         "description": "List all holdbacks for a vendor MSA contract.",
@@ -40763,7 +40763,7 @@
         }
       }
     },
-    "/vendor/msa-contract/payment-holdbacks/{holdBackId}": {
+    "/vendor/msa-contracts/payment-holdbacks/{holdBackId}": {
       "get": {
         "summary": "Get holdback details",
         "description": "Get details of a specific holdback for vendor MSA contracts.",
@@ -40818,7 +40818,7 @@
         }
       }
     },
-    "/vendor/msa-contract/{contractId}/compliance": {
+    "/vendor/msa-contracts/{contractId}/compliance": {
       "get": {
         "summary": "Get MSA contract compliance details",
         "description": "Returns compliance summary, policy list, and security list for an MSA contract.",
@@ -40943,7 +40943,7 @@
         }
       }
     },
-    "/vendor/msa-contract/{contractId}/claim/stats": {
+    "/vendor/msa-contracts/{contractId}/claim/stats": {
       "get": {
         "summary": "Get MSA contract claim statistics",
         "description": "Returns statistics for claims associated with a specific MSA contract.",
@@ -41000,7 +41000,7 @@
         }
       }
     },
-    "/vendor/msa-contract/{contractId}/claim": {
+    "/vendor/msa-contracts/{contractId}/claim": {
       "get": {
         "summary": "List MSA contract claims",
         "description": "Returns a paginated list of claims for a specific MSA contract.",
@@ -41132,7 +41132,7 @@
         }
       }
     },
-    "/vendor/msa-contract/{contractId}/claim/{claimId}": {
+    "/vendor/msa-contracts/{contractId}/claim/{claimId}": {
       "get": {
         "summary": "Get MSA contract claim details",
         "description": "Returns detailed information for a specific MSA contract claim.",
@@ -41198,7 +41198,7 @@
         }
       }
     },
-    "/vendor/msa-contract/{contractId}/claim/{claimId}/comment": {
+    "/vendor/msa-contracts/{contractId}/claim/{claimId}/comment": {
       "get": {
         "summary": "Get MSA contract claim comments",
         "description": "Returns comments for a specific MSA contract claim.",
@@ -41314,7 +41314,7 @@
         }
       }
     },
-    "/vendor/msa-contract/{contractId}/claim/{claimId}/comment/{commentId}/reply": {
+    "/vendor/msa-contracts/{contractId}/claim/{claimId}/comment/{commentId}/reply": {
       "post": {
         "summary": "Reply to an MSA contract claim comment",
         "description": "Adds a reply to a specific comment on an MSA contract claim.",
@@ -41384,7 +41384,7 @@
         }
       }
     },
-    "/vendor/msa-contract/{contractId}/rfi/stats": {
+    "/vendor/msa-contracts/{contractId}/rfi/stats": {
       "get": {
         "summary": "Get MSA contract RFI statistics",
         "description": "Returns RFI counts (all, issue, receive) for a specific MSA contract.",
@@ -41452,7 +41452,7 @@
         }
       }
     },
-    "/vendor/msa-contract/{dataId}/rfi": {
+    "/vendor/msa-contracts/{dataId}/rfi": {
       "post": {
         "summary": "Create a new RFI issue",
         "description": "Creates a new RFI issue for an MSA contract.",
@@ -41522,7 +41522,7 @@
         }
       }
     },
-    "/vendor/msa-contract/{contractId}/rfi": {
+    "/vendor/msa-contracts/{contractId}/rfi": {
       "get": {
         "summary": "List contract RFIs",
         "description": "Returns a paginated list of RFIs for a specific MSA contract.",
@@ -41630,7 +41630,7 @@
         }
       }
     },
-    "/vendor/msa-contract/{contractId}/rfi/{rfiId}": {
+    "/vendor/msa-contracts/{contractId}/rfi/{rfiId}": {
       "get": {
         "summary": "Get a specific RFI",
         "description": "Returns details for a specific RFI.",
@@ -41704,7 +41704,7 @@
         }
       }
     },
-    "/vendor/msa-contract/{contractId}/rfi/{rfiId}/response": {
+    "/vendor/msa-contracts/{contractId}/rfi/{rfiId}/response": {
       "get": {
         "summary": "Get RFI responses",
         "description": "Returns responses for a specific RFI.",
@@ -41773,7 +41773,7 @@
         }
       }
     },
-    "/vendor/msa-contract/{dataId}/rfi/{rfiId}/response": {
+    "/vendor/msa-contracts/{dataId}/rfi/{rfiId}/response": {
       "post": {
         "summary": "Create RFI response",
         "description": "Creates a response for a specific RFI.",
@@ -41846,7 +41846,7 @@
         }
       }
     },
-    "/vendor/msa-contract/{contractId}/rfi/{rfiId}/comment": {
+    "/vendor/msa-contracts/{contractId}/rfi/{rfiId}/comment": {
       "get": {
         "summary": "Get contract RFI comments",
         "description": "Returns comments for a specific contract RFI.",
@@ -41985,7 +41985,7 @@
         }
       }
     },
-    "/vendor/msa-contract/{contractId}/rfi/{rfiId}/comment/{commentId}/reply": {
+    "/vendor/msa-contracts/{contractId}/rfi/{rfiId}/comment/{commentId}/reply": {
       "post": {
         "summary": "Reply to a contract RFI comment",
         "description": "Adds a reply to a specific comment on a contract RFI.",
@@ -42055,7 +42055,7 @@
         }
       }
     },
-    "/vendor/msa-contract/{contractId}/invoice/stats": {
+    "/vendor/msa-contracts/{contractId}/invoice/stats": {
       "get": {
         "summary": "Get MSA contract invoice statistics",
         "description": "Returns statistics for invoices associated with a specific MSA contract",
@@ -42103,7 +42103,7 @@
         }
       }
     },
-    "/vendor/msa-contract/{contractId}/invoice": {
+    "/vendor/msa-contracts/{contractId}/invoice": {
       "post": {
         "summary": "Create a new MSA contract invoice",
         "description": "Create a new invoice for a specific MSA contract",
@@ -42241,7 +42241,7 @@
         }
       }
     },
-    "/vendor/msa-contract/{contractId}/invoice/{invoiceId}": {
+    "/vendor/msa-contracts/{contractId}/invoice/{invoiceId}": {
       "get": {
         "summary": "Get MSA contract invoice details",
         "description": "Returns detailed information for a specific MSA contract invoice",
@@ -42301,7 +42301,7 @@
         }
       }
     },
-    "/vendor/msa-contract/{contractId}/payment-savings": {
+    "/vendor/msa-contracts/{contractId}/payment-savings": {
       "get": {
         "summary": "List savings",
         "description": "List all savings for a vendor MSA contract.",
@@ -42359,7 +42359,7 @@
         }
       }
     },
-    "/vendor/msa-contract/payment-savings/{savingId}": {
+    "/vendor/msa-contracts/payment-savings/{savingId}": {
       "get": {
         "summary": "Get saving details",
         "description": "Get details of a specific saving for vendor MSA contracts.",
@@ -42414,7 +42414,7 @@
         }
       }
     },
-    "/vendor/msa-contract/{contractId}/amendment/stats": {
+    "/vendor/msa-contracts/{contractId}/amendment/stats": {
       "get": {
         "summary": "Get MSA contract amendment statistics",
         "description": "Returns statistics for amendments associated with a specific MSA contract.",
@@ -42473,7 +42473,7 @@
         }
       }
     },
-    "/vendor/msa-contract/{contractId}/amendment": {
+    "/vendor/msa-contracts/{contractId}/amendment": {
       "get": {
         "summary": "List MSA contract amendments",
         "description": "Returns a list of amendments for a specific MSA contract.",
@@ -42535,7 +42535,7 @@
         }
       }
     },
-    "/vendor/msa-contract/{contractId}/amendment/{amendmentId}": {
+    "/vendor/msa-contracts/{contractId}/amendment/{amendmentId}": {
       "get": {
         "summary": "Get MSA contract amendment details",
         "description": "Returns detailed information for a specific MSA contract amendment.",
@@ -42603,7 +42603,7 @@
         }
       }
     },
-    "/vendor/msa-contract/{contractId}/amendment/{amendmentId}/status": {
+    "/vendor/msa-contracts/{contractId}/amendment/{amendmentId}/status": {
       "patch": {
         "summary": "Update MSA contract amendment vendor status",
         "description": "Updates the vendor status of a specific MSA contract amendment (accepted/rejected).",

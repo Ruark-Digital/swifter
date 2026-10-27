@@ -6,7 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Forger, ForgeControl, useForge } from "@/lib/forge";
+import { Forger, ForgeControl, useForge } from "@adexdsamson/forge";
 import {
   TextArea,
   TextInput,
@@ -81,9 +81,20 @@ const FilesListItem = ({
 export function CreateVendorReportForm({
   onSuccess,
   contractId,
+  disabled,
+  invalidateQueryKey,
+  createPath,
 }: {
   onSuccess?: () => void;
   contractId: string;
+  disabled?: boolean;
+  /** Optional extra query key to invalidate on success. MSA callers
+   *  pass the wrapped `useUserQueryKey` list key so their tab refetches.
+   *  The Contract-side keys are always invalidated regardless. */
+  invalidateQueryKey?: readonly unknown[];
+  /** POST endpoint for the report. MSA callers pass the `msa-contracts`
+   *  reports path; falls back to the standalone vendor-contract path. */
+  createPath?: string;
 }) {
   const { control, handleSubmit, setValue, watch, reset } =
     useForge<FormValues>({
@@ -113,7 +124,7 @@ export function CreateVendorReportForm({
     mutationKey: ["vendor-create-report", contractId],
     mutationFn: async ({ payload }) =>
       await postRequest({
-        url: `/contract/vendor/contracts/${contractId}/reports`,
+        url: createPath ?? `/contract/vendor/contracts/${contractId}/reports`,
         payload,
       }),
     onSuccess: () => {
@@ -124,10 +135,14 @@ export function CreateVendorReportForm({
       queryClient.invalidateQueries({
         queryKey: ["vendor-reports-stats", contractId],
       });
+      if (invalidateQueryKey) {
+        queryClient.invalidateQueries({ queryKey: invalidateQueryKey });
+      }
     },
   });
 
   const submit = handleSubmit(async (values) => {
+    if (disabled) return;
     setSubmitting(true);
     try {
       let filesPayload:
@@ -268,6 +283,17 @@ export function CreateVendorReportForm({
               label=""
               component={TextFileUploader}
               control={control as unknown as ForgeControl<FormValues>}
+              accept={
+                {
+                  "application/pdf": [".pdf"],
+                  "application/msword": [".doc"],
+                  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
+                    ".docx",
+                  ],
+                  "image/png": [".png"],
+                  "image/jpeg": [".jpeg", ".jpg"],
+                } as any
+              }
               element={
                 <div className="text-center text-sm text-slate-600">
                   <div className="font-medium">
@@ -306,10 +332,10 @@ export function CreateVendorReportForm({
         </DialogClose>
         <Button
           onClick={submit}
-          disabled={submitting}
+          disabled={submitting || disabled}
           className="h-12 flex-1 rounded-xl bg-[#2A4467] text-white"
         >
-          Create Report
+          Submit Report
         </Button>
       </div>
     </div>
@@ -319,16 +345,28 @@ export function CreateVendorReportForm({
 export default function CreateVendorReportDialog({
   onSuccess,
   contractId,
+  disabled,
+  invalidateQueryKey,
+  createPath,
 }: {
   onSuccess?: () => void;
   contractId: string;
+  disabled?: boolean;
+  invalidateQueryKey?: readonly unknown[];
+  createPath?: string;
 }) {
   return (
     <DialogContent
       className="rounded-2xl p-8"
       showCloseButton={false}
     >
-      <CreateVendorReportForm onSuccess={onSuccess} contractId={contractId} />
+      <CreateVendorReportForm
+        onSuccess={onSuccess}
+        contractId={contractId}
+        disabled={disabled}
+        invalidateQueryKey={invalidateQueryKey}
+        createPath={createPath}
+      />
     </DialogContent>
   );
 }

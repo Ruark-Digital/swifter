@@ -1,8 +1,7 @@
 import React from "react";
-import { Forger } from "@/lib/forge";
+import { Forger } from "@adexdsamson/forge";
 import {
   TextInput,
-  TextSelect,
   TextTagInput,
   TextMultiSelect,
 } from "@/components/layouts/FormInputs";
@@ -12,16 +11,91 @@ import { Personnel } from "./Step7ApprovalLevel";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUser } from "@/store/authSlice";
-import { UseFormSetValue, useFormContext } from "react-hook-form";
+import { UseFormSetValue, useFormContext, useWatch } from "react-hook-form";
 import { CreateContractFormData } from "./CreateContractSheet";
 
 type Props = {
-  setValue?: UseFormSetValue<CreateContractFormData>
+  setValue?: UseFormSetValue<CreateContractFormData>;
+  projectManagerFallbackLabel?: string;
 };
 
-const Step2ContractTeam: React.FC<Props> = ({ setValue }) => {
+type SelectOption = { label: string; value: string; name?: string };
+
+// Module-scope (not an inline closure): Forger's memoization compares the
+// `component` prop via a deepEqual that treats any two plain functions as
+// equal (Object.keys() is empty on both), so an inline arrow here would
+// freeze at its first render and never react to `options` arriving from
+// the network. `options` must be passed as an explicit Forger prop instead
+// of captured via closure so the memo's array diff can see it change.
+const SingleSelectField = ({
+  value,
+  onChange,
+  options,
+  placeholder,
+  fallbackLabel,
+  onVendorSelect,
+  name,
+}: {
+  value?: string;
+  onChange?: (val: string) => void;
+  options: SelectOption[];
+  placeholder: string;
+  fallbackLabel?: string;
+  onVendorSelect?: (label: string) => void;
+  name?: string;
+}) => {
+  const normalizedValue = typeof value === "string" ? value.trim() : "";
+  // A stored id (e.g. the assigned PM) arrives before its option list has
+  // finished loading. Until the option resolves, don't render the raw Mongo
+  // ObjectId as a chip (QA #81 — it flashed for a few seconds before the
+  // vendor's PM fetch completed). Show the placeholder instead; a real typed
+  // value (email/name, not a 24-hex id) still renders, and once the options
+  // load `options.find` resolves the id to the person's name.
+  const isUnresolvedObjectId =
+    /^[a-f\d]{24}$/i.test(normalizedValue) && !fallbackLabel;
+  const selectedOption = normalizedValue
+    ? options.find((option) => option.value === normalizedValue) ??
+      (isUnresolvedObjectId
+        ? undefined
+        : {
+            label: fallbackLabel || normalizedValue,
+            value: normalizedValue,
+          })
+    : undefined;
+
+  const selectedValues = selectedOption ? [selectedOption] : [];
+
+  return (
+    <TextMultiSelect
+      name={name ?? ""}
+      options={options}
+      placeholder={placeholder}
+      maxCount={1}
+      creatable={true}
+      value={selectedValues as any}
+      onChange={(selectedOptions) => {
+        const selected = selectedOptions?.[0];
+        const nextValue =
+          typeof selected?.value === "string" ? selected.value.trim() : "";
+        onChange?.(nextValue);
+        if (onVendorSelect) {
+          const nextLabel =
+            typeof selected?.label === "string" ? selected.label.trim() : nextValue;
+          onVendorSelect(nextLabel);
+        }
+      }}
+    />
+  );
+};
+
+const Step2ContractTeam: React.FC<Props> = ({
+  setValue,
+  projectManagerFallbackLabel,
+}) => {
   const formContext = useFormContext<CreateContractFormData>();
   const applyValue = setValue ?? formContext.setValue;
+  const vendorId = useWatch({ control: formContext.control, name: "vendor" });
+
   const { data: personnelData } = useQuery<
     ApiResponse<Personnel>,
     ApiResponseError
@@ -49,6 +123,17 @@ const Step2ContractTeam: React.FC<Props> = ({ setValue }) => {
     staleTime: 60000,
   });
 
+  const { data: projectManagersData } = useQuery<
+    ApiResponse<Array<{ id: string; name: string; email?: string }>>,
+    ApiResponseError
+  >({
+    queryKey: ["vendor-project-managers", vendorId],
+    queryFn: async () =>
+      await getRequest({ url: `/contract/manager/contracts/vendor/${vendorId}/project-managers` }),
+    enabled: !!vendorId,
+    staleTime: 60000,
+  });
+
   const personnelOptions = React.useMemo(
     () =>
       Array.isArray(personnelData?.data?.data)
@@ -56,13 +141,13 @@ const Step2ContractTeam: React.FC<Props> = ({ setValue }) => {
             id: p._id,
             label:
               p.firstName && p.lastName
-                ? `${p.firstName} (${p.lastName})`
+                ? `${p.firstName} ${p.lastName}`
                 : p.firstName
                 ? p.firstName
                 : (p.email ?? p._id),
             text:
               p.firstName && p.lastName
-                ? `${p.firstName} (${p.lastName})`
+                ? `${p.firstName} ${p.lastName}`
                 : p.firstName
                 ? p.firstName
                 : (p.email ?? p._id),
@@ -90,6 +175,19 @@ const Step2ContractTeam: React.FC<Props> = ({ setValue }) => {
           }))
         : [],
     [vendorsData?.data?.data],
+  );
+
+  const projectManagerOptions = React.useMemo(
+    () =>
+      Array.isArray(projectManagersData?.data?.data)
+        ? projectManagersData?.data?.data.map((pm) => ({
+            id: pm.id,
+            label: pm.name || pm.email || pm.id,
+            text: pm.name || pm.email || pm.id,
+            value: pm.id,
+          }))
+        : [],
+    [projectManagersData?.data?.data],
   );
 
   return (
@@ -140,88 +238,23 @@ const Step2ContractTeam: React.FC<Props> = ({ setValue }) => {
       </div>
 
       <Forger
-        name="projectManager"
-        label="Project Manager"
-        component={({
-          value,
-          onChange,
-        }: {
-          value?: string;
-          onChange?: (val: string) => void;
-        }) => {
-          const normalizedValue = typeof value === "string" ? value.trim() : "";
-          const selectedOption = normalizedValue
-            ? personnelOptions.find((option) => option.value === normalizedValue) ?? {
-                label: normalizedValue,
-                value: normalizedValue,
-              }
-            : undefined;
-
-          const selectedValues = selectedOption ? [selectedOption] : [];
-
-          return (
-            <TextMultiSelect
-              name="projectManager"
-              options={personnelOptions}
-              placeholder="Select project manager or type email"
-              maxCount={1}
-              creatable={true}
-              value={selectedValues as any}
-              onChange={(selectedOptions) => {
-                const selected = selectedOptions?.[0];
-                const nextValue =
-                  typeof selected?.value === "string" ? selected.value.trim() : "";
-                onChange?.(nextValue);
-              }}
-            />
-          );
-        }}
+        name="vendor"
+        label="Vendor / Contractor"
+        component={SingleSelectField}
+        options={vendorOptions}
+        placeholder="Select vendor or type email"
+        onVendorSelect={(label: string) =>
+          applyValue?.("vendorLabel" as never, label as never)
+        }
       />
 
       <Forger
-        name="vendor"
-        label="Vendor / Contractor"
-        component={({
-          value,
-          onChange,
-        }: {
-          value?: string;
-          onChange?: (val: string) => void;
-        }) => {
-          const normalizedValue = typeof value === "string" ? value.trim() : "";
-          const selectedOption = normalizedValue
-            ? vendorOptions.find((option) => option.value === normalizedValue) ?? {
-                label: normalizedValue,
-                value: normalizedValue,
-              }
-            : undefined;
-
-          const selectedValues = selectedOption ? [selectedOption] : [];
-
-          return (
-            <TextMultiSelect
-              name="vendor"
-              options={vendorOptions}
-              placeholder="Select vendor or type email"
-              maxCount={1}
-              creatable={true}
-              value={selectedValues as any}
-              onChange={(selectedOptions) =>
-                {
-                  const selected = selectedOptions?.[0];
-                  const nextValue =
-                    typeof selected?.value === "string" ? selected.value.trim() : "";
-                  const nextLabel =
-                    typeof selected?.label === "string"
-                      ? selected.label.trim()
-                      : nextValue;
-                  onChange?.(nextValue);
-                  applyValue?.("vendorLabel" as never, nextLabel as never);
-                }
-              }
-            />
-          );
-        }}
+        name="projectManager"
+        label="Vendor/Contractor's Primary Contact"
+        component={SingleSelectField}
+        options={projectManagerOptions}
+        placeholder="Select Vendor/Contractor's Primary Contact or Type e-mail"
+        fallbackLabel={projectManagerFallbackLabel}
       />
       <Forger
         name="personnel"
@@ -241,16 +274,6 @@ const Step2ContractTeam: React.FC<Props> = ({ setValue }) => {
         inputClassName="border-0"
         inlineTagsContainerClassName="border-0 outline-0 hover:border-0 focus:border-0 focus-within:ring-0"
         helperText="Add with email address, name"
-      />
-      <Forger
-        name="visibility"
-        label="Visibility"
-        placeholder="Private, Public"
-        component={TextSelect}
-        options={[
-          { label: "Private", value: "private" },
-          { label: "Public", value: "public" },
-        ]}
       />
     </div>
   );

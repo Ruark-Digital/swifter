@@ -18,13 +18,23 @@ const StatCard: React.FC<StatCardProps> = ({
   bgClass = "bg-slate-50",
   testId,
 }) => (
-  <Card data-testid={testId} className="border-slate-200">
-    <CardContent className="p-6 flex items-center justify-between">
-      <div className="space-y-1">
-        <p className="text-sm text-slate-600">{title}</p>
-        <p className="text-2xl font-semibold text-slate-900">{value}</p>
+  <Card data-testid={testId} className="border-slate-200 dark:bg-slate-900 dark:border-slate-700">
+    {/* Compact on mobile (tighter padding, no side icon, smaller value) so the
+        three stats sit in one row instead of three full-height stacked cards;
+        the original horizontal layout with icon returns from `sm` up. */}
+    <CardContent className="p-3 sm:p-6 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
+      <div className="space-y-0.5 sm:space-y-1 min-w-0">
+        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-tight">
+          {title}
+        </p>
+        <p className="text-lg sm:text-2xl font-semibold text-slate-900 dark:text-slate-100">
+          {value}
+        </p>
       </div>
-      <div className={`rounded-full ${bgClass} p-2`} aria-hidden="true">
+      <div
+        className={`hidden sm:block rounded-full ${bgClass} dark:bg-slate-800 p-2`}
+        aria-hidden="true"
+      >
         {icon}
       </div>
     </CardContent>
@@ -38,7 +48,7 @@ const StatsCards: React.FC<{ counts?: { all?: number; active?: number; completed
     completed: counts?.completed ?? 0,
   };
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="grid grid-cols-3 gap-3 sm:gap-6">
       <StatCard
         title="All Projects"
         value={c.all}
@@ -54,7 +64,7 @@ const StatsCards: React.FC<{ counts?: { all?: number; active?: number; completed
         bgClass="bg-green-50"
       />
       <StatCard
-        title="CompletedProjects"
+        title="Completed Projects"
         value={c.completed}
         testId="stats-completed-projects"
         icon={<HugeiconsIcon icon={FolderLibraryIcon} className="h-5 w-5 text-yellow-600" />}

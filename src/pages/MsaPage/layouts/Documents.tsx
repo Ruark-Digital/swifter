@@ -10,11 +10,20 @@ import { getRequest } from "@/lib/axiosInstance";
 import type { File as ContractFile } from "@/types";
 import DocumentsStatsCard from "@/pages/ContractManagementPage/components/DocumentsStatsCard";
 import DocumentsList from "@/pages/ContractManagementPage/components/DocumentsList";
+import CreateMSADialog from "./CreateMSADialog";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type DocumentsProps = {
   contractId: string;
   files?: ContractFile[];
   isActive?: boolean;
+  /** MSA status — read-only documents for anything other than
+   *  `pending_approval`. Comes from the parent `MsaDetailPage`. */
+  status?: string;
+  /** Passed through to the document rows' "Analyze in Clause Library" action.
+   *  Provided by `MsaDetailPage` only when the Clause Library tab is visible;
+   *  invoked after a successful analysis to switch to that tab. */
+  onNavigateToClauseLibrary?: () => void;
 };
 
 type MsaDetailsApiResponse = {
@@ -23,6 +32,7 @@ type MsaDetailsApiResponse = {
     files?: ContractFile[];
     createdAt?: string;
     startDate?: string;
+    status?: string;
   };
 };
 
@@ -30,19 +40,22 @@ const Documents: React.FC<DocumentsProps> = ({
   contractId,
   files,
   isActive,
+  status,
+  onNavigateToClauseLibrary,
 }) => {
-  const { isVendor, isApprover, isViewOnly, isManager } = useUserRole();
+  const { isVendor, isProjectManager, isApprover, isViewOnly, isManager } =
+    useUserRole();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<unknown>(null);
   const documentsQueryKey = useUserQueryKey(["msa-documents", contractId]);
 
   const rolePrefix = React.useMemo(() => {
-    if (isVendor) return "/contract/vendor";
+    if (isVendor || isProjectManager) return "/contract/vendor";
     if (isApprover) return "/contract/approver";
     if (isViewOnly) return "/contract/user";
     return "/contract/manager";
-  }, [isApprover, isVendor, isViewOnly]);
+  }, [isApprover, isVendor, isProjectManager, isViewOnly]);
 
   const {
     data: documentsResponse,
@@ -52,7 +65,7 @@ const Documents: React.FC<DocumentsProps> = ({
     queryKey: documentsQueryKey,
     queryFn: async () => {
       const res = await getRequest({
-        url: `${rolePrefix}/msa-contract/${contractId}`,
+        url: `${rolePrefix}/msa-contracts/${contractId}`,
       });
       return res.data as MsaDetailsApiResponse;
     },
@@ -85,35 +98,50 @@ const Documents: React.FC<DocumentsProps> = ({
   return (
     <TabsContent value="documents" className="space-y-8">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-[#0F0F0F]">Documents</h3>
+        <h3 className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">Documents</h3>
 
         <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            className="h-12 rounded-2xl border-[#E5E7EB] px-5 font-semibold text-[#0F0F0F]"
-          >
-            <Share2 className="mr-2 h-5 w-5" /> Export Report
-          </Button>
-          {isManager && (
+          <ExportReportSheet contractId={contractId} contractType="MsaContract">
             <Button
               variant="outline"
-              className="h-12 rounded-2xl border-[#E5E7EB] px-5 font-semibold text-[#0F0F0F]"
+              className="h-10 rounded-xl border-[#E5E7EB] dark:border-slate-800 px-4 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100"
             >
-              Edit Contract
+              <Share2 className="mr-2 h-4 w-4" /> Export Report
             </Button>
+          </ExportReportSheet>
+          {isManager && (
+            <CreateMSADialog
+              editingMsaId={contractId}
+              initialValues={documentsResponse?.data as any}
+              trigger={
+                <Button
+                  variant="outline"
+                  className="h-10 rounded-xl border-[#E5E7EB] dark:border-slate-800 px-4 text-sm font-semibold text-[#0F0F0F] dark:text-slate-100"
+                >
+                  Edit Contract
+                </Button>
+              }
+            />
           )}
         </div>
       </div>
 
       {isLoading && (
-        <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
+        <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-800 bg-[#F9FAFB] dark:bg-slate-800 px-4 py-3 text-sm text-[#6B7280] dark:text-slate-400">
           Loading documents...
         </div>
       )}
 
       <DocumentsStatsCard count={resolvedFiles.length} />
 
-      <DocumentsList files={resolvedFiles} effectiveDate={effectiveDate} />
+      <DocumentsList
+        files={resolvedFiles}
+        effectiveDate={effectiveDate}
+        contractId={contractId}
+        status={status ?? documentsResponse?.data?.status}
+        contractType="MsaContract"
+        onNavigateToClauseLibrary={onNavigateToClauseLibrary}
+      />
     </TabsContent>
   );
 };

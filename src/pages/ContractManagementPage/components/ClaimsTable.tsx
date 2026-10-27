@@ -1,6 +1,11 @@
 import React from "react";
+import { format } from "date-fns";
 import { DataTable } from "@/components/layouts/DataTable";
-import type { ColumnDef, PaginationState } from "@tanstack/react-table";
+import type {
+  CellContext,
+  ColumnDef,
+  PaginationState,
+} from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +15,67 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import type { ContractClaimDTO } from "../api/contractManagerApi";
+import ChangeDetailsSheet from "./ChangeDetailsSheet";
+import { formatCompactCurrency, formatSecurityType } from "@/lib/utils";
+
+const formatImpact = (item: ContractClaimDTO, currency: string) => {
+  const hasTime = typeof item.time === "number" && Number.isFinite(item.time);
+  const hasCost = typeof item.cost === "number" && Number.isFinite(item.cost);
+  if (hasTime && hasCost)
+    return `${formatCompactCurrency(item.cost || 0, currency)} + ${item.time} days`;
+  if (hasTime) return `${item.time} days`;
+  if (hasCost) return formatCompactCurrency(item.cost || 0, currency);
+  return "-";
+};
+
+function ClaimActionsCell({
+  row,
+  table,
+}: CellContext<ContractClaimDTO, unknown>) {
+  const [sheetOpen, setSheetOpen] = React.useState(false);
+  const meta = table.options.meta as
+    | {
+        contractId?: string;
+        basePath?: string;
+        listInvalidateQueryKey?: readonly unknown[];
+        statsInvalidateQueryKey?: readonly unknown[];
+        claimAssignUrlBuilder?: (claimId: string) => string;
+        currency?: string;
+        owner?: boolean;
+      }
+    | undefined;
+  const contractId = meta?.contractId ?? "";
+  const basePath = meta?.basePath ?? "";
+  const claimId = row.original.claimId || row.original._id || "";
+  const claimAssignUrl = meta?.claimAssignUrlBuilder?.(claimId);
+  return (
+    <>
+      <ChangeDetailsSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        changeId={claimId}
+        contractId={contractId}
+        basePath={basePath}
+        currency={meta?.currency}
+        owner={meta?.owner}
+        listInvalidateQueryKey={meta?.listInvalidateQueryKey}
+        statsInvalidateQueryKey={meta?.statsInvalidateQueryKey}
+        claimAssignUrl={claimAssignUrl}
+      />
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon">⋮</Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => setSheetOpen(true)}>
+            View Details
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
+  );
+}
 
 const columns: ColumnDef<ContractClaimDTO>[] = [
   {
@@ -24,33 +90,33 @@ const columns: ColumnDef<ContractClaimDTO>[] = [
     header: "Claim Title",
     cell: ({ getValue }) => {
       const title = getValue<string | undefined>();
-      return <span className="font-medium text-slate-900">{title ?? "-"}</span>;
+      return <span className="font-medium text-slate-900 dark:text-slate-100">{title ?? "-"}</span>;
     },
   },
   {
     accessorKey: "type",
     header: "Type",
-    cell: ({ getValue }) => getValue<string | undefined>() ?? "-",
+    cell: ({ getValue }) => formatSecurityType(getValue<string | undefined>()),
   },
   {
     id: "impact",
     header: "Impact",
-    cell: ({ row }) => {
-      const impact = row.original.impact;
-      if (impact === "time") return <span className="font-semibold">{row.original.time ?? "-"}</span>;
-      if (impact === "cost") return <span className="font-semibold">{row.original.cost ?? "-"}</span>;
-      if (impact === "time_cost") {
-        const time = row.original.time ?? "-";
-        const cost = row.original.cost ?? "-";
-        return <span className="font-semibold">{`${time} + ${cost}`}</span>;
-      }
-      return <span className="font-semibold">-</span>;
+    cell: ({ row, table }) => {
+      const meta = table.options.meta as { currency?: string } | undefined;
+      return (
+        <span className="font-semibold">
+          {formatImpact(row.original, meta?.currency || "USD")}
+        </span>
+      );
     },
   },
   {
-    id: "submitted",
+    accessorKey: "createdAt",
     header: "Submitted",
-    cell: () => "-",
+    cell: ({ getValue }) => {
+      const date = getValue<string | undefined>();
+      return date ? format(new Date(date), "dd MMM yyyy") : "-";
+    },
   },
   {
     accessorKey: "status",
@@ -87,35 +153,41 @@ const columns: ColumnDef<ContractClaimDTO>[] = [
   {
     id: "actions",
     header: "Actions",
-    cell: () => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon">⋮</Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem asChild>
-            <a href="#" data-testid="view-claim-detail">View Details</a>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
+    cell: (ctx) => <ClaimActionsCell {...ctx} />,
   },
 ];
 
 type ClaimsTableProps = {
+  contractId: string;
+  basePath: string;
   rows?: ContractClaimDTO[];
   isLoading?: boolean;
   totalCount?: number;
   pagination: PaginationState;
   setPagination: React.Dispatch<React.SetStateAction<PaginationState>>;
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
+  claimAssignUrlBuilder?: (claimId: string) => string;
+  /** Contract-level currency; falls back to USD when the API omits it. */
+  currency?: string;
+  /** Is the logged-in user the contract's owner/manager — threaded to the
+   *  claim detail sheet to gate the manager decision actions. */
+  owner?: boolean;
 };
 
 const ClaimsTable: React.FC<ClaimsTableProps> = ({
+  contractId,
+  basePath,
   rows = [],
   isLoading,
   totalCount,
   pagination,
   setPagination,
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
+  claimAssignUrlBuilder,
+  currency,
+  owner,
 }) => {
   const [search, setSearch] = React.useState("");
 
@@ -171,6 +243,15 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
           manualPagination: true,
           pagination,
           setPagination,
+          meta: {
+            contractId,
+            basePath,
+            listInvalidateQueryKey,
+            statsInvalidateQueryKey,
+            claimAssignUrlBuilder,
+            currency,
+            owner,
+          },
         }}
       />
     </div>

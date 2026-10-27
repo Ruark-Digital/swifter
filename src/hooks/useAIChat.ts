@@ -7,12 +7,21 @@ interface ReferencedMessage {
   timestamp: Date;
 }
 
+// Lightweight attachment descriptor kept on a message for transcript display
+// (the raw base64 bytes are only needed at send time, never stored here).
+interface MessageAttachment {
+  name: string;
+  type: string;
+  size: number;
+}
+
 interface Message {
   id: string;
   content: string;
   sender: 'user' | 'ai';
   timestamp: Date;
   referencedMessage?: ReferencedMessage;
+  attachments?: MessageAttachment[];
 }
 
 interface UseAIChatOptions {
@@ -112,4 +121,4 @@ export const useAIChat = (options: UseAIChatOptions = {}) => {
   };
 };
 
-export type { Message, ReferencedMessage };
+export type { Message, ReferencedMessage, MessageAttachment };

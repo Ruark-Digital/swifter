@@ -41,7 +41,7 @@ export const getEvaluationStatusDisplayInfo = (status: string): EvaluationStatus
       return {
         label: "Active",
         description: "At least one group has started scoring.",
-        colorClass: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 border-blue-200 dark:border-blue-700"
+        colorClass: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 border-green-200 dark:border-green-700"
       };
     case "release":
       return {
@@ -59,7 +59,7 @@ export const getEvaluationStatusDisplayInfo = (status: string): EvaluationStatus
       return {
         label: "Completed",
         description: "All scoring is done.",
-        colorClass: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 border-green-200 dark:border-green-700"
+        colorClass: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 border-blue-200 dark:border-blue-700"
       };
     default:
       return {

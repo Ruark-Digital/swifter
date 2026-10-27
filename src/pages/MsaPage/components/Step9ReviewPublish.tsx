@@ -1,5 +1,7 @@
 import React from "react";
-import { useWatch, Control } from "react-hook-form";
+import { useWatch } from "react-hook-form";
+import { useQuery } from "@tanstack/react-query";
+import { useUser } from "@/store/authSlice";
 import {
   Accordion,
   AccordionContent,
@@ -7,16 +9,29 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
+import { getRequest } from "@/lib/axiosInstance";
 
-type Props = { control: Control<any> };
+type Props = { control: any };
+
+function extractList<T>(value: unknown): T[] {
+  if (Array.isArray(value)) return value as T[];
+  if (Array.isArray((value as any)?.docs)) return (value as any).docs as T[];
+  if (Array.isArray((value as any)?.data)) return (value as any).data as T[];
+  if (Array.isArray((value as any)?.vendors))
+    return (value as any).vendors as T[];
+  return [];
+}
 
 const Step9ReviewPublish: React.FC<Props> = ({ control }) => {
+  const currentUser = useUser();
   const name = useWatch({ control, name: "name" });
   const type = useWatch({ control, name: "type" });
   const description = useWatch({ control, name: "description" });
   const rating = useWatch({ control, name: "rating" });
 
-  const manager = useWatch({ control, name: "manager" });
+  const managerRaw = useWatch({ control, name: "manager" });
+  const manager = managerRaw || currentUser?.name || currentUser?.email;
+  const currency = useWatch({ control, name: "currency" }) as string | undefined;
   const vendor = useWatch({ control, name: "vendor" });
   const contractValue = useWatch({ control, name: "contractValue" });
   const paymentStructure = useWatch({ control, name: "paymentStructure" });
@@ -36,6 +51,48 @@ const Step9ReviewPublish: React.FC<Props> = ({ control }) => {
     | { name?: string | null; approvers?: unknown; approvalLevel?: string }[]
     | undefined;
 
+  const { data: typesRes } = useQuery({
+    queryKey: ["msaReview", "types"],
+    queryFn: async () => await getRequest({ url: "/contract/manager/types" }),
+    staleTime: 60000,
+  });
+  const { data: paymentTermsRes } = useQuery({
+    queryKey: ["msaReview", "paymentTerms"],
+    queryFn: async () =>
+      await getRequest({ url: "/contract/manager/payment-terms" }),
+    staleTime: 60000,
+  });
+  const { data: vendorsRes } = useQuery({
+    queryKey: ["msaReview", "vendors"],
+    queryFn: async () =>
+      await getRequest({ url: "/procurement/solicitations/vendors" }),
+    staleTime: 60000,
+  });
+
+  const resolvedType = React.useMemo(() => {
+    const options = extractList<{ _id?: string; name?: string }>(
+      (typesRes as any)?.data?.data,
+    );
+    const byId = options.find((item) => item?._id === type);
+    return byId?.name || type;
+  }, [type, typesRes]);
+  const resolvedPaymentTerm = React.useMemo(() => {
+    const options = extractList<{ _id?: string; name?: string }>(
+      (paymentTermsRes as any)?.data?.data,
+    );
+    const byId = options.find((item) => item?._id === paymentTerm);
+    return byId?.name || paymentTerm;
+  }, [paymentTerm, paymentTermsRes]);
+  const resolvedVendor = React.useMemo(() => {
+    const options = extractList<{ _id?: string; name?: string; email?: string }>(
+      (vendorsRes as any)?.data?.data,
+    );
+    const byId = options.find((item) => item?._id === vendor);
+    if (byId) return byId?.name || byId?.email || vendor;
+    const byEmail = options.find((item) => item?.email === vendor);
+    return byEmail?.name || byEmail?.email || vendor;
+  }, [vendor, vendorsRes]);
+
   const formatDate = (value?: Date | null) => {
     if (!value) return "Not specified";
     return value.toLocaleDateString();
@@ -43,7 +100,14 @@ const Step9ReviewPublish: React.FC<Props> = ({ control }) => {
 
   const formatAmount = (value: unknown) => {
     if (value == null || value === "") return "Not specified";
-    if (typeof value === "number") return value.toLocaleString();
+    const numeric = typeof value === "number" ? value : Number(String(value).replace(/[^0-9.]/g, ""));
+    if (Number.isFinite(numeric)) {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: currency || "CAD",
+        maximumFractionDigits: 2,
+      }).format(numeric);
+    }
     return String(value);
   };
 
@@ -56,32 +120,34 @@ const Step9ReviewPublish: React.FC<Props> = ({ control }) => {
 
   return (
     <div className="mt-4 space-y-4">
-      <p className="text-sm font-semibold text-slate-900">Contract Summary</p>
+      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Contract Summary</p>
 
       <Accordion type="single" collapsible defaultValue="1" className="w-full space-y-3">
-        <AccordionItem value="1" className="border border-gray-200 rounded-lg">
-          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 hover:no-underline">
+        <AccordionItem value="1" className="border border-gray-200 dark:border-slate-700 rounded-lg">
+          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 text-slate-900 dark:text-slate-100 hover:no-underline">
             <span className="font-medium">1. Basic Information</span>
           </AccordionTrigger>
           <AccordionContent className="px-4 pb-4">
             <div className="space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-slate-500">Contract Name</p>
-                  <p className="text-slate-800">{name || "Not specified"}</p>
+                  <p className="text-slate-500 dark:text-slate-400">Contract Name</p>
+                  <p className="text-slate-800 dark:text-slate-200">{name || "Not specified"}</p>
                 </div>
                 <div>
-                  <p className="text-slate-500">Contract Type</p>
-                  <p className="text-slate-800">{type || "Not specified"}</p>
+                  <p className="text-slate-500 dark:text-slate-400">Contract Type</p>
+                  <p className="text-slate-800 dark:text-slate-200">
+                    {resolvedType || "Not specified"}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-slate-500">Complexity Rating</p>
-                  <p className="text-slate-800">{rating || "Not specified"}</p>
+                  <p className="text-slate-500 dark:text-slate-400">Complexity Rating</p>
+                  <p className="text-slate-800 dark:text-slate-200">{rating || "Not specified"}</p>
                 </div>
               </div>
               <div>
-                <p className="text-slate-500">Description</p>
-                <p className="text-slate-700 mt-1">
+                <p className="text-slate-500 dark:text-slate-400">Description</p>
+                <p className="text-slate-700 dark:text-slate-300 mt-1">
                   {description || "No description provided"}
                 </p>
               </div>
@@ -92,8 +158,8 @@ const Step9ReviewPublish: React.FC<Props> = ({ control }) => {
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="2" className="border border-gray-200 rounded-lg">
-          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 hover:no-underline">
+        <AccordionItem value="2" className="border border-gray-200 dark:border-slate-700 rounded-lg">
+          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 text-slate-900 dark:text-slate-100 hover:no-underline">
             <span className="font-medium">2. Contract Team</span>
           </AccordionTrigger>
           <AccordionContent className="px-4 pb-4">
@@ -101,62 +167,66 @@ const Step9ReviewPublish: React.FC<Props> = ({ control }) => {
               {hasTeamInfo ? (
                 <>
                   <div>
-                    <p className="text-slate-500">Contract Manager</p>
-                    <p className="text-slate-800">{manager || "Not specified"}</p>
+                    <p className="text-slate-500 dark:text-slate-400">Contract Manager</p>
+                    <p className="text-slate-800 dark:text-slate-200">{manager || "Not specified"}</p>
                   </div>
                   <div>
-                    <p className="text-slate-500">Vendor</p>
-                    <p className="text-slate-800">{vendor || "Not specified"}</p>
+                    <p className="text-slate-500 dark:text-slate-400">Vendor</p>
+                    <p className="text-slate-800 dark:text-slate-200">
+                      {resolvedVendor || "Not specified"}
+                    </p>
                   </div>
                 </>
               ) : (
-                <p className="text-slate-500">No team members added</p>
+                <p className="text-slate-500 dark:text-slate-400">No team members added</p>
               )}
             </div>
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="3" className="border border-gray-200 rounded-lg">
-          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 hover:no-underline">
+        <AccordionItem value="3" className="border border-gray-200 dark:border-slate-700 rounded-lg">
+          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 text-slate-900 dark:text-slate-100 hover:no-underline">
             <span className="font-medium">3. Contract Value &amp; Payments</span>
           </AccordionTrigger>
           <AccordionContent className="px-4 pb-4">
             <div className="space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-slate-500">Total Contract Value</p>
-                  <p className="text-slate-800">{formatAmount(contractValue)}</p>
+                  <p className="text-slate-500 dark:text-slate-400">Total Contract Value</p>
+                  <p className="text-slate-800 dark:text-slate-200">{formatAmount(contractValue)}</p>
                 </div>
                 <div>
-                  <p className="text-slate-500">Payment Structure</p>
-                  <p className="text-slate-800">{paymentStructure || "Not specified"}</p>
+                  <p className="text-slate-500 dark:text-slate-400">Payment Structure</p>
+                  <p className="text-slate-800 dark:text-slate-200">{paymentStructure || "Not specified"}</p>
                 </div>
                 <div>
-                  <p className="text-slate-500">Payment Term</p>
-                  <p className="text-slate-800">{paymentTerm || "Not specified"}</p>
+                  <p className="text-slate-500 dark:text-slate-400">Payment Term</p>
+                  <p className="text-slate-800 dark:text-slate-200">
+                    {resolvedPaymentTerm || "Not specified"}
+                  </p>
                 </div>
               </div>
               {hasMilestones ? (
                 <div className="space-y-2">
-                  <p className="text-slate-500">Milestones</p>
+                  <p className="text-slate-500 dark:text-slate-400">Milestones</p>
                   <div className="space-y-1">
                     {milestones?.map((m, idx) => (
                       <div key={idx} className="flex items-center justify-between text-sm">
-                        <span className="text-slate-700">{m.name || `Milestone ${idx + 1}`}</span>
-                        <span className="text-slate-500">{formatAmount(m.amount)}</span>
+                        <span className="text-slate-700 dark:text-slate-300">{m.name || `Milestone ${idx + 1}`}</span>
+                        <span className="text-slate-500 dark:text-slate-400">{formatAmount(m.amount)}</span>
                       </div>
                     ))}
                   </div>
                 </div>
               ) : (
-                <p className="text-slate-500">No milestones added</p>
+                <p className="text-slate-500 dark:text-slate-400">No milestones added</p>
               )}
             </div>
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="4" className="border border-gray-200 rounded-lg">
-          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 hover:no-underline">
+        <AccordionItem value="4" className="border border-gray-200 dark:border-slate-700 rounded-lg">
+          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 text-slate-900 dark:text-slate-100 hover:no-underline">
             <span className="font-medium">4. Timeline</span>
           </AccordionTrigger>
           <AccordionContent className="px-4 pb-4">
@@ -164,23 +234,23 @@ const Step9ReviewPublish: React.FC<Props> = ({ control }) => {
               {hasTimeline ? (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-slate-500">Effective Date</p>
-                    <p className="text-slate-800">{formatDate(effectiveDate)}</p>
+                    <p className="text-slate-500 dark:text-slate-400">Effective Date</p>
+                    <p className="text-slate-800 dark:text-slate-200">{formatDate(effectiveDate)}</p>
                   </div>
                   <div>
-                    <p className="text-slate-500">End Date</p>
-                    <p className="text-slate-800">{formatDate(endDate)}</p>
+                    <p className="text-slate-500 dark:text-slate-400">End Date</p>
+                    <p className="text-slate-800 dark:text-slate-200">{formatDate(endDate)}</p>
                   </div>
                 </div>
               ) : (
-                <p className="text-slate-500">No timeline set</p>
+                <p className="text-slate-500 dark:text-slate-400">No timeline set</p>
               )}
             </div>
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="5" className="border border-gray-200 rounded-lg">
-          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 hover:no-underline">
+        <AccordionItem value="5" className="border border-gray-200 dark:border-slate-700 rounded-lg">
+          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 text-slate-900 dark:text-slate-100 hover:no-underline">
             <span className="font-medium">5. Deliverables</span>
           </AccordionTrigger>
           <AccordionContent className="px-4 pb-4">
@@ -188,20 +258,20 @@ const Step9ReviewPublish: React.FC<Props> = ({ control }) => {
               {hasDeliverables ? (
                 <ul className="list-disc list-inside space-y-1">
                   {deliverables?.map((d, idx) => (
-                    <li key={idx} className="text-slate-800">
+                    <li key={idx} className="text-slate-800 dark:text-slate-200">
                       {d.name || `Deliverable ${idx + 1}`} – {formatDate(d.dueDate ?? undefined)}
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-slate-500">No deliverables added</p>
+                <p className="text-slate-500 dark:text-slate-400">No deliverables added</p>
               )}
             </div>
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="6" className="border border-gray-200 rounded-lg">
-          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 hover:no-underline">
+        <AccordionItem value="6" className="border border-gray-200 dark:border-slate-700 rounded-lg">
+          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 text-slate-900 dark:text-slate-100 hover:no-underline">
             <span className="font-medium">6. Configure Approval Level</span>
           </AccordionTrigger>
           <AccordionContent className="px-4 pb-4">
@@ -211,38 +281,38 @@ const Step9ReviewPublish: React.FC<Props> = ({ control }) => {
                   {approvalGroups?.map((g, idx) => (
                     <div key={idx} className="flex items-center justify-between">
                       <div>
-                        <p className="text-slate-700 font-medium">{g.name || `Group ${idx + 1}`}</p>
-                        <p className="text-slate-500 text-xs">Approval Level {g.approvalLevel || "-"}</p>
+                        <p className="text-slate-700 dark:text-slate-300 font-medium">{g.name || `Group ${idx + 1}`}</p>
+                        <p className="text-slate-500 dark:text-slate-400 text-xs">Approval Level {g.approvalLevel || "-"}</p>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-slate-500">No approval groups configured</p>
+                <p className="text-slate-500 dark:text-slate-400">No approval groups configured</p>
               )}
             </div>
           </AccordionContent>
         </AccordionItem>
 
-        <AccordionItem value="7" className="border border-gray-200 rounded-lg">
-          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 hover:no-underline">
+        <AccordionItem value="7" className="border border-gray-200 dark:border-slate-700 rounded-lg">
+          <AccordionTrigger className="px-4 py-3 text-[15px] leading-6 text-slate-900 dark:text-slate-100 hover:no-underline">
             <span className="font-medium">7. Documents</span>
           </AccordionTrigger>
           <AccordionContent className="px-4 pb-4">
             <div className="space-y-2 text-sm">
               {hasDocuments ? (
                 <>
-                  <p className="text-slate-500 mb-2">Uploaded Documents ({documents?.length})</p>
+                  <p className="text-slate-500 dark:text-slate-400 mb-2">Uploaded Documents ({documents?.length})</p>
                   <ul className="list-disc list-inside space-y-1">
                     {documents?.map((file, idx) => (
-                      <li key={idx} className="text-slate-800">
+                      <li key={idx} className="text-slate-800 dark:text-slate-200">
                         {file.name}
                       </li>
                     ))}
                   </ul>
                 </>
               ) : (
-                <p className="text-slate-500">No documents uploaded</p>
+                <p className="text-slate-500 dark:text-slate-400">No documents uploaded</p>
               )}
             </div>
           </AccordionContent>

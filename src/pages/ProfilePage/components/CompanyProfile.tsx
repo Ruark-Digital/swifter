@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { getRequest, putRequest, postRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
-import { Forge, Forger, useForge } from "@/lib/forge";
-import { TextInput } from "@/components/layouts/FormInputs/TextInput";
+import { Forge, Forger, useForge } from "@adexdsamson/forge";
+import { TextInput, TextTagInput } from "@/components/layouts/FormInputs/TextInput";
+import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/store/authSlice";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -25,11 +26,31 @@ interface CompanyData {
   businessType: string;
   location: string;
   website: string;
+  currency?: string;
   logo?: string;
   companyId: {
     _id: string;
-    name: string
+    name: string;
+    currency?: string;
   }
+}
+
+/**
+ * `GET /companies/me`. The company-owned fields that `PUT /users/company`
+ * writes (businessType, location, website, phone, logo) live on the COMPANY
+ * document, not on the user — reading them back off `/users/me` is what made
+ * saved values look discarded (QA #273).
+ */
+interface CompanyDetail {
+  _id: string;
+  name: string;
+  phone?: string;
+  businessType?: string;
+  location?: string;
+  website?: string;
+  currency?: string;
+  logo?: string;
+  apEmails?: string[];
 }
 
 type FormValues = {
@@ -40,7 +61,20 @@ type FormValues = {
   businessType: string;
   location: string;
   website: string;
+  currency: string;
+  apEmails?: { id: string; text: string }[];
 }
+
+const CURRENCY_OPTIONS = [
+  { label: "CAD - Canadian Dollar", value: "CAD" },
+  { label: "USD - US Dollar", value: "USD" },
+  { label: "EUR - Euro", value: "EUR" },
+  { label: "GBP - British Pound", value: "GBP" },
+  { label: "AUD - Australian Dollar", value: "AUD" },
+  { label: "NGN - Nigerian Naira", value: "NGN" },
+  { label: "ZAR - South African Rand", value: "ZAR" },
+  { label: "GHS - Ghanaian Cedi", value: "GHS" },
+];
 
 const CompanyProfile: React.FC = () => {
   const user = useUser();
@@ -60,6 +94,17 @@ const CompanyProfile: React.FC = () => {
     retryOnMount: true
   });
 
+  // Query for the company record itself — the source of truth for the fields
+  // this form saves.
+  const {
+    data: companyDetail,
+    refetch: refetchCompanyDetail,
+  } = useQuery<ApiResponse<CompanyDetail>, ApiResponseError>({
+    queryKey: ["getCompanyDetail"],
+    queryFn: async () => await getRequest({ url: "/companies/me" }),
+    enabled: !!user?._id,
+  });
+
   // Mutation to update company profile
   const { mutateAsync: updateCompanyProfile, isPending } = useMutation<
     ApiResponse<{ user: any }>,
@@ -72,6 +117,7 @@ const CompanyProfile: React.FC = () => {
     onSuccess: () => {
       toast.success("Success", "Company profile updated successfully");
       refetch();
+      refetchCompanyDetail();
     },
     onError: (error) => {
       console.log(error);
@@ -115,22 +161,35 @@ const CompanyProfile: React.FC = () => {
   useEffect(() => {
     if(isSuccess) {
       const _companyData = companyData?.data?.data?.user;
-      
+      const _company = companyDetail?.data?.data;
+
       const payload = {
-        name: _companyData?.companyId?.name || user?.name || "",
+        name: _company?.name || _companyData?.companyId?.name || user?.name || "",
         email: _companyData?.email || user?.email || "",
         contact: _companyData?.contact || user?.name || "",
-        phone: _companyData?.phone || user?.phone || "",
-        businessType: _companyData?.businessType || user?.businessType || "",
-        location: _companyData?.location || user?.location || "",
-        website: _companyData?.website || user?.website || "",
+        phone: _company?.phone || _companyData?.phone || user?.phone || "",
+        businessType: _company?.businessType || _companyData?.businessType || user?.businessType || "",
+        location: _company?.location || _companyData?.location || user?.location || "",
+        website: _company?.website || _companyData?.website || user?.website || "",
+        currency: _company?.currency || _companyData?.companyId?.currency || _companyData?.currency || "CAD",
       }
-      
+
       Object.entries(payload).forEach(([key, value]) => {
         setValue(key as keyof FormValues, value)
       })
+
+      // AP emails live on the company doc. GET /companies/me is spec-opaque, so
+      // guard: only pre-fill when the field is actually returned. If it isn't,
+      // leave the field empty AND rely on handleSubmit omitting empty apEmails
+      // from the PUT so an unrelated save never clobbers existing AP emails.
+      const apEmailTags =
+        _company?.apEmails?.map((email, index) => ({
+          id: `${index}-${email}`,
+          text: email,
+        })) || [];
+      setValue("apEmails", apEmailTags);
     }
-  }, [isSuccess, setValue]);
+  }, [isSuccess, companyData, companyDetail, setValue]);
 
   const handleSubmit = async (data: any) => {
     try {
@@ -151,6 +210,18 @@ const CompanyProfile: React.FC = () => {
         }
       }
       
+      // AP emails: TagInput yields {id,text} objects; PUT /users/company expects
+      // string[]. Convert, and OMIT when empty so an unrelated save never wipes
+      // AP emails that a super-admin may have set (GET /companies/me read-back is
+      // not spec-guaranteed, so the field may not have pre-filled).
+      if (Array.isArray(data.apEmails)) {
+        const apList = data.apEmails
+          .map((t: { text: string }) => t.text)
+          .filter(Boolean);
+        if (apList.length > 0) data.apEmails = apList;
+        else delete data.apEmails;
+      }
+
       await updateCompanyProfile(data);
     } catch (error) {
       // Error handling is done in the mutation's onError callback
@@ -182,16 +253,27 @@ const CompanyProfile: React.FC = () => {
       <div className="flex items-center gap-6 mb-8">
         {/* Company Logo */}
         <AvatarUploader
-          currentImage={companyData?.data?.data?.user?.logo || user?.logo}
+          currentImage={
+            companyDetail?.data?.data?.logo ||
+            companyData?.data?.data?.user?.logo ||
+            user?.logo
+          }
           selectedFiles={selectedFiles}
           onFilesChange={setSelectedFiles}
-          fallbackText={companyData?.data?.data?.user?.companyId?.name?.charAt(0) || "C"}
+          fallbackText={
+            (
+              companyDetail?.data?.data?.name ||
+              companyData?.data?.data?.user?.companyId?.name
+            )?.charAt(0) || "C"
+          }
         />
 
         {/* Company Header */}
         <div className="flex-1">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">
-            {companyData?.data?.data?.user?.companyId?.name || "Company Name"}
+            {companyDetail?.data?.data?.name ||
+              companyData?.data?.data?.user?.companyId?.name ||
+              "Company Name"}
           </h2>
           <p className="text-gray-600 dark:text-gray-400 mb-3">
             Update your logo and Company details.
@@ -272,6 +354,25 @@ const CompanyProfile: React.FC = () => {
           name="website"
           label="Website"
           placeholder=""
+          containerClass="space-y-2"
+        />
+
+        {/* Default Currency */}
+        <Forger
+          component={TextSelect}
+          name="currency"
+          label="Default Currency"
+          placeholder="Select currency"
+          options={CURRENCY_OPTIONS}
+          containerClass="space-y-2"
+        />
+
+        {/* Accounts Payable Emails */}
+        <Forger
+          component={TextTagInput}
+          name="apEmails"
+          label="Accounts Payable Email(s)"
+          helperText="Invoice emails (submitted, approved, rejected) are sent here. Separate each email with a comma or enter button."
           containerClass="space-y-2"
         />
 

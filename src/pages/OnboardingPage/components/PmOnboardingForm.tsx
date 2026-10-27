@@ -1,8 +1,14 @@
 import React from "react";
-import { TextInput } from "@/components/layouts/FormInputs";
-import { Forger } from "@/lib/forge";
+import { TextInput, TextSelect } from "@/components/layouts/FormInputs";
+import { Forger } from "@adexdsamson/forge";
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
+import timezones from "@/assets/timezones.json";
+
+const timeZoneOptions = [
+  { label: "Select Timezone", value: "" },
+  ...timezones,
+];
 
 interface PmOnboardingFormProps {}
 
@@ -28,6 +34,7 @@ const PmOnboardingForm: React.FC<PmOnboardingFormProps> = () => {
         type="email"
         disabled
         containerClass="w-full"
+        autoComplete="email"
       />
 
       <Forger
@@ -35,6 +42,16 @@ const PmOnboardingForm: React.FC<PmOnboardingFormProps> = () => {
         component={TextInput}
         label="Phone Number"
         placeholder="+1 (555) 000-0000"
+        containerClass="w-full"
+        autoComplete="tel"
+      />
+
+      <Forger
+        name="timezone"
+        component={TextSelect}
+        label="Time Zone"
+        placeholder="Select Timezone"
+        options={timeZoneOptions}
         containerClass="w-full"
       />
 
@@ -45,6 +62,7 @@ const PmOnboardingForm: React.FC<PmOnboardingFormProps> = () => {
         placeholder="Enter Password"
         type={showPassword ? "text" : "password"}
         containerClass="w-full"
+        autoComplete="new-password"
         endAdornment={
           <button
             type="button"
@@ -67,6 +85,7 @@ const PmOnboardingForm: React.FC<PmOnboardingFormProps> = () => {
         placeholder="Enter Password"
         type={showConfirmPassword ? "text" : "password"}
         containerClass="w-full"
+        autoComplete="new-password"
         endAdornment={
           <button
             type="button"

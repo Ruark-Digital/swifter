@@ -50,7 +50,8 @@ type VendorDashboard = {
   allVendor: number;
   activeVendor: number;
   inActiveVendor: number;
-  suspendedVendor: number;
+  pendingVendor: number;
+  suspendVendor: number;
 };
 
 export interface InvitedEmail {
@@ -277,9 +278,9 @@ export const VendorManagementPage = () => {
             endDate = endOfYear(today);
             break;
           default:
-            // For custom date ranges, try to parse as date range format
+            // Custom range: datePublished is already the combined
+            // `yyyy/MM/dd-yyyy/MM/dd` string — pass it straight through.
             if (filters.datePublished.includes('-')) {
-              // If it's already in start_date-end_date format, use it directly
               params.date = filters.datePublished;
             } else {
               // For other predefined options like "7_days", convert to proper date range
@@ -296,31 +297,25 @@ export const VendorManagementPage = () => {
                   startDate = startOfDay(subDays(today, 29));
                   endDate = endOfDay(today);
                   break;
-                default:
-                  // Fallback: use the original value if we can't parse it
-                  params.date = filters.datePublished;
-                  break;
+                // Unrecognized value: no date filter.
               }
             }
             break;
         }
 
-        // If we calculated a date range, format and add it to params
+        // If we calculated a date range, add the combined
+        // `date=yyyy/MM/dd-yyyy/MM/dd` range param the backend expects.
         if (startDate && endDate) {
-          const formattedStartDate = format(startDate, "yyyy-MM-dd");
-          const formattedEndDate = format(endDate, "yyyy-MM-dd");
-          params.date = `${formattedStartDate}-${formattedEndDate}`;
+          params.date = `${format(startDate, "yyyy/MM/dd")}-${format(endDate, "yyyy/MM/dd")}`;
         }
       }
 
-      // Add status filter if selected
+      // Add status filter if selected. Suspended is filtered via the same
+      // `status` param as the others (the API expects status=suspended, not
+      // a separate isSuspended flag).
       if (filters.status && filters.status !== "all_status") {
-        if (filters.status === "Suspended") {
-          params.isSuspended = true;
-        } else {
-          params.status = filters.status;
-          params.isSuspended = false;
-        }
+        params.status =
+          filters.status === "Suspended" ? "suspended" : filters.status;
       }
 
       // Add plan filter if selected
@@ -439,7 +434,8 @@ export const VendorManagementPage = () => {
     allVendor: 0,
     activeVendor: 0,
     inActiveVendor: 0,
-    suspendedVendor: 0,
+    pendingVendor: 0,
+    suspendVendor: 0,
   };
 
   const vendors = vendorsData?.data?.data?.vendors || [];
@@ -462,6 +458,9 @@ export const VendorManagementPage = () => {
         break;
       case "inactive":
         setFilters((prev) => ({ ...prev, status: "Inactive" }));
+        break;
+      case "pending":
+        setFilters((prev) => ({ ...prev, status: "Pending" }));
         break;
       case "suspended":
         setFilters((prev) => ({ ...prev, status: "Suspended" }));
@@ -504,8 +503,10 @@ export const VendorManagementPage = () => {
   // Confirm and cancel handlers for custom date range
   const handleDateRangeConfirm = () => {
     if (tempDateRange?.from && tempDateRange?.to) {
-      const start = format(startOfDay(tempDateRange.from), "yyyy-MM-dd");
-      const end = format(endOfDay(tempDateRange.to), "yyyy-MM-dd");
+      // Store the custom range as the combined `yyyy/MM/dd-yyyy/MM/dd` string
+      // the backend's `date=` filter expects; the query builder passes it through.
+      const start = format(startOfDay(tempDateRange.from), "yyyy/MM/dd");
+      const end = format(endOfDay(tempDateRange.to), "yyyy/MM/dd");
       setFilters((prev) => ({ ...prev, datePublished: `${start}-${end}` }));
       setPagination((prev) => ({ ...prev, pageIndex: 0 }));
     }
@@ -664,11 +665,20 @@ export const VendorManagementPage = () => {
           isActive={activeStatCard === "inactive"}
         />
         <StatCard
-          title="Suspended Vendors"
-          value={vendorStats.suspendedVendor ?? 0}
+          title="Pending Vendors"
+          value={vendorStats.pendingVendor ?? 0}
           icon={IconMap?.users as any}
           iconColor="text-yellow-600"
           iconBgColor="bg-yellow-100"
+          onClick={() => handleStatCardClick("pending")}
+          isActive={activeStatCard === "pending"}
+        />
+        <StatCard
+          title="Suspended Vendors"
+          value={vendorStats.suspendVendor ?? 0}
+          icon={IconMap?.users as any}
+          iconColor="text-gray-600"
+          iconBgColor="bg-gray-100"
           onClick={() => handleStatCardClick("suspended")}
           isActive={activeStatCard === "suspended"}
         />

@@ -1,5 +1,5 @@
 import React from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SEOWrapper } from "@/components/SEO";
 import { Badge } from "@/components/ui/badge";
@@ -18,13 +18,16 @@ import { useToastHandler } from "@/hooks/useToaster";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import type { ApiResponseError, ContractDetail } from "@/types";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useUser } from "@/store/authSlice";
 import { vendorApi } from "./api/vendorApi";
 import { contractManagerApi } from "./api/contractManagerApi";
 import { approverApi } from "./api/approverApi";
 import { viewOnlyApi } from "./api/viewOnlyApi";
 import { companyAdminApi } from "./api/companyAdminApi";
+import { resolvePendingPmTakeover } from "./pmTakeover";
 import AnalyticsTabContent from "./layouts/AnalyticsTabContent";
 import ApproversTabContent from "./layouts/ApproversTabContent";
+import VendorPersonnelTabContent from "./layouts/VendorPersonnelTabContent";
 import ActionLogTabContent from "./layouts/ActionLogTabContent";
 import ChangeTabContent from "./layouts/ChangeTabContent";
 import ClaimsTabContent from "./layouts/ClaimsTabContent";
@@ -41,8 +44,13 @@ import RateSheetsTabContent from "./layouts/RateSheetsTabContent";
 import KpiTabContent from "./layouts/KpiTabContent";
 import OverviewTab from "./layouts/OverviewTab";
 import RfiTabContent from "./layouts/RfiTabContent";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import VendorReportsTabContent from "./layouts/VendorReportsTabContent";
+import ContractLifecycleDialog from "./components/ContractLifecycleDialog";
+import AssignProjectManagerDialog from "./components/AssignProjectManagerDialog";
+import {
+  availableLifecycleActions,
+  type LifecycleAction,
+} from "./components/contractLifecycle";
 import {
   Dialog,
   DialogContent,
@@ -52,29 +60,33 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import { cn, resolveCurrency } from "@/lib/utils";
 
 const formatContractStatus = (status?: ContractDetail["status"]) => {
   if (status === "active")
-    return { label: "Active", className: "bg-green-100 text-green-700" };
+    return { label: "Active", className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" };
   if (status === "publish")
-    return { label: "Published", className: "bg-green-100 text-green-700" };
+    return { label: "Published", className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" };
   if (status === "draft")
-    return { label: "Draft", className: "bg-slate-100 text-slate-700" };
+    return { label: "Draft", className: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" };
   if (status === "pending_approval")
     return {
       label: "Pending Approval",
-      className: "bg-yellow-100 text-yellow-700",
+      className: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",
     };
   if (status === "completed")
-    return { label: "Completed", className: "bg-blue-100 text-blue-700" };
+    return { label: "Completed", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" };
   if (status === "cancelled")
-    return { label: "Cancelled", className: "bg-red-100 text-red-700" };
+    return { label: "Cancelled", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" };
   if (status === "expired")
-    return { label: "Expired", className: "bg-orange-100 text-orange-700" };
+    return { label: "Expired", className: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" };
   if (status === "terminated")
-    return { label: "Terminated", className: "bg-red-100 text-red-700" };
-  return { label: "Unknown", className: "bg-slate-100 text-slate-700" };
+    return { label: "Terminated", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" };
+  if (status === "suspended")
+    return { label: "Suspended", className: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" };
+  if (status === "rejection")
+    return { label: "Rejected", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" };
+  return { label: "Unknown", className: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" };
 };
 
 type TabKey =
@@ -94,6 +106,7 @@ type TabKey =
   | "rfi"
   | "ncr-log"
   | "approvers"
+  | "vendor-personnel"
   | "reports"
   | "clause-library"
   | "action-log";
@@ -115,10 +128,13 @@ const ALL_TABS: Array<{ key: TabKey; label: string }> = [
   { key: "rfi", label: "RFI" },
   { key: "ncr-log", label: "NCR Log" },
   { key: "approvers", label: "Approvers" },
+  { key: "vendor-personnel", label: "Vendor Key Personnel" },
   { key: "reports", label: "Vendor’s Reports" },
   { key: "clause-library", label: "Clause Library" },
   { key: "action-log", label: "Action Log" },
 ];
+
+const ALL_TAB_KEYS = new Set<string>(ALL_TABS.map((t) => t.key));
 
 const ROLE_TAB_WHITELIST: Record<
   "approver" | "vendor" | "manager" | "view only",
@@ -137,6 +153,13 @@ const ROLE_TAB_WHITELIST: Record<
     "lem",
     "deliverables",
     "ncr-log",
+    "reports",
+    // Approvers get a read/approve view of rate sheets (QA #35). BE exposes
+    // /approver/contracts/{id}/ratesheets and RateSheetsTabContent already
+    // resolves the approver base path.
+    "rate-sheets",
+    // Approvers can view the Clause Library (parity with the manager view).
+    "clause-library",
   ],
   vendor: [
     "overview",
@@ -152,7 +175,7 @@ const ROLE_TAB_WHITELIST: Record<
     "ncr-log",
     "compliance",
     "amendments",
-    "rate-sheets"
+    "rate-sheets",
   ],
   manager: ALL_TABS.map((t) => t.key),
   "view only": [
@@ -175,8 +198,15 @@ const ContractDetailPage: React.FC = () => {
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<unknown>(null);
-  const { isVendor, isApprover, isViewOnly, isCompanyAdmin, isManager } =
-    useUserRole();
+  const {
+    isVendor,
+    isProjectManager: isRoleProjectManager,
+    isApprover,
+    isViewOnly,
+    isCompanyAdmin,
+    isManager,
+  } = useUserRole();
+  const isContractVendorLike = isVendor || isRoleProjectManager;
   const queryKey = useUserQueryKey(["contract-manager-contracts", id]);
   const approveStatusQueryKey = useUserQueryKey([
     "contract-approver-approve-status",
@@ -188,8 +218,19 @@ const ContractDetailPage: React.FC = () => {
   const [approvalAction, setApprovalAction] = React.useState<
     "approved" | "rejected" | null
   >(null);
+  const [lifecycleAction, setLifecycleAction] =
+    React.useState<LifecycleAction | null>(null);
   const [comment, setComment] = React.useState("");
-  const [activeTab, setActiveTab] = React.useState<TabKey>("overview");
+  const [takeOverDialogOpen, setTakeOverDialogOpen] = React.useState(false);
+  const [takeOverAction, setTakeOverAction] = React.useState<
+    "approved" | "rejected" | null
+  >(null);
+  const [takeOverComment, setTakeOverComment] = React.useState("");
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = React.useState<TabKey>(() => {
+    const tab = searchParams.get("tab");
+    return tab && ALL_TAB_KEYS.has(tab) ? (tab as TabKey) : "overview";
+  });
 
   const {
     data: contractsResponse,
@@ -198,7 +239,7 @@ const ContractDetailPage: React.FC = () => {
   } = useQuery({
     queryKey,
     queryFn: () => {
-      if (isVendor) return vendorApi.getContract(id ?? "");
+      if (isContractVendorLike) return vendorApi.getContract(id ?? "");
       if (isApprover) return approverApi.getContract(id ?? "");
       if (isCompanyAdmin) return companyAdminApi.getContract(id ?? "");
       if (isViewOnly) return viewOnlyApi.getContract(id ?? "");
@@ -211,7 +252,8 @@ const ContractDetailPage: React.FC = () => {
 
   const { data: approveStatusResponse } = useQuery({
     queryKey: [approveStatusQueryKey[0], contractsResponse?.data?.data?._id],
-    queryFn: () => approverApi.getApproveStatus(contract?._id ?? ""),
+    queryFn: () =>
+      approverApi.getApproveStatus(contractsResponse?.data?.data?._id ?? ""),
     enabled:
       !!contractsResponse?.data?.data?._id &&
       isApprover &&
@@ -220,8 +262,68 @@ const ContractDetailPage: React.FC = () => {
     retry: false,
   });
 
+  const contractData = contractsResponse?.data?.data;
+  const user = useUser();
+  const currentUserId = user?._id;
+  const isContractOwner =
+    typeof contractData?.owner === "boolean"
+      ? contractData.owner
+      : Boolean(
+          currentUserId &&
+            contractData?.creator?._id &&
+            currentUserId === contractData.creator._id,
+        );
+  const lifecycleActions = availableLifecycleActions(contractData?.status);
+  const canSuspendContract =
+    isManager && isContractOwner && lifecycleActions.includes("suspend");
+  const canUnsuspendContract =
+    isManager && isContractOwner && lifecycleActions.includes("unsuspend");
+  const canTerminateContract =
+    isManager && isContractOwner && lifecycleActions.includes("terminate");
+  const showLifecycleActions =
+    canSuspendContract || canUnsuspendContract || canTerminateContract;
+
+  const isContractProjectManager = Boolean(
+    user?.projectmanagerId &&
+    contractData?.projectManager?.user?._id === user.projectmanagerId,
+  );
+  // Keep the approve/reject actions available until the PM has approved.
+  // A prior rejection still lets the PM revisit the decision; only an
+  // "approved" status finalizes it and hides the buttons.
+  const isContractProjectManagerNotApproved =
+    contractData?.projectManager?.status === "pending" ||
+    contractData?.projectManager?.status === "rejected";
+
+  const canProjectManagerApprove =
+    isContractProjectManager &&
+    isContractProjectManagerNotApproved &&
+    contractData?.status === "pending_approval";
+
+  const isLiveContract =
+    contractData?.status === "active" || contractData?.status === "publish";
+
+  // Take-over approval is distinct from the PM-accepts-contract flow: it applies
+  // to a pending PM assignment on an already-live (publish/active) contract, not
+  // a freshly created one, and only a CM/PL approves it. The deployed BE (docs
+  // v2.3.0 / PM-assignment guide) returns the pending request in
+  // `pendingProjectManager` with `projectManager` null until approval; the
+  // legacy shape put it in `projectManager.status === "pending"`. Read either.
+  const pendingPmTakeover = resolvePendingPmTakeover(contractData);
+  const takeOverPending = pendingPmTakeover.pending && isLiveContract;
+  const canApproveTakeOver = isManager && isContractOwner && takeOverPending;
+  const takeOverRequesterName = pendingPmTakeover.requesterName;
+
+  const canAssignPm =
+    ((isManager && isContractOwner) || isCompanyAdmin) &&
+    isLiveContract &&
+    !takeOverPending;
+  const hasAssignedPm = Boolean(contractData?.projectManager?.user?._id);
+
   const approvalMutation = useMutation({
     mutationFn: async (action: "approved" | "rejected") => {
+      if (canProjectManagerApprove) {
+        return vendorApi.approveContract(id ?? "", { action, comment });
+      }
       return approverApi.approveContract(id ?? "", {
         action,
         comment,
@@ -259,6 +361,52 @@ const ContractDetailPage: React.FC = () => {
     }
   };
 
+  const takeOverApprovalMutation = useMutation({
+    mutationFn: async ({
+      action,
+      reason,
+    }: {
+      action: "approved" | "rejected";
+      reason?: string;
+    }) =>
+      contractManagerApi.approveProjectManagerAssignment(id ?? "", {
+        action,
+        reason,
+      }),
+    onSuccess: (res, { action }) => {
+      toastHandler.success(
+        `Take-over request ${action === "approved" ? "approved" : "rejected"} successfully`,
+        res.data.message,
+      );
+      queryClient.invalidateQueries({ queryKey });
+      setTakeOverDialogOpen(false);
+      setTakeOverAction(null);
+      setTakeOverComment("");
+    },
+    onError: (err: ApiResponseError) => {
+      toastHandler.error("Failed to update take-over request", err);
+    },
+  });
+
+  const handleTakeOverAction = (action: "approved" | "rejected") => {
+    if (action === "approved") {
+      takeOverApprovalMutation.mutate({ action: "approved" });
+      return;
+    }
+    setTakeOverAction(action);
+    setTakeOverDialogOpen(true);
+  };
+
+  const submitTakeOverApproval = () => {
+    if (takeOverAction === "rejected" && !takeOverComment.trim()) return;
+    if (takeOverAction) {
+      takeOverApprovalMutation.mutate({
+        action: takeOverAction,
+        reason: takeOverComment.trim() || undefined,
+      });
+    }
+  };
+
   React.useEffect(() => {
     toastErrorRef.current = toastHandler.error;
   }, [toastHandler.error]);
@@ -270,25 +418,36 @@ const ContractDetailPage: React.FC = () => {
     toastErrorRef.current("Contract Details", error as ApiResponseError);
   }, [error]);
 
+  const contractStatus = contractsResponse?.data?.data?.status;
+  const isDraftContract = contractStatus === "draft";
+
   const visibleTabs = React.useMemo(() => {
+    let tabs: Array<{ key: TabKey; label: string }>;
     if (isApprover) {
-      return ALL_TABS.filter((t) =>
-        ROLE_TAB_WHITELIST.approver.includes(t.key),
-      );
-    }
-    if (isVendor) {
-      return ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.vendor.includes(t.key));
-    }
-    if (isViewOnly) {
-      return ALL_TABS.filter((t) =>
+      tabs = ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.approver.includes(t.key));
+    } else if (isContractVendorLike) {
+      tabs = ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.vendor.includes(t.key));
+    } else if (isViewOnly) {
+      tabs = ALL_TABS.filter((t) =>
         ROLE_TAB_WHITELIST["view only"].includes(t.key),
       );
+    } else if (isManager) {
+      tabs = ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.manager.includes(t.key));
+    } else {
+      tabs = ALL_TABS;
     }
-    if (isManager) {
-      return ALL_TABS.filter((t) => ROLE_TAB_WHITELIST.manager.includes(t.key));
+    if (isDraftContract) {
+      tabs = tabs.filter((t) => t.key !== "clause-library");
     }
-    return ALL_TABS;
-  }, [isApprover, isVendor, isViewOnly, isManager]);
+    return tabs;
+  }, [isApprover, isContractVendorLike, isViewOnly, isManager, isDraftContract]);
+
+  // A deep-linked ?tab= may point at a tab this role can't see — fall back to overview.
+  React.useEffect(() => {
+    if (!visibleTabs.some((t) => t.key === activeTab)) {
+      setActiveTab("overview");
+    }
+  }, [visibleTabs, activeTab]);
 
   if (isLoading) {
     return (
@@ -318,6 +477,11 @@ const ContractDetailPage: React.FC = () => {
 
   const contract = contractsResponse?.data?.data;
 
+  // Show the contract's own formation currency. Approver/vendor detail
+  // endpoints sometimes omit `currency` (QA #22) — fall back to the viewer's
+  // company/profile currency rather than a hardcoded USD in the tabs.
+  const displayCurrency = resolveCurrency(contract?.currency, user?.currency);
+
   if (!contract) {
     return (
       <div className="space-y-8">
@@ -335,7 +499,33 @@ const ContractDetailPage: React.FC = () => {
   }
 
   const status = formatContractStatus(contract?.status);
-  const actionsDisabled = contract?.status === "pending_approval";
+  // Freeze mutating tab actions once the contract enters an end-state
+  // (terminated / suspended / expired) — page stays browsable for audit, but
+  // writes stop.
+  // A rejected contract is an end-state for everyone EXCEPT the managing CM
+  // (contract manager / procurement owner), who can edit and reopen it (sending
+  // it back through the approval chain). Vendor/PM, approvers and view-only stay
+  // frozen.
+  const isRejected = contract?.status === "rejection";
+  const isFrozenStatus =
+    contract?.status === "terminated" ||
+    contract?.status === "suspended" ||
+    contract?.status === "expired" ||
+    (isRejected && !(isManager && isContractOwner));
+  const actionsDisabled =
+    contract?.status === "pending_approval" || isFrozenStatus;
+  // QA #112: a company admin may amend an EXPIRED contract (Amendments tab only)
+  // to extend its duration — mirrors the solicitation admin-override of
+  // closed/awarded solicitations. Every other tab stays frozen. Gated to
+  // company_admin (not the broader isAdmin) because super_admin is not in the
+  // BE amendment roles. NOTE: the contract amendments endpoint still needs
+  // company_admin added server-side (MSA already allows it) — see BE handoff.
+  const amendmentActionsDisabled =
+    actionsDisabled && !(isCompanyAdmin && contract?.status === "expired");
+  // Rate Sheets, Vendor's Reports, NCR, and LEM are day-to-day operational
+  // actions that should only be reachable once the contract is actually
+  // published — unlike `actionsDisabled` above, draft is also gated here.
+  const publishGatedActionsDisabled = contract?.status !== "publish";
 
   const canApprove = approveStatusResponse?.data?.data?.status === "pending";
   const hasAprovedorRejected =
@@ -343,9 +533,14 @@ const ContractDetailPage: React.FC = () => {
     approveStatusResponse?.data?.data?.status === "rejected";
   const hasNoAuthorization =
     approveStatusResponse?.data?.data?.status === "N/A";
+  const showApprovalActions =
+    !showLifecycleActions &&
+    (((isApprover && canApprove && !hasAprovedorRejected) ||
+      canProjectManagerApprove) &&
+      !(hasNoAuthorization && !canProjectManagerApprove));
 
   const triggerClass =
-    "data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3";
+    "data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3 text-sm";
 
   return (
     <div className="space-y-8 pt-5">
@@ -378,18 +573,49 @@ const ContractDetailPage: React.FC = () => {
 
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
             {contract?.title}
           </h1>
-          <p className="text-sm text-slate-500">{contract?.contractId}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{contract?.contractId}</p>
         </div>
         <Badge className={status?.className}>{status?.label}</Badge>
       </div>
 
-      {isApprover && canApprove && !hasAprovedorRejected && (
+      {showLifecycleActions && (
+        <div className="flex items-center gap-4">
+          {canSuspendContract && (
+            <Button
+              variant="outline"
+              className="bg-[#F3F4F6] border-[#E5E7EB]"
+              onClick={() => setLifecycleAction("suspend")}
+            >
+              Suspend Contract
+            </Button>
+          )}
+          {canUnsuspendContract && (
+            <Button
+              variant="outline"
+              className="bg-[#F3F4F6] border-[#E5E7EB]"
+              onClick={() => setLifecycleAction("unsuspend")}
+            >
+              Reactivate Contract
+            </Button>
+          )}
+          {canTerminateContract && (
+            <Button
+              variant="destructive"
+              onClick={() => setLifecycleAction("terminate")}
+            >
+              Terminate Contract
+            </Button>
+          )}
+        </div>
+      )}
+
+      {showApprovalActions && (
         <div
           className={cn("flex items-center gap-4", {
-            hidden: hasNoAuthorization,
+            hidden: hasNoAuthorization && !canProjectManagerApprove,
           })}
         >
           <Button
@@ -409,118 +635,221 @@ const ContractDetailPage: React.FC = () => {
         </div>
       )}
 
+      {canApproveTakeOver && (
+        <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+          <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+            {`Take-over request from ${takeOverRequesterName ?? "a project manager"}`}
+          </p>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="default"
+              className="bg-[#2A4467] hover:bg-[#2A4467]/90"
+              disabled={takeOverApprovalMutation.isPending}
+              onClick={() => handleTakeOverAction("approved")}
+            >
+              Approve
+            </Button>
+            <Button
+              variant="outline"
+              className="bg-[#F3F4F6] border-[#E5E7EB]"
+              disabled={takeOverApprovalMutation.isPending}
+              onClick={() => handleTakeOverAction("rejected")}
+            >
+              Reject
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {canAssignPm && (
+        <div className="flex items-center justify-end">
+          <AssignProjectManagerDialog
+            contractId={id ?? ""}
+            hasExistingPm={hasAssignedPm}
+            invalidateQueryKey={[...queryKey]}
+            trigger={
+              <Button
+                variant="default"
+                className="bg-[#2A4467] hover:bg-[#2A4467]/90"
+              >
+                {hasAssignedPm ? "Change PM" : "Assign PM"}
+              </Button>
+            }
+          />
+        </div>
+      )}
+
       <Tabs
         value={activeTab}
         onValueChange={(v) => setActiveTab(v as TabKey)}
         className="w-full bg-transparent space-y-4"
       >
-        <ScrollArea className="pb-4 w-[75vw]">
-          <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent">
+        <div
+          className="overflow-x-auto pb-4 -mx-1 px-1"
+          style={{ width: "1px", minWidth: "100%" }}
+        >
+          <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent w-max">
             {visibleTabs.map((t) => (
               <TabsTrigger key={t.key} value={t.key} className={triggerClass}>
                 {t.label}
               </TabsTrigger>
             ))}
           </TabsList>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+        </div>
 
-        <OverviewTab contract={contract} status={status} />
+        <OverviewTab
+          contract={contract}
+          currency={displayCurrency}
+          status={status}
+        />
 
-        <AnalyticsTabContent isActive={activeTab === "analytics"} />
+        <AnalyticsTabContent
+          currency={displayCurrency}
+          isActive={activeTab === "analytics"}
+        />
 
         <KpiTabContent
           contractId={contract?._id ?? ""}
+          currency={displayCurrency}
           isActive={activeTab === "kpi"}
+          owner={contract?.owner}
         />
 
-        <ComplianceTabContent isActive={activeTab === "compliance"} />
+        <ComplianceTabContent
+          currency={displayCurrency}
+          isActive={activeTab === "compliance"}
+          actionsDisabled={actionsDisabled}
+          owner={contract?.owner}
+        />
 
         <ChangeTabContent
           contractId={contract?._id ?? ""}
+          currency={displayCurrency}
           isActive={activeTab === "change"}
           actionsDisabled={actionsDisabled}
+          owner={contract?.owner}
         />
 
         <ClaimsTabContent
           contractId={contract?._id ?? ""}
+          currency={displayCurrency}
           isActive={activeTab === "claims"}
           actionsDisabled={actionsDisabled}
+          owner={contract?.owner}
         />
 
         <ApproversTabContent
           contractId={contract?._id ?? ""}
+          currency={displayCurrency}
           isActive={activeTab === "approvers"}
+          owner={contract?.owner}
+        />
+
+        <VendorPersonnelTabContent
+          contractId={contract?._id ?? ""}
+          isActive={activeTab === "vendor-personnel"}
+          owner={contract?.owner}
+          status={contract?.status}
+          contractType="Contract"
+          invalidateQueryKey={[...queryKey]}
         />
 
         <InvoiceTabContent
           contractId={contract?._id ?? ""}
+          currency={displayCurrency}
           isActive={activeTab === "invoice"}
+          actionsDisabled={actionsDisabled}
+          owner={contract?.owner}
         />
 
         <DeliverablesTabContent />
 
         <RateSheetsTabContent
           contractId={contract?._id ?? ""}
+          currency={displayCurrency}
           isActive={activeTab === "rate-sheets"}
+          actionsDisabled={publishGatedActionsDisabled}
+          owner={contract?.owner}
         />
 
         <LemTabContent
           contractId={contract?._id ?? ""}
+          currency={displayCurrency}
           isActive={activeTab === "lem"}
+          actionsDisabled={publishGatedActionsDisabled}
+          owner={contract?.owner}
         />
 
         <RfiTabContent
           contractId={contract?._id ?? ""}
+          currency={displayCurrency}
           isActive={activeTab === "rfi"}
           actionsDisabled={actionsDisabled}
+          owner={contract?.owner}
         />
 
         <NcrLogTabContent
           contractId={contract?._id ?? ""}
           contract={contract}
           isActive={activeTab === "ncr-log"}
-          actionsDisabled={actionsDisabled}
+          actionsDisabled={publishGatedActionsDisabled}
+          owner={contract?.owner}
         />
 
         <DocumentsTabContent
+          currency={displayCurrency}
           files={contract?.files}
           contractId={contract?._id ?? ""}
           effectiveDate={contract?.startDate}
-          actionsDisabled={contract?.status === "publish"}
+          status={contract?.status}
+          owner={isContractOwner}
+          actionsDisabled={contract?.status === "publish" || isFrozenStatus}
+          onNavigateToClauseLibrary={
+            visibleTabs.some((t) => t.key === "clause-library")
+              ? () => setActiveTab("clause-library")
+              : undefined
+          }
         />
 
         <AmendmentsTabContent
           contractId={contract?._id ?? ""}
+          currency={displayCurrency}
           isActive={activeTab === "amendments"}
-          actionsDisabled={actionsDisabled}
+          actionsDisabled={amendmentActionsDisabled}
+          owner={contract?.owner}
         />
 
         <PaymentSummaryTabContent
           contractId={contract?._id ?? ""}
+          currency={displayCurrency}
           contract={contract}
           isActive={activeTab === "payment-summary"}
         />
 
-        <ClauseLibraryTabContent isActive={activeTab === "clause-library"} />
+        <ClauseLibraryTabContent
+          currency={displayCurrency}
+          vendorName={contract?.vendor?.name}
+          isActive={activeTab === "clause-library"}
+        />
 
         <VendorReportsTabContent
           contractId={contract?._id ?? ""}
           isActive={activeTab === "reports"}
+          actionsDisabled={publishGatedActionsDisabled}
         />
 
         <ActionLogTabContent isActive={activeTab === "action-log"} />
       </Tabs>
 
       <Dialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
-        <DialogContent>
+        <DialogContent className="dark:bg-slate-900 dark:border-slate-800">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-slate-900 dark:text-slate-50">
               {approvalAction === "approved"
                 ? "Approve Contract"
                 : "Reject Contract"}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-slate-500 dark:text-slate-400">
               {approvalAction === "approved"
                 ? "Are you sure you want to approve this contract? This action cannot be undone."
                 : "Please provide a reason for rejecting this contract."}
@@ -532,7 +861,7 @@ const ContractDetailPage: React.FC = () => {
               placeholder="Add a comment (optional)"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              className="resize-none"
+              className="resize-none dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
           </div>
 
@@ -540,6 +869,7 @@ const ContractDetailPage: React.FC = () => {
             <Button
               variant="outline"
               onClick={() => setApprovalDialogOpen(false)}
+              className="dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:hover:text-slate-50"
             >
               Cancel
             </Button>
@@ -548,6 +878,11 @@ const ContractDetailPage: React.FC = () => {
               disabled={approvalMutation.isPending}
               variant={
                 approvalAction === "rejected" ? "destructive" : "default"
+              }
+              className={
+                approvalAction === "approved"
+                  ? "bg-[#2A4467] text-slate-50 hover:bg-[#2A4467]/90 dark:bg-[#2A4467] dark:text-slate-50 dark:hover:bg-[#2A4467]/80"
+                  : undefined
               }
             >
               {approvalMutation.isPending
@@ -559,6 +894,58 @@ const ContractDetailPage: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={takeOverDialogOpen} onOpenChange={setTakeOverDialogOpen}>
+        <DialogContent className="dark:bg-slate-900 dark:border-slate-800">
+          <DialogHeader>
+            <DialogTitle className="text-slate-900 dark:text-slate-50">
+              Reject Take-over Request
+            </DialogTitle>
+            <DialogDescription className="text-slate-500 dark:text-slate-400">
+              Please provide a reason for rejecting this take-over request.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <Textarea
+              placeholder="Reason for rejection"
+              value={takeOverComment}
+              onChange={(e) => setTakeOverComment(e.target.value)}
+              className="resize-none dark:bg-slate-950 dark:border-slate-700 dark:text-slate-100 dark:placeholder:text-slate-500"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setTakeOverDialogOpen(false)}
+              className="dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:hover:text-slate-50"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={submitTakeOverApproval}
+              disabled={
+                takeOverApprovalMutation.isPending || !takeOverComment.trim()
+              }
+              variant="destructive"
+            >
+              {takeOverApprovalMutation.isPending ? "Processing..." : "Reject"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <ContractLifecycleDialog
+        kind="contract"
+        id={contract?._id ?? ""}
+        title={contract?.title}
+        action={lifecycleAction}
+        open={lifecycleAction !== null}
+        onOpenChange={(open) => {
+          if (!open) setLifecycleAction(null);
+        }}
+      />
     </div>
   );
 };

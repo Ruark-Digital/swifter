@@ -24,7 +24,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
         placeholder={`Search ${placeholder}`}
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
-        className="pl-12 pr-4 py-3 w-[300px] h-12 border border-[#E5E7EB] rounded-lg text-sm text-[#6B6B6B] focus:border-[#2A4467] focus:ring-[#2A4467]"
+        className="pl-12 pr-4 py-3 w-full sm:w-[300px] h-12 border border-[#E5E7EB] rounded-lg text-sm text-[#6B6B6B] focus:border-[#2A4467] focus:ring-[#2A4467]"
         style={{ fontFamily: "PushPenny" }}
       />
     </div>

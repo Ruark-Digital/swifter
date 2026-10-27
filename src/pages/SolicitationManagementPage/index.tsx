@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { useState, useMemo, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getRequest, deleteRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
@@ -40,7 +40,8 @@ import {
   getStatusColorClass,
   normalizeStatus,
 } from "@/lib/solicitationStatusUtils";
-import { cn, formatDateTZ } from "@/lib/utils";
+import { cn, formatDateTZ, formatQuestionDeadline } from "@/lib/utils";
+import { applySolicitationCompanyFilter } from "./lib/solicitationCompanyFilter";
 // import ExportReportSheet from "@/components/layouts/ExportReportSheet";
 
 // Safe date formatting utility
@@ -53,7 +54,9 @@ const safeFormatDate = (
   return date;
 };
 
-// Helper: format date as YYYY/MM/DD for API query
+// Format a date as yyyy/MM/dd for the backend `date=start-end` range filter.
+// The BE expects the combined form `date=yyyy/MM/dd-yyyy/MM/dd` (both halves in
+// slashes, joined by `-`); it splits on `-` and parses each half by its slashes.
 const formatDateSlash = (dateInput: Date | string): string => {
   const d = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
   if (!(d instanceof Date) || isNaN(d.getTime())) return "";
@@ -129,6 +132,16 @@ type Solicitation = {
   createdAt: string;
   updatedAt: string;
   companyId: string;
+  // Issuing (buyer) company, appended per-response on the vendor solicitation
+  // list endpoints. Nullable per BE spec (2.3.0 procurement service).
+  company?: {
+    _id: string;
+    name: string;
+    logo?: string | null;
+    industry?: string | null;
+    location?: string | null;
+    website?: string | null;
+  } | null;
   createdBy: {
     _id: string;
     name: string;
@@ -164,14 +177,19 @@ type SolicitationQueryParams = {
   endDate?: string;
 };
 
+type SolicitationsQueryOptions = { enabled?: boolean };
+
 // Custom hooks for API calls based on Swagger documentation
-const useAllSolicitations = (params?: SolicitationQueryParams) => {
+const useAllSolicitations = (
+  params?: SolicitationQueryParams,
+  options?: SolicitationsQueryOptions,
+) => {
   const queryParams = new URLSearchParams();
   if (params?.page) queryParams.append("page", params.page.toString());
   if (params?.limit) queryParams.append("limit", params.limit.toString());
   if (params?.status) queryParams.append("status", params.status);
   if (params?.categoryId) queryParams.append("categoryId", params.categoryId);
-  // Ensure date filter passes actual date range to API (YYYY/MM/DD-YYYY/MM/DD)
+  // Backend expects the combined `date=yyyy/MM/dd-yyyy/MM/dd` range param.
   if (params?.startDate && params?.endDate) {
     queryParams.append("date", `${params.startDate}-${params.endDate}`);
   }
@@ -184,10 +202,14 @@ const useAllSolicitations = (params?: SolicitationQueryParams) => {
   return useQuery<ApiResponse<SolicitationsResponse>, ApiResponseError>({
     queryKey: ["solicitations", params],
     queryFn: () => getRequest({ url }),
+    enabled: options?.enabled ?? true,
   });
 };
 
-const useMySolicitations = (params?: SolicitationQueryParams) => {
+const useMySolicitations = (
+  params?: SolicitationQueryParams,
+  options?: SolicitationsQueryOptions,
+) => {
   const queryParams = new URLSearchParams();
   if (params?.page) queryParams.append("page", params.page.toString());
   if (params?.limit) queryParams.append("limit", params.limit.toString());
@@ -205,11 +227,15 @@ const useMySolicitations = (params?: SolicitationQueryParams) => {
   return useQuery<ApiResponse<SolicitationsResponse>, ApiResponseError>({
     queryKey: ["my-solicitations", params],
     queryFn: () => getRequest({ url }),
+    enabled: options?.enabled ?? true,
   });
 };
 
 // Vendor-specific hooks for API calls
-const useVendorAllSolicitations = (params?: SolicitationQueryParams) => {
+const useVendorAllSolicitations = (
+  params?: SolicitationQueryParams,
+  options?: SolicitationsQueryOptions,
+) => {
   const queryParams = new URLSearchParams();
   if (params?.page) queryParams.append("page", params.page.toString());
   if (params?.limit) queryParams.append("limit", params.limit.toString());
@@ -226,10 +252,14 @@ const useVendorAllSolicitations = (params?: SolicitationQueryParams) => {
   return useQuery<ApiResponse<SolicitationsResponse>, ApiResponseError>({
     queryKey: ["vendor-solicitations", params],
     queryFn: () => getRequest({ url }),
+    enabled: options?.enabled ?? true,
   });
 };
 
-const useVendorMySolicitations = (params?: SolicitationQueryParams) => {
+const useVendorMySolicitations = (
+  params?: SolicitationQueryParams,
+  options?: SolicitationsQueryOptions,
+) => {
   const queryParams = new URLSearchParams();
   if (params?.page) queryParams.append("page", params.page.toString());
   if (params?.limit) queryParams.append("limit", params.limit.toString());
@@ -246,6 +276,7 @@ const useVendorMySolicitations = (params?: SolicitationQueryParams) => {
   return useQuery<ApiResponse<SolicitationsResponse>, ApiResponseError>({
     queryKey: ["vendor-my-solicitations", params],
     queryFn: () => getRequest({ url }),
+    enabled: options?.enabled ?? true,
   });
 };
 
@@ -450,6 +481,10 @@ export const SolicitationManagementPage = () => {
     page: 1,
     limit: 10,
   });
+  // Client-side company filter (vendor only). The BE exposes no company query
+  // param, so we filter the loaded rows client-side — consistent with the
+  // existing search box. "" means "all companies".
+  const [companyFilter, setCompanyFilter] = useState("");
 
   // Build Status filter options; hide "Under Evaluation" for vendor users
   const statusOptions = useMemo(
@@ -460,6 +495,7 @@ export const SolicitationManagementPage = () => {
       ...(!isVendor
         ? [{ label: "Under Evaluation", value: "under_evaluation" },  { label: "Draft", value: "draft" },]
         : []),
+      { label: "Awarded", value: "awarded" },
       { label: "Closed", value: "closed" },
     ],
     [isVendor]
@@ -483,6 +519,20 @@ export const SolicitationManagementPage = () => {
   const [declineDialogOpen, setDeclineDialogOpen] = useState(false);
   const [selectedSolicitationForAction, setSelectedSolicitationForAction] =
     useState<string | null>(null);
+  // Keep a single action menu open across all solicitation rows.
+  const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
+  // Id of the solicitation whose Edit dialog is open. Kept OUTSIDE the row's
+  // dropdown menu so the menu closing (e.g. when the file picker steals focus)
+  // never unmounts the open editor.
+  // Holds the draft solicitation currently being edited. The editor is
+  // rendered ONCE at page level (below) from this state — never inside a table
+  // cell — so a page re-render (e.g. the react-query refetch that fires when
+  // the file picker steals and returns focus) can't remount it and snap the
+  // wizard back to step 1, which made the Documents upload panel "disappear"
+  // on drafts (QA #1).
+  const [editSolicitation, setEditSolicitation] = useState<Solicitation | null>(
+    null,
+  );
   // const [activeTab, setActiveTab] = useState<string>("all");
 
   // Initialize filters from URL parameters
@@ -583,6 +633,8 @@ export const SolicitationManagementPage = () => {
       } else {
         setFilters((prev) => ({ ...prev, categoryId: value, page: 1 }));
       }
+    } else if (filterTitle === "Company") {
+      setCompanyFilter(value === "all" ? "" : value);
     }
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   };
@@ -619,53 +671,40 @@ export const SolicitationManagementPage = () => {
     setIsDatePickerOpen(false);
   };
 
-  // API hooks based on user role
+  // API hooks based on user role.
+  // Call both vendor- and internal-flavored hooks unconditionally to keep the
+  // hook call count stable across role changes; only the role-matching one
+  // actually fires a request thanks to `enabled`. The pair is then selected
+  // post-hook with a plain ternary on the already-resolved query results.
+  const queryArgs = {
+    ...filters,
+    startDate:
+      filters.date && dateRange.startDate
+        ? formatDateSlash(dateRange.startDate)
+        : undefined,
+    endDate:
+      filters.date && dateRange.endDate
+        ? formatDateSlash(dateRange.endDate)
+        : undefined,
+  };
+  const vendorAllSolicitations = useVendorAllSolicitations(queryArgs, {
+    enabled: isVendor,
+  });
+  const internalAllSolicitations = useAllSolicitations(queryArgs, {
+    enabled: !isVendor,
+  });
+  const vendorMySolicitations = useVendorMySolicitations(queryArgs, {
+    enabled: isVendor,
+  });
+  const internalMySolicitations = useMySolicitations(queryArgs, {
+    enabled: !isVendor,
+  });
   const { data: allSolicitationsData, isLoading: isLoadingAll } = isVendor
-    ? useVendorAllSolicitations({
-        ...filters,
-        startDate:
-          filters.date && dateRange.startDate
-            ? formatDateSlash(dateRange.startDate)
-            : undefined,
-        endDate:
-          filters.date && dateRange.endDate
-            ? formatDateSlash(dateRange.endDate)
-            : undefined,
-      })
-    : useAllSolicitations({
-        ...filters,
-        startDate:
-          filters.date && dateRange.startDate
-            ? formatDateSlash(dateRange.startDate)
-            : undefined,
-        endDate:
-          filters.date && dateRange.endDate
-            ? formatDateSlash(dateRange.endDate)
-            : undefined,
-      });
+    ? vendorAllSolicitations
+    : internalAllSolicitations;
   const { data: mySolicitationsData, isLoading: isLoadingMy } = isVendor
-    ? useVendorMySolicitations({
-        ...filters,
-        startDate:
-          filters.date && dateRange.startDate
-            ? formatDateSlash(dateRange.startDate)
-            : undefined,
-        endDate:
-          filters.date && dateRange.endDate
-            ? formatDateSlash(dateRange.endDate)
-            : undefined,
-      })
-    : useMySolicitations({
-        ...filters,
-        startDate:
-          filters.date && dateRange.startDate
-            ? formatDateSlash(dateRange.startDate)
-            : undefined,
-        endDate:
-          filters.date && dateRange.endDate
-            ? formatDateSlash(dateRange.endDate)
-            : undefined,
-      });
+    ? vendorMySolicitations
+    : internalMySolicitations;
   const { data: dashboardStatsData } = useDashboardStats();
 
   // Mutation hooks
@@ -738,27 +777,34 @@ export const SolicitationManagementPage = () => {
   // Get current loading state
   const isLoading = activeTab === "all" ? isLoadingAll : isLoadingMy;
 
-  // Filter data based on search query
-  const filteredData = useMemo(() => {
-    if (!searchQuery) return currentData;
-    return currentData.filter(
-      (item) =>
-        (item.name ?? "")
-          .toLowerCase()
-          .includes((searchQuery ?? "").toLowerCase()) ||
-        (item.contact ?? "")
-          .toLowerCase()
-          .includes((searchQuery ?? "").toLowerCase()) ||
-        (item.solId ?? "")
-          .toLowerCase()
-          .includes((searchQuery ?? "").toLowerCase()) ||
-        (item.categories ?? []).some((cat) =>
-          (cat.name ?? "")
-            .toLowerCase()
-            .includes((searchQuery ?? "").toLowerCase())
-        )
-    );
-  }, [currentData, searchQuery]);
+  // Distinct issuing companies present in the loaded rows, for the vendor
+  // company filter dropdown. Built from currentData so options track the data.
+  const companyOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const item of currentData) {
+      const company = item.company;
+      if (company?._id && !seen.has(company._id)) {
+        seen.set(company._id, company.name || "Unnamed company");
+      }
+    }
+    return [
+      { label: "All Companies", value: "all" },
+      ...Array.from(seen, ([value, label]) => ({ label, value })),
+    ];
+  }, [currentData]);
+
+  // Filter data based on search query and (vendor) company filter. The company
+  // filter is vendor-only, so it's gated on isVendor — internal roles never see
+  // the Company dropdown and their companyFilter stays "".
+  const filteredData = useMemo(
+    () =>
+      applySolicitationCompanyFilter(currentData, {
+        search: searchQuery,
+        companyFilter,
+        enableCompanyFilter: isVendor,
+      }),
+    [currentData, searchQuery, companyFilter, isVendor],
+  );
 
   // Get dashboard statistics from API
   const dashboardStats = useMemo(() => {
@@ -786,12 +832,40 @@ export const SolicitationManagementPage = () => {
           header: "Solicitation Name",
           cell: ({ row }) => (
             <div className="flex flex-col max-w-sm">
-              <span className="font-medium ">{row.original.name}</span>
+              <Link
+                to={`/dashboard/solicitation/${row.original._id}`}
+                title={row.original.name}
+                className="font-medium underline-offset-2 hover:underline"
+              >
+                {row.original.name}
+              </Link>
               <span className="text-sm text-gray-500 dark:text-gray-400">
                 {row.original.solId}
               </span>
             </div>
           ),
+        },
+        {
+          accessorKey: "company",
+          header: "Company",
+          cell: ({ row }) => {
+            const company = row.original.company;
+            if (!company?.name) {
+              return <span className="text-muted-foreground">—</span>;
+            }
+            return (
+              <div className="flex items-center gap-2 max-w-[200px]">
+                {company.logo ? (
+                  <img
+                    src={company.logo}
+                    alt={company.name}
+                    className="h-6 w-6 rounded-full object-cover shrink-0"
+                  />
+                ) : null}
+                <span className="font-medium truncate">{company.name}</span>
+              </div>
+            );
+          },
         },
         {
           accessorKey: "visibility",
@@ -826,6 +900,12 @@ export const SolicitationManagementPage = () => {
                     row.original.timezone
                   )}
                 </div>
+              ) : row.original.visibility === "public" &&
+                !row.original.invitedAt ? (
+                // Public solicitations are open to all vendors and carry no
+                // per-vendor invite record, so "Invited: N/A" is misleading —
+                // label them as open to all instead (QA #208).
+                <div className="font-medium">Public — open to all vendors</div>
               ) : (
                 <div className="font-medium">
                   Invited:{" "}
@@ -878,7 +958,12 @@ export const SolicitationManagementPage = () => {
             if (row.original.isArchive) {
               if (!isCompanyAdmin) return null;
               return (
-                <DropdownMenu>
+                <DropdownMenu
+                  open={openActionMenuId === row.original._id}
+                  onOpenChange={(open) =>
+                    setOpenActionMenuId(open ? row.original._id : null)
+                  }
+                >
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 w-8 p-0">
                       <MoreHorizontal className="h-4 w-4" />
@@ -933,7 +1018,12 @@ export const SolicitationManagementPage = () => {
             const canShowConfirmButton =
               isPublic && !isDeadlinePast && !isClosedOrCompleted && (!hasVendor || isInvited);
             return (
-              <DropdownMenu>
+              <DropdownMenu
+                open={openActionMenuId === row.original._id}
+                onOpenChange={(open) =>
+                  setOpenActionMenuId(open ? row.original._id : null)
+                }
+              >
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="h-8 w-8 p-0">
                     <MoreHorizontal className="h-4 w-4" />
@@ -992,9 +1082,13 @@ export const SolicitationManagementPage = () => {
           header: "Solicitation Name",
           cell: ({ row }) => (
             <div className="flex flex-col max-w-sm">
-              <span className="font-medium ">
+              <Link
+                to={`/dashboard/solicitation/${row.original._id}`}
+                title={row.original.name}
+                className="font-medium underline-offset-2 hover:underline"
+              >
                 {truncate(row.original.name, { length: 50 })}
-              </span>
+              </Link>
               <span className="text-sm text-gray-500 dark:text-gray-400">
                 {row.original.solId} •{" "}
                 {row.original.typeId?.name.split("-")?.[0]}
@@ -1006,9 +1100,9 @@ export const SolicitationManagementPage = () => {
           accessorKey: "categories",
           header: "Categories",
           cell: ({ row }) => (
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1 max-w-[240px]">
               {row.original.categoryIds?.map((category) => (
-                <span className="text-muted-foreground">{category.name}</span>
+                <span key={category._id} className="text-muted-foreground break-words">{category.name}</span>
               )) || (
                 <span className="text-muted-foreground">No categories</span>
               )}
@@ -1042,9 +1136,8 @@ export const SolicitationManagementPage = () => {
           header: "Question Deadline",
           cell: ({ row }) => (
             <span>
-              {safeFormatDate(
+              {formatQuestionDeadline(
                 row.original.questionDeadline,
-                "MMM d, yyyy KK:mm a",
                 row.original.timezone
               )}
             </span>
@@ -1079,7 +1172,12 @@ export const SolicitationManagementPage = () => {
           cell: ({ row }) => {
             if (row.original.isArchive) {
               return (
-                <DropdownMenu>
+                <DropdownMenu
+                  open={openActionMenuId === row.original._id}
+                  onOpenChange={(open) =>
+                    setOpenActionMenuId(open ? row.original._id : null)
+                  }
+                >
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 w-8 p-0">
                       <MoreHorizontal className="h-4 w-4" />
@@ -1116,68 +1214,83 @@ export const SolicitationManagementPage = () => {
               );
             }
             return (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="h-8 w-8 p-0">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    className="py-3 px-4"
-                    onClick={() =>
-                      navigate(`/dashboard/solicitation/${row.original._id}`)
-                    }
-                  >
-                    View Details
-                  </DropdownMenuItem>
-                  {activeTab === "all" &&
-                    isProcurement &&
-                    !row.original.owner && (
-                      <ConfirmAlert
-                        type="alert"
-                        title="Manage Solicitation"
-                        text="Are you sure you want to add this solicitation to your managed list?"
-                        primaryButtonText="Confirm"
-                        secondaryButtonText="Cancel"
-                        showSecondaryButton
-                        primaryButtonLoading={isManagingSolicitation}
-                        trigger={
-                          <Button
-                            className={cn(
-                              "flex items-center gap-2 bg-gray-300 text-gray-800 hover:bg-gray-400",
-                              {
-                                "!bg-transparent !text-gray-600": true,
-                              }
-                            )}
-                            disabled={isManagingSolicitation}
-                          >
-                            {isManagingSolicitation
-                              ? "Adding..."
-                              : "Manage Solicitation"}
-                          </Button>
-                        }
-                        onPrimaryAction={() =>
-                          manageSolicitationMutation.mutate(row.original._id)
-                        }
-                      />
+              <>
+                <DropdownMenu
+                  open={openActionMenuId === row.original._id}
+                  onOpenChange={(open) =>
+                    setOpenActionMenuId(open ? row.original._id : null)
+                  }
+                >
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      className="py-3 px-4"
+                      onClick={() =>
+                        navigate(`/dashboard/solicitation/${row.original._id}`)
+                      }
+                    >
+                      View Details
+                    </DropdownMenuItem>
+                    {activeTab === "all" &&
+                      isProcurement &&
+                      !row.original.owner && (
+                        <ConfirmAlert
+                          type="alert"
+                          title="Manage Solicitation"
+                          text="Are you sure you want to add this solicitation to your managed list?"
+                          primaryButtonText="Confirm"
+                          secondaryButtonText="Cancel"
+                          showSecondaryButton
+                          primaryButtonLoading={isManagingSolicitation}
+                          trigger={
+                            <Button
+                              className={cn(
+                                "flex items-center gap-2 bg-gray-300 text-gray-800 hover:bg-gray-400",
+                                {
+                                  "!bg-transparent !text-gray-600": true,
+                                }
+                              )}
+                              disabled={isManagingSolicitation}
+                            >
+                              {isManagingSolicitation
+                                ? "Adding..."
+                                : "Manage Solicitation"}
+                            </Button>
+                          }
+                          onPrimaryAction={() =>
+                            manageSolicitationMutation.mutate(row.original._id)
+                          }
+                        />
+                      )}
+
+                    {row.original.status === "draft" && (
+                      <DropdownMenuItem
+                        className="py-3 px-4"
+                        onSelect={(e) => {
+                          // Open the editor as a sibling of this menu (below), not
+                          // inside it — so the menu closing can't unmount it.
+                          e.preventDefault();
+                          setOpenActionMenuId(null);
+                          setEditSolicitation(row.original);
+                        }}
+                      >
+                        Edit Solicitation
+                      </DropdownMenuItem>
                     )}
 
-                  {row.original.status === "draft" && (
-                    <EditSolicitationDialog
-                      solicitation={row.original as any}
-                      isLink
-                    />
-                  )}
-                  
-                  <DropdownMenuItem
-                    className="py-3 px-4 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                    onClick={() => handleDeleteClick(row.original._id)}
-                  >
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    <DropdownMenuItem
+                      className="py-3 px-4 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      onClick={() => handleDeleteClick(row.original._id)}
+                    >
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
             );
           },
         },
@@ -1188,9 +1301,13 @@ export const SolicitationManagementPage = () => {
           header: "Solicitation Name",
           cell: ({ row }) => (
             <div className="flex flex-col max-w-sm">
-              <span className="font-medium ">
+              <Link
+                to={`/dashboard/solicitation/${row.original._id}`}
+                title={row.original.name}
+                className="font-medium underline-offset-2 hover:underline"
+              >
                 {truncate(row.original.name, { length: 50 })}
-              </span>
+              </Link>
               <span className="text-sm text-gray-500 dark:text-gray-400">
                 {row.original.solId} •{" "}
                 {row.original.typeId?.name.split("-")?.[0]}
@@ -1202,7 +1319,7 @@ export const SolicitationManagementPage = () => {
           accessorKey: "categories",
           header: "Categories",
           cell: ({ row }) => (
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1 max-w-[240px]">
               {row.original.categoryIds?.map((category) => (
                 <Badge
                   key={category._id}
@@ -1234,14 +1351,14 @@ export const SolicitationManagementPage = () => {
               <span className="text-sm block">
                 <strong>Published:</strong>{" "}
                 {safeFormatDate(
-                  row.original.submissionDeadline,
+                  row.original.createdAt,
                   "MMM d, yyyy hh:mm a"
                 )}
               </span>
               <span>
                 <strong>Closing:</strong>{" "}
                 {safeFormatDate(
-                  row.original.questionDeadline,
+                  row.original.submissionDeadline,
                   "MMM d, yyyy hh:mm a"
                 )}
               </span>
@@ -1282,7 +1399,12 @@ export const SolicitationManagementPage = () => {
           cell: ({ row }) => {
             if (row.original.isArchive) {
               return (
-                <DropdownMenu>
+                <DropdownMenu
+                  open={openActionMenuId === row.original._id}
+                  onOpenChange={(open) =>
+                    setOpenActionMenuId(open ? row.original._id : null)
+                  }
+                >
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 w-8 p-0">
                       <MoreHorizontal className="h-4 w-4" />
@@ -1319,7 +1441,12 @@ export const SolicitationManagementPage = () => {
               );
             }
             return (
-              <DropdownMenu>
+              <DropdownMenu
+                open={openActionMenuId === row.original._id}
+                onOpenChange={(open) =>
+                  setOpenActionMenuId(open ? row.original._id : null)
+                }
+              >
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="h-8 w-8 p-0">
                     <MoreHorizontal className="h-4 w-4" />
@@ -1340,6 +1467,15 @@ export const SolicitationManagementPage = () => {
           },
         },
       ];
+
+  // Vendor-only company filter entry appended to the filter bar, plus the
+  // selected-value map so the trigger reflects the chosen company.
+  const companyFilterEntry = isVendor
+    ? [{ title: "Company", options: companyOptions }]
+    : [];
+  const filterSelectedValues = isVendor
+    ? { Company: companyFilter }
+    : undefined;
 
   return (
     <div className="p-6 min-h-full pb-10">
@@ -1370,11 +1506,11 @@ export const SolicitationManagementPage = () => {
           }}
         />
         <StatCard
-          title="Active Solicitations"
+          title="Published Solicitations"
           value={dashboardStats.active}
           icon={IconMap["folder-open"] as any}
-          iconColor="text-blue-600"
-          iconBgColor="bg-blue-100"
+          iconColor="text-green-600"
+          iconBgColor="bg-green-100"
           onClick={() => {
             setFilters((prev) => ({ ...prev, status: "active", page: 1 }));
             setPagination({ pageIndex: 0, pageSize: 10 });
@@ -1412,7 +1548,10 @@ export const SolicitationManagementPage = () => {
         )}
         {!isProcurement && (
           <StatCard
-            title="Draft Proposal"
+            // A vendor never drafts a solicitation — their draft is a proposal.
+            // Scope the relabel to vendors only so company_admin / CM / PL keep
+            // seeing "Draft Solicitation" (QA #296).
+            title={isVendor ? "Draft Proposal" : "Draft Solicitation"}
             value={dashboardStats.draft}
             icon={IconMap["folder-open"] as any}
             iconColor="text-gray-600"
@@ -1559,7 +1698,9 @@ export const SolicitationManagementPage = () => {
                           showIcon: true,
                           options: statusOptions,
                         },
+                        ...companyFilterEntry,
                       ]}
+                      selectedValues={filterSelectedValues}
                       onFilterChange={handleFilterChange}
                     />
                   </div>
@@ -1651,7 +1792,9 @@ export const SolicitationManagementPage = () => {
                         showIcon: true,
                         options: statusOptions,
                       },
+                      ...companyFilterEntry,
                     ]}
+                    selectedValues={filterSelectedValues}
                     onFilterChange={handleFilterChange}
                   />
                 </div>
@@ -1731,6 +1874,20 @@ export const SolicitationManagementPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Draft solicitation editor — mounted once here, not inside a table
+          cell, so table/page re-renders can't remount it and reset the wizard
+          step (QA #1). */}
+      {editSolicitation && (
+        <EditSolicitationDialog
+          solicitation={editSolicitation as any}
+          showTrigger={false}
+          open={Boolean(editSolicitation)}
+          onOpenChange={(o) => {
+            if (!o) setEditSolicitation(null);
+          }}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
       <ConfirmAlert

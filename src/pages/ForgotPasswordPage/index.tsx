@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Forge, Forger, useForge } from "@/lib/forge";
+import { Forge, Forger, useForge } from "@adexdsamson/forge";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -65,7 +65,7 @@ const ForgotPassword = () => {
       </div>
 
       {/* Central card with forgot password form */}
-      <Card className="w-[35dvw] p-6 my-auto">
+      <Card className="w-full max-w-md mx-4 sm:mx-auto p-6 my-auto">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">
             Forgot Password

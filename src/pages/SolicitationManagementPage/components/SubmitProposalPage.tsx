@@ -8,7 +8,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
-import { Forge, FormPropsRef, useForge } from "@/lib/forge";
+import { Forge, FormPropsRef, useForge } from "@adexdsamson/forge";
 import CompleteProposalDialog from "./CompleteProposalDialog";
 import FileUploadDialog from "./FileUploadDialog";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -19,6 +19,8 @@ import {
   getStatusColorClass,
 } from "@/lib/solicitationStatusUtils";
 import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
+import { useUser } from "@/store/authSlice";
+import { resolveConversionRate } from "@/lib/currencyUtils";
 
 // Types for the proposal form
 interface UploadFileResponse {
@@ -58,6 +60,8 @@ const schema = yup.object().shape({
     .string()
     .oneOf(["draft", "submit"], "Status must be draft or submit")
     .required("Status is required"),
+  currency: yup.string().optional(),
+  rate: yup.number().optional(),
   document: yup.array().of(
     yup.object().shape({
       requiredDocumentId: yup
@@ -81,17 +85,15 @@ const schema = yup.object().shape({
         description: yup.string().required("Description is required"),
         quantity: yup
           .number()
-          // .required("Quantity is required")
-          .min(0, "Quantity must be positive")
-          .optional(),
+          .required("Quantity is required")
+          .moreThan(0, "Quantity must be greater than 0"),
         unitOfmeasurement: yup
           .string()
           .required("Unit of measurement is required"),
         unitPrice: yup
           .number()
-          // .required("Unit price is required")
-          .min(0, "Unit price must be positive")
-          .optional(),
+          .required("Unit price is required")
+          .moreThan(0, "Unit price must be greater than 0"),
         requiredDocumentId: yup.string(),
         subtotal: yup.number().optional().min(0, "Subtotal must be positive"),
         subItems: yup
@@ -103,14 +105,14 @@ const schema = yup.object().shape({
               quantity: yup
                 .number()
                 .required("Sub-quantity is required")
-                .min(0, "Sub-quantity must be positive"),
+                .moreThan(0, "Sub-quantity must be greater than 0"),
               unitOfmeasurement: yup
                 .string()
                 .required("Sub-unit of measurement is required"),
               unitPrice: yup
                 .number()
                 .required("Sub-unit price is required")
-                .min(0, "Sub-unit price must be positive"),
+                .moreThan(0, "Sub-unit price must be greater than 0"),
               subtotal: yup
                 .number()
                 .required("Sub-subtotal is required")
@@ -139,6 +141,7 @@ const SubmitProposalPage: React.FC<SubmitProposalPageProps> = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToastHandler();
+  const userCurrency = useUser()?.currency;
   const [type, setType] = useState("");
   const formRef = useRef<FormPropsRef>(null);
   const { id: solicitationId } = useParams<{ id: string }>();
@@ -258,6 +261,7 @@ const SubmitProposalPage: React.FC<SubmitProposalPageProps> = () => {
       const draftData = {
         ...formData,
         status: "draft" as const,
+        rate: await resolveConversionRate(userCurrency, formData.currency),
       };
 
       await submitProposal(draftData);
@@ -285,6 +289,7 @@ const SubmitProposalPage: React.FC<SubmitProposalPageProps> = () => {
       const draftData = {
         ...formData,
         status: "draft" as const,
+        rate: await resolveConversionRate(userCurrency, formData.currency),
       };
 
       await submitProposal(draftData);
@@ -304,8 +309,12 @@ const SubmitProposalPage: React.FC<SubmitProposalPageProps> = () => {
     try {
       const submissionData = {
         ...data,
-
         status: "submit" as const,
+        // Exchange rate for the submitted currency, resolved the same way as
+        // the Create Contract wizard (getExchangeRate; 1 when currencies match
+        // or the lookup fails). Lets the BE normalise proposals for comparison
+        // instead of assuming rate 1 (QA #214).
+        rate: await resolveConversionRate(userCurrency, data.currency),
       };
 
       await submitProposal(submissionData);
@@ -525,7 +534,6 @@ const SubmitProposalPage: React.FC<SubmitProposalPageProps> = () => {
 
           <Forge
             control={forge.control}
-            // debug
             ref={formRef}
             onSubmit={handleSubmit}
           >
@@ -609,6 +617,7 @@ const SubmitProposalPage: React.FC<SubmitProposalPageProps> = () => {
           reset={forge.reset}
           setValue={forge.setValue}
           getValue={forge.getValues}
+          trigger={forge.trigger}
           id={selectedDocumentId}
           onComplete={(documentId) => {
             if (documentId) {
@@ -623,7 +632,6 @@ const SubmitProposalPage: React.FC<SubmitProposalPageProps> = () => {
           onFilesUploaded={(files) =>
             handleFilesUploaded(files, selectedDocumentId || "")
           }
-          control={forge.control}
           requiredDocumentId={selectedDocumentId || ""}
           maxFiles={5}
           type={type}

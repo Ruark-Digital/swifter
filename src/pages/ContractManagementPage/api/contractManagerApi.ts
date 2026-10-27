@@ -1,6 +1,7 @@
 import {
   deleteRequest,
   getRequest,
+  patchRequest,
   postRequest,
   putRequest,
 } from "@/lib/axiosInstance";
@@ -30,6 +31,8 @@ const createContractInputSchema: yup.ObjectSchema<CreateContractInput> = yup
     msaContractId: yup.string().optional(),
     solicitationId: yup.string().optional(),
     businessDivision: yup.string().optional(),
+    currency: yup.string().optional(),
+    currencyRate: yup.number().optional(),
     contractPaymentTerm: yup.string().optional(),
     contractTermType: yup.string().optional(),
     contractId: yup.string().optional(),
@@ -72,6 +75,18 @@ const createContractInputSchema: yup.ObjectSchema<CreateContractInput> = yup
   .required();
 
 const approvalActionSchema: yup.ObjectSchema<ApprovalActionDTO> = yup
+  .object({
+    action: yup
+      .mixed<NonNullable<ApprovalActionDTO["action"]>>()
+      .oneOf(["approved", "rejected"] as const)
+      .required(),
+    comment: yup.string().min(1, "Comment is required").required(),
+  })
+  .required();
+
+// Invoice approve/reject comment is optional — unlike the other approval
+// flows above, which still require one.
+const invoiceApprovalActionSchema = yup
   .object({
     action: yup
       .mixed<NonNullable<ApprovalActionDTO["action"]>>()
@@ -265,6 +280,7 @@ export interface ContractHoldBackDTO {
   company:          string;
   amount:           number;
   holdBackId:       string;
+  invoiceId?:       string;
   type:             string;
   status:           string;
   approvedBy:       string;
@@ -314,11 +330,12 @@ export type ContractChangeManagerDTO = {
   description?: string;
   proposalCategory?: string;
   urgency?: "low" | "medium" | "high";
+  amount?: number;
   files?: Array<{
     name?: string;
     url?: string;
     type?: string;
-    size?: number;
+    size?: string;
   }>;
   type?: "directive" | "order";
 };
@@ -341,6 +358,11 @@ export type ContractChangeDTO = {
   submittedAt?: string;
   approverStatus?: "N/A" | "pending" | "approved" | "rejected";
   status?: "pending" | "approved" | "rejected";
+  /** Requesting user — detail endpoints populate name/email. */
+  requestedBy?: string | { _id?: string; name?: string; email?: string };
+  /** Original request/proposal this change was promoted from, when `type` is "order". */
+  originalChangeRef?: string | { _id?: string; changeId?: string };
+  originalChangeType?: "request" | "proposal";
 };
 
 export type ContractChangeStatsDTO = {
@@ -352,10 +374,14 @@ export type ContractChangeStatsDTO = {
   approved?: number;
   pending?: number;
   rejected?: number;
+  // Approver `/changes/stats` returns these aliases instead of
+  // approved/rejected — surfaced as fallbacks in the UI.
+  completed?: number;
+  cancelled?: number;
 };
 
 export type ApprovalActionDTO = {
-  action?: "approved" | "rejected";
+  action: "approved" | "rejected";
   comment?: string;
 };
 
@@ -425,6 +451,9 @@ export type ContractClaimDTO = {
   }>;
   manager?: { status?: string; comment?: string };
   approvers?: ContractChangeApprover[];
+  submittedBy?: { _id?: string; name?: string; email?: string };
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type ContractClaimStatsDTO = {
@@ -439,13 +468,24 @@ export type ContractInvoiceDTO = {
   _id?: string;
   invoiceId?: string;
   title?: string;
-  type?: "progress draw" | "monthly payment" | "milestone payment";
+  type?: "progress draw" | "monthly payment" | "milestone payment" | "holdback";
   taxCode?: string;
   taxValue?: number;
   description?: string;
+  fileType?: "manual" | "file";
   inputType?: "manual" | "file";
   amount?: number;
-  status?: "pending" | "approved" | "rejected" | "draft";
+  remaining?: number;
+  balance?: number;
+  remainingAmount?: number;
+  // When the invoice was submitted. The BE has not surfaced a dedicated
+  // `submissionDate`/`submittedAt` on every path, so `createdAt` (the Mongo
+  // creation instant = submission for an invoice) is read as the fallback.
+  submissionDate?: string;
+  submittedAt?: string;
+  createdAt?: string;
+  status?: "pending" | "approved" | "rejected" | "draft" | "active";
+  lem?: unknown;
   files?: Array<{
     name?: string;
     url?: string;
@@ -455,6 +495,14 @@ export type ContractInvoiceDTO = {
   approverStatus?: "pending" | "approved" | "rejected";
   manager?: { status?: string; comment?: string };
   approvers?: ContractChangeApprover[];
+  /** Line-item breakdown for manual invoices (rendered in InvoiceDetailsSheet). */
+  items?: Array<{
+    component?: string;
+    description?: string;
+    quantity?: number;
+    unitOfmeasurement?: string;
+    unitPrice?: number;
+  }>;
 };
 
 export type ContractInvoiceStatsDTO = {
@@ -464,17 +512,171 @@ export type ContractInvoiceStatsDTO = {
   rejected?: number;
 };
 
+export type ContractLemSummarySheet = {
+  sheetName?: string;
+  headers?: string[];
+  rows?: Array<Record<string, unknown>>;
+  tables?: Array<Record<string, unknown>>;
+};
+
+export type ContractLemSummaryFile = {
+  name?: string;
+  sheets?: ContractLemSummarySheet[];
+  /** Present when the BE failed to parse this attachment. */
+  error?: string;
+};
+
+/** Parsed LEM attachment contents and rate-sheet comparison. */
+export type ContractLemSummary = {
+  files?: ContractLemSummaryFile[];
+  comparison?: {
+    total?: number;
+    rateSheetTotal?: number | null;
+    totalVariance?: number | null;
+    complianceStatus?: "Fully Compliant" | "Non-Compliant" | null;
+  };
+};
+
+/** Per-item comparison of a LEM rate against the linked rate sheet. */
+export type ContractLemRateSheetItem = {
+  item?: string;
+  rateSheetRate?: number | null;
+  lemRate?: number | null;
+  variance?: number | null;
+  compliant?: boolean;
+};
+
+/** Comparison of the LEM against the linked rate sheet. The detail endpoint
+ *  returns the populated comparison here (summary.comparison's totals are
+ *  frequently null), so the Overview "Rate Sheet Compliance" card reads from
+ *  this object as a fallback.
+ *
+ *  Current BE shape (docs v2.3.0): `{ total, variance, status }`, where
+ *  `variance` is the LEM amount minus the rate-sheet amount and `status` is
+ *  "Compliance" | "Non-Compliance". The older `rateSheetTotal` / `items[]` /
+ *  `compliant` fields are kept optional so either shape is handled. */
+export type ContractLemRateSheet = {
+  sheetId?: string;
+  title?: string;
+  /** Rate-sheet amount. */
+  total?: number | null;
+  /** LEM amount minus the rate-sheet amount. */
+  variance?: number | null;
+  /** Compliance verdict from the BE. */
+  status?: "Compliance" | "Non-Compliance" | string;
+  items?: ContractLemRateSheetItem[];
+  /** Sum of the matched rate-sheet rates (legacy shape). */
+  rateSheetTotal?: number | null;
+  /** Count of items whose LEM rate varies from the rate sheet. */
+  totalVarianceCount?: number | null;
+  compliant?: boolean;
+};
+
 export type ContractLemDTO = {
+  _id?: string;
+  lemId?: string;
   title?: string;
   description?: string;
   amount?: number;
+  status?: "pending" | "approved" | "rejected";
+  sheetId?: string;
   files?: Array<{
     name?: string;
     url?: string;
     type?: string;
     size?: string;
   }>;
+  summary?: ContractLemSummary;
+  rateSheet?: ContractLemRateSheet;
+  approverStatus?: string;
+  // Present on the detail response though not in the published schema; the
+  // detail view relies on them.
+  submittedBy?: { name?: string; email?: string };
+  createdAt?: string;
 };
+
+/** Merged rate-sheet compliance shown on the LEM Overview card. */
+export type LemRateSheetComparison = {
+  total: number | null;
+  rateSheetTotal: number | null;
+  totalVariance: number | null;
+  complianceStatus: string | null;
+};
+
+/**
+ * Derive the LEM "Rate Sheet Compliance" values shown on the Overview.
+ *
+ * `summary.comparison` is authoritative but its totals are frequently null, so
+ * the sibling top-level `rateSheet` object is the fallback. Its current BE shape
+ * is `{ total, variance, status: "Compliance" | "Non-Compliance" }`; the older
+ * `rateSheetTotal` / `items[].variance` / `compliant` fields are also accepted.
+ * The rateSheet `status` enum is mapped onto the comparison's
+ * "Fully Compliant" / "Non-Compliant" labels so the badge colour resolves and
+ * the badge never disagrees with the shown variance because of a stale key.
+ */
+export function deriveLemRateSheetComparison(
+  comparison:
+    | {
+        total?: number | null;
+        rateSheetTotal?: number | null;
+        totalVariance?: number | null;
+        complianceStatus?: string | null;
+      }
+    | null
+    | undefined,
+  rateSheet: ContractLemRateSheet | null | undefined,
+): LemRateSheetComparison | undefined {
+  const itemVariances = (rateSheet?.items ?? [])
+    .map((it) => it?.variance)
+    .filter((v): v is number => typeof v === "number");
+  const summedVariance = itemVariances.length
+    ? itemVariances.reduce((a, b) => a + b, 0)
+    : null;
+
+  const rateSheetTotal =
+    typeof comparison?.rateSheetTotal === "number"
+      ? comparison.rateSheetTotal
+      : typeof rateSheet?.total === "number"
+        ? rateSheet.total
+        : typeof rateSheet?.rateSheetTotal === "number"
+          ? rateSheet.rateSheetTotal
+          : null;
+  const totalVariance =
+    typeof comparison?.totalVariance === "number"
+      ? comparison.totalVariance
+      : typeof rateSheet?.variance === "number"
+        ? rateSheet.variance
+        : summedVariance;
+
+  const mapRateSheetStatus = (status?: string): string | null => {
+    const s = status?.toLowerCase();
+    if (s === "compliance") return "Fully Compliant";
+    if (s === "non-compliance") return "Non-Compliant";
+    return status ?? null;
+  };
+  const complianceStatus =
+    comparison?.complianceStatus ??
+    mapRateSheetStatus(rateSheet?.status) ??
+    (typeof rateSheet?.compliant === "boolean"
+      ? rateSheet.compliant
+        ? "Fully Compliant"
+        : "Non-Compliant"
+      : null);
+
+  const hasData =
+    !!comparison ||
+    rateSheetTotal !== null ||
+    totalVariance !== null ||
+    !!complianceStatus;
+  if (!hasData) return undefined;
+
+  return {
+    total: comparison?.total ?? null,
+    rateSheetTotal,
+    totalVariance,
+    complianceStatus,
+  };
+}
 
 export type ManagerListLemsQuery = {
   lemId?: string;
@@ -491,6 +693,23 @@ export type ContractApproverSummary = {
   approvalLevels?: number[];
   assignedApprovals?: string;
   status?: "Completed" | "Pending";
+  /** Approver group this user belongs to — needed to manage (remove) them. */
+  groupId?: string;
+  /** Lifecycle of the approver within the group. */
+  approverStatus?: "active" | "deleted";
+  hasAssignments?: boolean;
+};
+
+export type AddApproverGroupInput = {
+  user: string[];
+  groupName: string;
+  level: number;
+  amount: number;
+};
+
+export type ManageApproverInput = {
+  status: "active" | "deleted";
+  approverId: string;
 };
 
 export type ContractApproverAction = {
@@ -510,13 +729,63 @@ export type ContractApproverAction = {
   approvedDate?: string;
 };
 
+export type ContractApproverItem = {
+  refId?: string;
+  refType?: string;
+  refCode?: string;
+  title?: string;
+  status?: "pending" | "approved" | "rejected";
+  comment?: string;
+  actionedAt?: string;
+  completedAt?: string;
+  level?: number;
+  group?: string;
+  amount?: number;
+};
+
+export type ContractApproverItemsByCategory = {
+  project?: ContractApproverItem[];
+  changes?: ContractApproverItem[];
+  claims?: ContractApproverItem[];
+  invoices?: ContractApproverItem[];
+  lems?: ContractApproverItem[];
+  amendments?: ContractApproverItem[];
+  holdbacks?: ContractApproverItem[];
+  ratesheets?: ContractApproverItem[];
+};
+
+export type ContractApproverModelSummary = {
+  status?: "pending" | "approved" | "rejected";
+  comment?: string;
+  actionedAt?: string;
+  assigned?: number;
+  completed?: number;
+};
+
 export type ContractApproverDetail = {
+  contract?: {
+    _id?: string;
+    contractId?: string;
+    title?: string;
+    status?: string;
+    currency?: string;
+    contractValue?: number;
+    startDate?: string;
+    endDate?: string;
+  };
   approver?: {
     _id?: string;
+    name?: string;
     firstName?: string;
     lastName?: string;
     email?: string;
+    role?: { _id?: string; name?: string };
   };
+  submissionDate?: string;
+  assignedApproval?: { completed?: number; total?: number };
+  status?: "pending" | "approved" | "rejected";
+  models?: Record<string, ContractApproverModelSummary>;
+  items?: ContractApproverItemsByCategory;
   details?: ContractApproverAction[];
 };
 
@@ -549,6 +818,8 @@ export type CreateContractInput = {
   msaContractId?: string;
   solicitationId?: string;
   businessDivision?: string;
+  currency?: string;
+  currencyRate?: number;
   contractPaymentTerm?: string;
   contractTermType?: string;
   contractId?: string;
@@ -607,39 +878,82 @@ export type ContractComplianceDTO = {
     coverage?: number;
     security?: boolean;
     expDate?: string;
-    securityType?: Array<{ id?: string; name?: string }>;
+    policyStatus?: {
+      status?: "pending" | "submitted" | "approved" | "rejected";
+      submissionDate?: string;
+      description?: string | null;
+      files?: Array<{
+        name?: string;
+        url?: string;
+        type?: string;
+        size?: string;
+        uploadedAt?: string;
+      }>;
+      manager?: {
+        user?: string;
+        status?: "pending" | "approved" | "rejected";
+        comment?: string | null;
+        actionedAt?: string;
+      };
+    };
+    securityType?: Array<{
+      securityTypeId?: string;
+      securityType?: string;
+      amount?: number;
+      dueDate?: string;
+      _id?: string;
+    }>;
     insuranceStatus?: "pending" | "approved" | "rejected";
-    securityStatus?: "pending" | "approved" | "rejected";
+    securityStatus?:
+      | "pending"
+      | "approved"
+      | "rejected"
+      | {
+          status?: "pending" | "submitted" | "approved" | "rejected";
+          submissionDate?: string;
+          description?: string | null;
+          files?: Array<{
+            name?: string;
+            url?: string;
+            type?: string;
+            size?: string;
+            uploadedAt?: string;
+          }>;
+          manager?: {
+            user?: string;
+            status?: "pending" | "approved" | "rejected";
+            comment?: string | null;
+            actionedAt?: string;
+          };
+        };
+    submissionDate?: string;
+    files?: Array<{
+      name?: string;
+      url?: string;
+      type?: string;
+      size?: string;
+      _id?: string;
+      uploadedAt?: string;
+    }>;
   };
   policy?: Array<{
     _id?: string;
     policyId?: string;
     policyName?: string;
-    value?: string;
+    value?: number;
     status?: string;
     description?: string;
     createdAt?: string;
-    files?: Array<{
-      name?: string;
-      url?: string;
-      type?: string;
-      size?: string;
-    }>;
   }>;
   security?: Array<{
-    id?: string;
+    _id?: string;
+    securityTypeId?: string;
     securityType?: string;
-    amount?: string;
-    expiryDate?: string;
+    amount?: number;
+    dueDate?: string;
     status?: string;
     description?: string;
     createdAt?: string;
-    files?: Array<{
-      name?: string;
-      url?: string;
-      type?: string;
-      size?: string;
-    }>;
   }>;
 };
 
@@ -689,6 +1003,7 @@ export interface User {
 
 
 export interface ContractLogDTO {
+  logId?:   string;
   actionId:  string;
   module:    LogModule;
   user:      string;
@@ -723,12 +1038,18 @@ type HttpDelete = (args: {
   payload?: unknown;
   config?: AxiosRequestConfig;
 }) => Promise<{ data: unknown }>;
+type HttpPatch = (args: {
+  url: string;
+  payload: unknown;
+  config?: AxiosRequestConfig;
+}) => Promise<{ data: unknown }>;
 
 export type ContractManagerHttpClient = {
   get: HttpGet;
   post: HttpPost;
   put: HttpPut;
   delete: HttpDelete;
+  patch: HttpPatch;
 };
 
 const CONTRACT_API_PREFIX = "/contract";
@@ -739,6 +1060,7 @@ const defaultContractManagerHttpClient: ContractManagerHttpClient = {
   post: ({ url, payload, config }) => postRequest({ url, payload, config }),
   put: ({ url, payload, config }) => putRequest({ url, payload, config }),
   delete: ({ url, payload, config }) => deleteRequest({ url, payload, config }),
+  patch: ({ url, payload, config }) => patchRequest({ url, payload, config }),
 };
 
 export const createContractManagerApi = (
@@ -765,6 +1087,40 @@ export const createContractManagerApi = (
       });
       return res as ApiResponse<ContractDetail>;
     },
+    approveProjectManagerAssignment: async (
+      contractId: string,
+      payload: { action: "approved" | "rejected"; reason?: string },
+    ) => {
+      const res = await client.post({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/project-manager/approval`,
+        payload,
+      });
+      return res as ApiResponse<any>;
+    },
+    onboardProjectManager: async (
+      contractId: string,
+      payload: { email: string },
+    ) => {
+      const res = await client.post({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/project-manager`,
+        payload,
+      });
+      return res as ApiResponse<{ message: string }>;
+    },
+    /**
+     * Fetches the contract in edit-form shape — swagger 2.3.0 added
+     * `GET /manager/contracts/{contractId}/edit` which returns a fully
+     * populated record specifically meant for pre-filling the edit
+     * wizard. Use this from EditContract instead of the read-only
+     * detail endpoint above.
+     * x-roles: contract_manager, company_admin.
+     */
+    getContractForEdit: async (contractId: string) => {
+      const res = await client.get({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/edit`,
+      });
+      return res as ApiResponse<ContractDetail>;
+    },
     listContractApprovers: async (contractId: string) => {
       const res = await client.get({
         url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/approvers`,
@@ -776,6 +1132,27 @@ export const createContractManagerApi = (
         url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/approvers/${approverId}`,
       });
       return res.data as { message?: string; data?: ContractApproverDetail };
+    },
+    addContractApprovers: async (
+      contractId: string,
+      payload: { approvers: AddApproverGroupInput[] },
+    ) => {
+      const res = await client.post({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/approvers/add`,
+        payload,
+      });
+      return res.data as { status?: boolean; message?: string };
+    },
+    manageContractApprover: async (
+      contractId: string,
+      groupId: string,
+      payload: ManageApproverInput,
+    ) => {
+      const res = await client.patch({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/approvers/${groupId}/manage`,
+        payload,
+      });
+      return res.data as { status?: boolean; message?: string };
     },
     listPaymentHoldbacks: async (contractId: string) => {
       const res = await client.get({
@@ -793,9 +1170,9 @@ export const createContractManagerApi = (
       });
       return res.data as { message?: string; data?: ContractHoldBackDTO };
     },
-    getPaymentHoldbackById: async (holdBackId: string) => {
+    getPaymentHoldbackById: async (contractId: string, holdBackId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/payment-holdbacks/${holdBackId}`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/payment-holdbacks/${holdBackId}`,
       });
       return res.data as { message?: string; data?: ContractHoldBackDTO };
     },
@@ -815,9 +1192,9 @@ export const createContractManagerApi = (
       });
       return res.data as { message?: string; data?: ContractSavingDTO };
     },
-    getPaymentSavingById: async (savingId: string) => {
+    getPaymentSavingById: async (contractId: string, savingId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/payment-savings/${savingId}`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/payment-savings/${savingId}`,
       });
       return res.data as { message?: string; data?: ContractSavingDTO };
     },
@@ -850,7 +1227,7 @@ export const createContractManagerApi = (
     ) => {
       const createPath =
         type === "MsaContract"
-          ? `/contract/manager/msa-contract/${dataId}/change/${type}`
+          ? `/contract/manager/msa-contracts/${dataId}/change/${type}`
           : `${MANAGER_CONTRACTS_PREFIX}/${dataId}/change/${type}`;
       const res = await client.post({
         url: createPath,
@@ -858,23 +1235,27 @@ export const createContractManagerApi = (
       });
       return res.data as { message?: string; data?: ContractChangeDTO };
     },
-    approveChange: async (changeId: string, payload: ApprovalActionDTO) => {
+    approveChange: async (
+      contractId: string,
+      changeId: string,
+      payload: ApprovalActionDTO,
+    ) => {
       await assertValid(approvalActionSchema, payload);
       const res = await client.post({
-        url: `${MANAGER_CONTRACTS_PREFIX}/changes/${changeId}/approve`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/changes/${changeId}/approve`,
         payload,
       });
       return res.data as { message?: string };
     },
-    getChangeApproveStatus: async (changeId: string) => {
+    getChangeApproveStatus: async (contractId: string, changeId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/changes/${changeId}/approve/status`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/changes/${changeId}/approve/status`,
       });
       return res.data as { message?: string; data?: { status?: string } };
     },
-    listChangeApprovers: async (changeId: string) => {
+    listChangeApprovers: async (contractId: string, changeId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/changes/${changeId}/approvers`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/changes/${changeId}/approvers`,
       });
       return res.data as { message?: string; data?: ContractChangeApprover[] };
     },
@@ -926,29 +1307,33 @@ export const createContractManagerApi = (
         data?: { changes?: ContractClaimDTO[]; total?: number };
       };
     },
-    getClaimDetail: async (claimId: string) => {
+    getClaimDetail: async (contractId: string, claimId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/claims/${claimId}`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/claims/${claimId}`,
       });
       return res.data as { message?: string; data?: ContractClaimDTO };
     },
-    approveClaim: async (claimId: string, payload: ApprovalActionDTO) => {
+    approveClaim: async (
+      contractId: string,
+      claimId: string,
+      payload: ApprovalActionDTO,
+    ) => {
       await assertValid(approvalActionSchema, payload);
       const res = await client.post({
-        url: `${MANAGER_CONTRACTS_PREFIX}/claims/${claimId}/approve`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/claims/${claimId}/approve`,
         payload,
       });
       return res.data as { message?: string };
     },
-    getClaimApproveStatus: async (claimId: string) => {
+    getClaimApproveStatus: async (contractId: string, claimId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/claims/${claimId}/approve/status`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/claims/${claimId}/approve/status`,
       });
       return res.data as { message?: string; data?: { status?: string } };
     },
-    listClaimComments: async (claimId: string) => {
+    listClaimComments: async (contractId: string, claimId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/claims/${claimId}/comments`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/claims/${claimId}/comments`,
       });
       return res.data as {
         message?: string;
@@ -956,39 +1341,41 @@ export const createContractManagerApi = (
       };
     },
     addClaimComment: async (
-      claimId: string,
       contractId: string,
+      claimId: string,
       payload: ContractChangeCommentDTO,
     ) => {
       const res = await client.post({
-        url: `${MANAGER_CONTRACTS_PREFIX}/claims/${claimId}/comments/${contractId}`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/claims/${claimId}/comments`,
         payload,
       });
       return res.data as { message?: string; data?: ContractCommentDTO };
     },
     replyClaimComment: async (
+      contractId: string,
       claimId: string,
       commentId: string,
       payload: ContractChangeReplyDTO,
     ) => {
       const res = await client.post({
-        url: `${MANAGER_CONTRACTS_PREFIX}/claims/${claimId}/comments/${commentId}/reply`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/claims/${claimId}/comments/${commentId}/reply`,
         payload,
       });
       return res.data as { message?: string; data?: ContractCommentDTO };
     },
-    listClaimApprovers: async (claimId: string) => {
+    listClaimApprovers: async (contractId: string, claimId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/claims/${claimId}/approvers`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/claims/${claimId}/approvers`,
       });
       return res.data as { message?: string; data?: ContractChangeApprover[] };
     },
     sendClaimToApprovers: async (
+      contractId: string,
       claimId: string,
       payload: { userIds: string[] },
     ) => {
       const res = await client.post({
-        url: `${MANAGER_CONTRACTS_PREFIX}/claims/${claimId}/approvers`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/claims/${claimId}/approvers`,
         payload,
       });
       return res.data as { message?: string; data?: ContractClaimDTO };
@@ -1012,9 +1399,9 @@ export const createContractManagerApi = (
         data?: { invoices?: ContractInvoiceDTO[]; total?: number };
       };
     },
-    getInvoiceDetail: async (invoiceId: string) => {
+    getInvoiceDetail: async (contractId: string, invoiceId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/invoice/${invoiceId}`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/invoice/${invoiceId}`,
       });
       return res.data as { message?: string; data?: ContractInvoiceDTO };
     },
@@ -1023,7 +1410,7 @@ export const createContractManagerApi = (
       invoiceId: string,
       payload: ApprovalActionDTO,
     ) => {
-      await assertValid(approvalActionSchema, payload);
+      await assertValid(invoiceApprovalActionSchema, payload);
       const res = await client.post({
         url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/invoice/${invoiceId}/approve`,
         payload,
@@ -1094,26 +1481,42 @@ export const createContractManagerApi = (
       });
       return res.data as { message?: string; data?: unknown };
     },
-    getAmendmentDetail: async (amendmentId: string) => {
+    getAmendmentDetail: async (contractId: string, amendmentId: string) => {
       const res = await client.get({
-        url: `${MANAGER_CONTRACTS_PREFIX}/amendments/${amendmentId}`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/amendments/${amendmentId}`,
       });
       return res.data as { message?: string; data?: unknown };
     },
-    addAmendmentApprovers: async (amendmentId: string, payload: unknown) => {
+    addAmendmentApprovers: async (
+      contractId: string,
+      amendmentId: string,
+      payload: unknown,
+    ) => {
       const res = await client.post({
-        url: `${MANAGER_CONTRACTS_PREFIX}/amendments/${amendmentId}/approvers`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/amendments/${amendmentId}/approvers`,
+        payload,
+      });
+      return res.data as { message?: string; data?: unknown };
+    },
+    updateAmendment: async (
+      contractId: string,
+      amendmentId: string,
+      payload: unknown,
+    ) => {
+      const res = await client.put({
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/amendments/${amendmentId}`,
         payload,
       });
       return res.data as { message?: string; data?: unknown };
     },
     approveAmendment: async (
+      contractId: string,
       amendmentId: string,
       payload: ApprovalActionDTO,
     ) => {
       await assertValid(approvalActionSchema, payload);
       const res = await client.post({
-        url: `${MANAGER_CONTRACTS_PREFIX}/amendments/${amendmentId}/approve`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/amendments/${amendmentId}/approve`,
         payload,
       });
       return res.data as { message?: string; data?: unknown };
@@ -1163,11 +1566,12 @@ export const createContractManagerApi = (
       return res.data as { message?: string; data?: ContractRFIDetailDTO };
     },
     createRfiResponse: async (
+      contractId: string,
       rfiId: string,
       payload: ContractRfiResponseDTO,
     ) => {
       const res = await client.post({
-        url: `${MANAGER_CONTRACTS_PREFIX}/rfis/${rfiId}/response`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/rfis/${rfiId}/response`,
         payload,
       });
       return res.data as { message?: string; data?: ContractRfiResponseDTO };
@@ -1199,12 +1603,13 @@ export const createContractManagerApi = (
       return res.data as { message?: string; data?: ContractCommentDTO };
     },
     replyRfiComment: async (
+      contractId: string,
       rfiId: string,
       commentId: string,
       payload: ContractChangeReplyDTO,
     ) => {
       const res = await client.post({
-        url: `${MANAGER_CONTRACTS_PREFIX}/rfis/${rfiId}/comment/${commentId}/reply`,
+        url: `${MANAGER_CONTRACTS_PREFIX}/${contractId}/rfis/${rfiId}/comment/${commentId}/reply`,
         payload,
       });
       return res.data as { message?: string; data?: ContractCommentDTO };

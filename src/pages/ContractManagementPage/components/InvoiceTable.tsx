@@ -1,4 +1,5 @@
 import React from "react";
+import { resolveEnvFileUrl } from "@/config";
 import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
@@ -11,32 +12,60 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { ArrowLeft, Search, Share2, X } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { cn, formatDateTZ, resolveCurrency } from "@/lib/utils";
+import { ArrowLeft, Search, X } from "lucide-react";
+import CreateInvoiceDialog from "./CreateInvoiceDialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import type { ContractInvoiceDTO } from "../api/contractManagerApi";
 import { contractManagerApi } from "../api/contractManagerApi";
 import { approverApi } from "../api/approverApi";
 import { vendorApi } from "../api/vendorApi";
 import { getRequest } from "@/lib/axiosInstance";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useUser } from "@/store/authSlice";
 import { useToastHandler } from "@/hooks/useToaster";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import { DocumentItem, type DocType } from "./DocumentItem";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import type { ApiResponseError } from "@/types";
 
+/** Display label for an invoice's `type`. The "holdback" type is shown as
+ *  "Holdback Release" (matching the create-invoice type selector); every other
+ *  type is title-cased word-by-word (e.g. "progress draw" -> "Progress Draw").
+ *  The stored value stays "holdback" — only the label changes. */
+const formatInvoiceType = (type?: string | null): string => {
+  if (typeof type !== "string" || !type.trim()) return "-";
+  if (type.trim().toLowerCase() === "holdback") return "Holdback Release";
+  return type
+    .split(" ")
+    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+    .join(" ");
+};
+
 export type InvoiceRow = {
   id: string;
   type: string;
   billed: string;
   remaining: string;
-  status: "Approved" | "Pending" | "Rejected" | "Draft";
+  status: "Approved" | "Pending" | "Rejected" | "Draft" | "Active";
 };
 
 type InvoiceDetailsSheetProps = {
   trigger: React.ReactNode;
   contractId: string;
   invoiceId: string;
+  actionsDisabled?: boolean;
+  /** Only the contract owner/manager may approve/reject an invoice (QA #164). */
+  owner?: boolean;
+  /** Contract-level currency; falls back to USD when the API omits it. */
+  currency?: string;
 };
 
 const LabelRow = ({
@@ -47,8 +76,8 @@ const LabelRow = ({
   value: React.ReactNode;
 }) => (
   <div className="space-y-2">
-    <div className="text-xs font-medium text-[#9CA3AF]">{label}</div>
-    <div className="text-sm font-medium text-[#111827]">{value}</div>
+    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">{label}</div>
+    <div className="text-sm font-medium text-[#111827] dark:text-slate-100">{value}</div>
   </div>
 );
 
@@ -57,13 +86,29 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
   trigger,
   contractId,
   invoiceId,
+  actionsDisabled,
+  owner,
+  currency,
 }) => {
-  const { isVendor, isApprover, isManager, isAdmin, isViewOnly } = useUserRole();
+  const currencyCode = resolveCurrency(currency, useUser()?.currency);
+  const { isVendor, isProjectManager, isApprover, isManager, isAdmin, isViewOnly } = useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
   const [viewerOpen, setViewerOpen] = React.useState(false);
   const [selectedDoc, setSelectedDoc] = React.useState<DocType | null>(null);
+
+  // Approve / reject opens a comment dialog first. `pendingAction` drives the
+  // dialog's title/CTA/color; `commentDraft` resets whenever the dialog closes.
+  const [pendingAction, setPendingAction] = React.useState<
+    "approved" | "rejected" | null
+  >(null);
+  const [commentDraft, setCommentDraft] = React.useState("");
+
+  React.useEffect(() => {
+    if (pendingAction === null) setCommentDraft("");
+  }, [pendingAction]);
 
   const {
     data,
@@ -73,17 +118,17 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
     message?: string;
     data?: ContractInvoiceDTO;
   }>({
-    queryKey: ["contractInvoiceDetail", contractId, invoiceId],
+    queryKey: useUserQueryKey(["contractInvoiceDetail", contractId, invoiceId]),
     queryFn: async () => {
       if (isApprover) {
         return await approverApi.getInvoiceDetail(contractId, invoiceId);
       }
-      if (isVendor) {
+      if (isContractVendorLike) {
         const res = await vendorApi.getInvoiceDetail(contractId, invoiceId);
         return { message: res.data.message, data: res.data.data };
       }
       if (isManager || isAdmin) {
-        return await contractManagerApi.getInvoiceDetail(invoiceId);
+        return await contractManagerApi.getInvoiceDetail(contractId, invoiceId);
       }
       if (isViewOnly) {
         const res = await getRequest({
@@ -99,26 +144,41 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
 
   const invoice = data?.data;
 
-  const canApprove = ((invoice?.approverStatus || "").toLowerCase() === "pending");
+  const isPendingApproval = invoice?.approverStatus === "pending";
 
-  const canManagerAct =
-    isManager && ((invoice?.approverStatus || "").toLowerCase() === "pending");
+  const { data: approveStatusData, isLoading: isApproveStatusLoading } = useQuery<
+    { message?: string; data?: { status?: boolean } },
+    ApiResponseError
+  >({
+    queryKey: useUserQueryKey(["invoiceApproveStatus", contractId, invoiceId]),
+    queryFn: async () => {
+      return await approverApi.getInvoiceApproveStatus(contractId, invoiceId);
+    },
+    enabled: open && Boolean(contractId) && Boolean(invoiceId) && isApprover,
+    staleTime: 30000,
+  });
+
+  const canApprove =
+    isPendingApproval && approveStatusData?.data?.status === true;
+
+  const canManagerAct = isManager && isPendingApproval && !!owner;
 
 
   const approveInvoiceMutation = useMutation<
     void,
     ApiResponseError,
-    "approved" | "rejected"
+    { action: "approved" | "rejected"; comment: string }
   >({
     mutationKey: ["approveInvoice", contractId, invoiceId],
-    mutationFn: async (action) => {
+    mutationFn: async ({ action, comment }) => {
       if (isManager) {
-        await contractManagerApi.approveInvoice(contractId, invoiceId, { action });
+        await contractManagerApi.approveInvoice(contractId, invoiceId, { action, comment });
         return;
       }
-      await approverApi.approveInvoice(contractId, invoiceId, { action });
+      await approverApi.approveInvoice(contractId, invoiceId, { action, comment });
     },
-    onSuccess: async (_, action) => {
+    onSuccess: async (_, { action }) => {
+      setPendingAction(null);
       toastHandler.success(
         "Invoice updated",
         action === "approved"
@@ -130,8 +190,13 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
       await queryClient.invalidateQueries({
         queryKey: ["invoiceApproveStatus", contractId, invoiceId],
       });
+      // Approval recomputes contract financials + linked-project totals —
+      // refresh both so Remaining/totalSpend/EAC don't stay stale (QA #143/#156).
+      await queryClient.invalidateQueries({ queryKey: ["contract-manager-contracts", contractId] });
+      await queryClient.invalidateQueries({ queryKey: ["projects-list"] });
+      await queryClient.invalidateQueries({ queryKey: ["projects-stats"] });
     },
-    onError: (err, action) => {
+    onError: (err, { action }) => {
       toastHandler.error(
         action === "approved"
           ? "Failed to approve invoice"
@@ -148,7 +213,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
 
   const handleDownload = React.useCallback((d: DocType) => {
     if (!d.url) return;
-    window.open(d.url, "_blank", "noopener,noreferrer");
+    window.open(d.url ? resolveEnvFileUrl(d.url) : "#", "_blank", "noopener,noreferrer");
   }, []);
 
   const files: DocType[] =
@@ -185,13 +250,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
           : "bg-yellow-100 text-yellow-700";
 
   const invoiceIdLabel = invoice?.invoiceId ?? invoice?._id ?? invoiceId;
-  const typeLabel =
-    typeof invoice?.type === "string"
-      ? invoice.type
-          .split(" ")
-          .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
-          .join(" ")
-      : "-";
+  const typeLabel = formatInvoiceType(invoice?.type);
 
   return (
     <Sheet
@@ -213,13 +272,16 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
           <SheetHeader className="space-y-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827]"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </button>
-                <SheetTitle className="text-base font-semibold text-[#0F0F0F]">
+                <SheetClose asChild>
+                  <button
+                    type="button"
+                    aria-label="Close invoice details"
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] dark:border-slate-700 text-[#111827] dark:text-slate-100"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                </SheetClose>
+                <SheetTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   Invoice
                 </SheetTitle>
               </div>
@@ -237,19 +299,13 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
           <div className="space-y-6">
             <div className="flex items-start justify-between">
               <div className="space-y-1">
-                <div className="text-xs font-medium text-[#9CA3AF]">
+                <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
                   Invoice Details
                 </div>
-                <div className="text-base font-semibold text-[#0F0F0F]">
+                <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   {invoice?.title ?? "-"}
                 </div>
               </div>
-              <Button
-                variant="outline"
-                className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F]"
-              >
-                <Share2 className="mr-2 h-4 w-4" /> Export
-              </Button>
             </div>
 
             <div className="grid gap-6 sm:grid-cols-2">
@@ -261,7 +317,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
                   typeof invoice?.amount === "number"
                     ? new Intl.NumberFormat(undefined, {
                         style: "currency",
-                        currency: "USD",
+                        currency: currencyCode,
                       }).format(invoice.amount)
                     : "-"
                 }
@@ -280,22 +336,113 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
                   </span>
                 }
               />
+              {/* #92 — surface the invoice submission date. Prefer an explicit
+                  submission field; fall back to the invoice's creation instant
+                  (submission = creation for an invoice). Viewer-local. */}
+              <LabelRow
+                label="Invoice Submission Date"
+                value={(() => {
+                  const submitted =
+                    invoice?.submissionDate ??
+                    invoice?.submittedAt ??
+                    invoice?.createdAt;
+                  return submitted
+                    ? formatDateTZ(submitted, "MMM dd, yyyy")
+                    : "-";
+                })()}
+              />
             </div>
 
             <div className="space-y-2">
-              <div className="text-xs font-medium text-[#9CA3AF]">
+              <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
                 Description/Note
               </div>
-              <div className="text-sm text-[#374151]">
+              <div className="text-sm text-[#374151] dark:text-slate-300">
                 {isLoading
                   ? "Loading..."
                   : invoice?.description || "No description provided."}
               </div>
             </div>
 
+            {!isLoading && (
+              <div className="space-y-3">
+                <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+                  Breakdown
+                </div>
+                {!Array.isArray(invoice?.items) || invoice.items.length === 0 ? (
+                  <div className="rounded-lg border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
+                    No itemized breakdown was submitted for this invoice — see
+                    the attached document below.
+                  </div>
+                ) : (
+                <div className="overflow-x-auto rounded-lg border border-[#E5E7EB] dark:border-slate-700">
+                  {/* min-w + table-layout:fixed keep Component/Description readable
+                      instead of the browser auto-shrinking them to fit the 560px
+                      sheet — the table scrolls horizontally on narrow viewports
+                      rather than wrapping every word onto its own line. */}
+                  <table className="w-full min-w-[640px] text-sm [table-layout:fixed]">
+                    <thead className="bg-[#F9FAFB] dark:bg-slate-800 text-left text-xs font-medium text-[#6B7280] dark:text-slate-400">
+                      <tr>
+                        <th className="w-[18%] px-3 py-2">Component</th>
+                        <th className="w-[30%] px-3 py-2">Description</th>
+                        <th className="w-[10%] px-3 py-2 text-right">Qty</th>
+                        <th className="w-[12%] px-3 py-2">Unit</th>
+                        <th className="w-[15%] px-3 py-2 text-right">
+                          Unit Price
+                        </th>
+                        <th className="w-[15%] px-3 py-2 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#E5E7EB] dark:divide-slate-700 text-[#111827] dark:text-slate-200">
+                      {invoice.items.map((it, idx) => {
+                        const qty =
+                          typeof it.quantity === "number" ? it.quantity : 0;
+                        const unitPrice =
+                          typeof it.unitPrice === "number" ? it.unitPrice : 0;
+                        const total = qty * unitPrice;
+                        return (
+                          <tr key={idx}>
+                            <td className="px-3 py-2 align-top font-medium break-words">
+                              {it.component || "-"}
+                            </td>
+                            <td className="px-3 py-2 align-top text-[#374151] dark:text-slate-300 break-words">
+                              {it.description || "-"}
+                            </td>
+                            <td className="px-3 py-2 align-top text-right">
+                              {qty || "-"}
+                            </td>
+                            <td className="px-3 py-2 align-top break-words">
+                              {it.unitOfmeasurement || "-"}
+                            </td>
+                            <td className="px-3 py-2 align-top text-right whitespace-nowrap">
+                              {unitPrice
+                                ? new Intl.NumberFormat(undefined, {
+                                    style: "currency",
+                                    currency: currencyCode,
+                                  }).format(unitPrice)
+                                : "-"}
+                            </td>
+                            <td className="px-3 py-2 align-top text-right font-medium whitespace-nowrap">
+                              {total
+                                ? new Intl.NumberFormat(undefined, {
+                                    style: "currency",
+                                    currency: currencyCode,
+                                  }).format(total)
+                                : "-"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                )}
+              </div>
+            )}
+
             {files.length > 0 && (
               <div className="space-y-3">
-                <div className="text-base font-semibold text-[#0F0F0F]">
+                <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   Attachments
                 </div>
                 <div className="space-y-2">
@@ -318,45 +465,120 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
             )}
           </div>
 
-          {canManagerAct ? (
+          {canManagerAct || (isApprover && canApprove && !isApproveStatusLoading) ? (
             <div className="flex gap-3 pt-6">
               <Button
                 variant="outline"
-                className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
-                disabled={approveInvoiceMutation.isPending}
-                onClick={() => approveInvoiceMutation.mutate("rejected")}
+                className="h-11 flex-1 rounded-xl border-[#E5E7EB] dark:border-slate-700 text-sm font-semibold text-[#111827] dark:text-slate-100"
+                onClick={() => setPendingAction("rejected")}
               >
-                {approveInvoiceMutation.isPending ? "Processing..." : "Reject"}
+                Reject
               </Button>
               <Button
                 className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
-                disabled={approveInvoiceMutation.isPending}
-                onClick={() => approveInvoiceMutation.mutate("approved")}
+                onClick={() => setPendingAction("approved")}
               >
-                {approveInvoiceMutation.isPending ? "Processing..." : "Approve"}
+                Approve
               </Button>
             </div>
           ) : null}
 
-          {(isApprover && canApprove) ? (
-            <div className="flex gap-3 pt-6">
-              <Button
-                variant="outline"
-                className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
-                disabled={approveInvoiceMutation.isPending}
-                onClick={() => approveInvoiceMutation.mutate("rejected")}
-              >
-                {approveInvoiceMutation.isPending ? "Processing..." : "Reject"}
-              </Button>
-              <Button
-                className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
-                disabled={approveInvoiceMutation.isPending}
-                onClick={() => approveInvoiceMutation.mutate("approved")}
-              >
-                {approveInvoiceMutation.isPending ? "Processing..." : "Approve"}
-              </Button>
-            </div>
-          ) : null}
+          {/* Vendor/PM edit (pending) or resubmit (rejected) — bottom footer,
+              matching the Deliverables detail layout. */}
+          {isProjectManager &&
+            !actionsDisabled &&
+            (invoice?.status === "pending" ||
+              invoice?.status === "rejected") && (
+              <div className="flex gap-3 pt-6 justify-end">
+                <CreateInvoiceDialog
+                  contractId={contractId}
+                  currency={currencyCode}
+                  mode="edit"
+                  isResubmit={invoice?.status === "rejected"}
+                  invoiceId={invoiceId}
+                  initialInvoice={invoice as any}
+                  trigger={
+                    <Button
+                      data-testid="edit-invoice-trigger"
+                      className="h-11 w-64 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
+                    >
+                      {invoice?.status === "rejected" ? "Resubmit" : "Edit"}
+                    </Button>
+                  }
+                />
+              </div>
+            )}
+
+          <Dialog
+            open={pendingAction !== null}
+            onOpenChange={(next) => {
+              if (!next && !approveInvoiceMutation.isPending) {
+                setPendingAction(null);
+              }
+            }}
+          >
+            <DialogContent className="sm:max-w-md p-0 overflow-hidden">
+              <DialogHeader className="px-6 pt-6 pb-2">
+                <DialogTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+                  {pendingAction === "approved"
+                    ? "Approve Invoice"
+                    : "Reject Invoice"}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="px-6 pb-6 space-y-4">
+                <p className="text-sm text-[#6B7280] dark:text-slate-400">
+                  {pendingAction === "approved"
+                    ? "Add an optional comment before approving this invoice."
+                    : "Let the vendor know why this invoice is being rejected (optional)."}
+                </p>
+                <textarea
+                  value={commentDraft}
+                  onChange={(e) => setCommentDraft(e.target.value)}
+                  placeholder="Enter your comment"
+                  rows={5}
+                  className="w-full resize-none rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm text-[#0F0F0F] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#2A4467] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+                  autoFocus
+                />
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827] dark:text-slate-100"
+                    disabled={approveInvoiceMutation.isPending}
+                    onClick={() => setPendingAction(null)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    className={cn(
+                      "h-11 flex-1 rounded-xl text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed",
+                      pendingAction === "approved"
+                        ? "bg-[#16A34A] hover:bg-[#15803D]"
+                        : "bg-[#E53935] hover:bg-[#C62828]",
+                    )}
+                    disabled={approveInvoiceMutation.isPending}
+                    aria-busy={approveInvoiceMutation.isPending}
+                    onClick={() => {
+                      if (pendingAction === null) return;
+                      approveInvoiceMutation.mutate({
+                        action: pendingAction,
+                        comment: commentDraft.trim(),
+                      });
+                    }}
+                  >
+                    {approveInvoiceMutation.isPending
+                      ? pendingAction === "approved"
+                        ? "Approving..."
+                        : "Rejecting..."
+                      : pendingAction === "approved"
+                        ? "Approve"
+                        : "Confirm Reject"}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
         
         {selectedDoc && (
@@ -383,6 +605,15 @@ type InvoiceTableProps = {
   pagination: PaginationState;
   setPagination: React.Dispatch<React.SetStateAction<PaginationState>>;
   contractId: string;
+  invoiceIdSearch: string;
+  setInvoiceIdSearch: (next: string) => void;
+  actionsDisabled?: boolean;
+  owner?: boolean;
+  /** Contract-level currency; falls back to USD when the API omits it. */
+  currency?: string;
+  /** Fallback contract-level `remaining` from FinancialStatement. Invoice
+   *  payload `remaining` values are preferred when the API provides them. */
+  contractRemaining?: number;
 };
 
 const InvoiceTable: React.FC<InvoiceTableProps> = ({
@@ -392,9 +623,14 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
   pagination,
   setPagination,
   contractId,
+  invoiceIdSearch,
+  setInvoiceIdSearch,
+  actionsDisabled,
+  owner,
+  currency,
+  contractRemaining,
 }) => {
-  const [search, setSearch] = React.useState("");
-
+  const currencyCode = resolveCurrency(currency, useUser()?.currency);
   const columns = React.useMemo<ColumnDef<InvoiceRow>[]>(() => {
     return [
       { accessorKey: "id", header: "Invoice ID" },
@@ -403,16 +639,16 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
         id: "amountBilled",
         header: "Amount/Billed",
         cell: ({ row }) => (
-          <div className="text-xs text-slate-600">
+          <div className="text-xs text-slate-600 dark:text-slate-300">
             <p>
-              <span className="text-slate-500">Billed:&nbsp;</span>
-              <span className="text-slate-900 font-medium">
+              <span className="text-slate-500 dark:text-slate-400">Billed:&nbsp;</span>
+              <span className="text-slate-900 dark:text-slate-100 font-medium">
                 {row.original.billed}
               </span>
             </p>
             <p>
-              <span className="text-slate-500">Remaining:&nbsp;</span>
-              <span className="text-slate-900 font-medium">
+              <span className="text-slate-500 dark:text-slate-400">Remaining:&nbsp;</span>
+              <span className="text-slate-900 dark:text-slate-100 font-medium">
                 {row.original.remaining}
               </span>
             </p>
@@ -427,6 +663,8 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
           const tone =
             s === "Approved"
               ? "bg-green-100 text-green-700"
+              : s === "Active"
+                ? "bg-blue-100 text-blue-700"
               : s === "Pending"
                 ? "bg-yellow-100 text-yellow-700"
                 : s === "Draft"
@@ -449,6 +687,9 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
             <InvoiceDetailsSheet
               contractId={contractId}
               invoiceId={row.original.id}
+              actionsDisabled={actionsDisabled}
+              owner={owner}
+              currency={currencyCode}
               trigger={
                 <button
                   type="button"
@@ -463,69 +704,76 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
         ),
       },
     ];
-  }, [contractId]);
+  }, [contractId, actionsDisabled, owner, currencyCode]);
 
   const invoiceRows: InvoiceRow[] = React.useMemo(() => {
     const currencyFormatter = new Intl.NumberFormat(undefined, {
       style: "currency",
-      currency: "USD",
+      currency: currencyCode,
     });
+    const remainingLabel =
+      typeof contractRemaining === "number"
+        ? currencyFormatter.format(contractRemaining)
+        : "-";
 
     return rows.map((inv) => {
       const id = inv.invoiceId ?? inv._id ?? "-";
-      const type = (inv.type ?? "-")
-        .split(" ")
-        .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
-        .join(" ");
+      const type = formatInvoiceType(inv.type);
       const billed =
         typeof inv.amount === "number" ? currencyFormatter.format(inv.amount) : "-";
 
       const status: InvoiceRow["status"] =
         inv.status === "approved"
           ? "Approved"
+          : inv.status === "active"
+            ? "Active"
           : inv.status === "rejected"
             ? "Rejected"
             : inv.status === "draft"
               ? "Draft"
               : "Pending";
 
+      // Prefer invoice-level remaining values when present; older payloads
+      // still fall back to the approved-only contract remaining value.
+      const invoiceRemaining =
+        typeof inv.remaining === "number"
+          ? inv.remaining
+          : typeof inv.balance === "number"
+            ? inv.balance
+            : typeof inv.remainingAmount === "number"
+              ? inv.remainingAmount
+              : undefined;
+
       return {
         id,
         type,
         billed,
-        remaining: "-",
+        remaining:
+          typeof invoiceRemaining === "number"
+            ? currencyFormatter.format(invoiceRemaining)
+            : status === "Approved"
+              ? remainingLabel
+              : "-",
         status,
       };
     });
-  }, [rows]);
-
-  const filteredRows = React.useMemo(() => {
-    if (!search) return invoiceRows;
-    const query = search.toLowerCase();
-    return invoiceRows.filter((row) =>
-      [row.id, row.type].some((value) =>
-        value.toLowerCase().includes(query)
-      )
-    );
-  }, [invoiceRows, search]);
+  }, [rows, contractRemaining, currencyCode]);
 
 
   return (
     <div className="space-y-4" data-testid="invoice-table">
       <DataTable<InvoiceRow>
-        data={filteredRows}
+        data={invoiceRows}
         columns={columns}
         header={() => (
-          <div className="flex items-center gap-3 w-full border-b border-[#E5E7EB] px-5 py-4">
-            <span className="text-sm font-medium text-slate-900">
-              Invoices
-            </span>
+          <div className="flex items-center gap-3 w-full border-b border-[#E5E7EB] dark:border-slate-800 px-5 py-4">
+            <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Invoices</span>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
-                placeholder="Search changes"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search invoices"
+                value={invoiceIdSearch}
+                onChange={(e) => setInvoiceIdSearch(e.target.value)}
                 className="h-10 w-[260px] pl-9"
               />
             </div>
@@ -535,22 +783,23 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
           disableSelection: true,
           isLoading,
           manualPagination: true,
-          totalCounts: totalCount ?? filteredRows.length,
+          totalCounts: totalCount ?? invoiceRows.length,
           setPagination,
           pagination,
         }}
         classNames={{
-          container: "border border-[#E5E7EB] rounded-xl bg-white",
-          tHeader: "bg-[#F9FAFB]",
-          tHeadRow: "border-b border-[#E5E7EB]",
-          tBody: "bg-white",
-          tRow: "border-b border-[#E5E7EB]",
-          tHead: "px-6 py-3 text-xs font-semibold text-slate-500",
-          tCell: "px-6 py-4 text-sm text-slate-700",
+          container: "border border-[#E5E7EB] dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900",
+          tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
+          tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tBody: "bg-white dark:bg-slate-900",
+          tRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tHead: "px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400",
+          tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-200",
         }}
       />
     </div>
   );
+
 };
 
 export default InvoiceTable;

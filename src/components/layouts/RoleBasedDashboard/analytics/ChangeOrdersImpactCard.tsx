@@ -11,44 +11,79 @@ import {
   Tooltip,
 } from "recharts";
 
+// The BE has shipped two field-name variants for the same values
+// (`totalChangeOrders`/`valueIncreasePercentage` vs `totalCOs`/`percentageIncrease`).
+// Accept either so the card renders whichever the API returns.
 type ApiData = {
-  totalCOs: number;
-  valueIncrease: number;
-  percentageIncrease: number;
-  chartData: Array<{ date: string; original: number; revised: number }>;
+  totalChangeOrders?: number;
+  totalCOs?: number;
+  valueIncrease?: number;
+  valueIncreasePercentage?: number;
+  percentageIncrease?: number;
+  chartData?: Array<{ date: string; original: number; revised: number }>;
 };
 
 type Props = {
   data?: ApiData;
+  selectedRange?: string;
+  onRangeChange?: (value: string) => void;
 };
 
-export const ChangeOrdersImpactCard: React.FC<Props> = ({ data }) => {
+export const ChangeOrdersImpactCard: React.FC<Props> = ({
+  data,
+  selectedRange = "ytd",
+  onRangeChange,
+}) => {
   const chart = (
     data?.chartData && data.chartData.length > 0 ? data.chartData : []
-  ).map((d) => ({
-    month: d.date,
-    Original: d.original / 1_000_000,
-    Revised: d.revised / 1_000_000,
-  }));
+  ).map((d) => {
+    const parsed = new Date(d.date);
+    // Format in UTC: BE sends date-only strings (e.g. "2026-08-01") which parse
+    // as UTC midnight. Formatting in local time shifts them a day back in
+    // UTC-negative zones, so "2026-08-01" renders as "Jul" and August drops off
+    // the axis. Pinning the formatter to UTC keeps each point on its real month.
+    const label = Number.isNaN(parsed.getTime())
+      ? d.date
+      : new Intl.DateTimeFormat(undefined, {
+          month: "short",
+          timeZone: "UTC",
+        }).format(parsed);
+    return {
+      month: label,
+      Original: d.original / 1_000_000,
+      Revised: d.revised / 1_000_000,
+    };
+  });
 
   const max = Math.max(0, ...chart.map((d) => Math.max(d.Original, d.Revised)));
   const domainMax = max > 0 ? Math.ceil(max / 10) * 10 : 100;
+  // A single data point draws no line segment, so surface it as a dot;
+  // with a full series keep smooth dot-less lines like the design.
+  const showDots = chart.length <= 1;
+
+  const totalChangeOrders = data?.totalChangeOrders ?? data?.totalCOs ?? 0;
+  const valueIncreaseM = (data?.valueIncrease ?? 0) / 1_000_000;
+  const valueIncreasePercentage =
+    data?.valueIncreasePercentage ?? data?.percentageIncrease ?? 0;
   return (
-    <Card className="rounded-2xl border border-[#E5E7EB] shadow-sm">
-      <CardHeader className="pb-3">
+    <Card className="rounded-2xl border border-[#E5E7EB] dark:border-slate-800 shadow-sm flex flex-col max-h-[32rem]">
+      <CardHeader className="pb-3 shrink-0">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-[16px] font-semibold text-[#030712]">
+          <CardTitle className="text-[16px] font-semibold text-[#030712] dark:text-slate-100">
             Change Orders Impact
           </CardTitle>
-          <div className="inline-flex items-center gap-2 border border-[#E5E7EB] rounded-lg px-3 py-2">
-            <span className="text-xs font-medium text-[#6B6B6B]">Top 10</span>
-            <span className="inline-block w-3 h-3 rounded-sm bg-[#E5E7EB]" />
-          </div>
+          {/* Decorative "Top 10" badge removed — not required here (QA #59). */}
         </div>
-        <Tabs value="ytd" className="w-full">
-          <TabsList className="bg-transparent p-0 gap-2">
+        <Tabs
+          value={selectedRange}
+          onValueChange={(value) => onRangeChange?.(value)}
+          className="w-full"
+        >
+          {/* Horizontal scroll on overflow; `!flex-none shrink-0` defeats
+              shadcn TabsTrigger's baked-in `flex-1` so pills don't stretch. */}
+          <TabsList className="bg-transparent p-0 gap-2 flex overflow-x-auto h-auto w-full justify-start">
             <TabsTrigger
-              className="rounded-md px-3 py-2 text-sm font-semibold bg-[#F0F0F0] text-[#2A4467]"
+              className="!flex-none shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-[#667085] dark:text-slate-400 data-[state=active]:bg-[#F0F0F0] data-[state=active]:text-[#2A4467] data-[state=active]:dark:bg-slate-800 data-[state=active]:dark:text-slate-100"
               value="ytd"
             >
               YTD
@@ -57,7 +92,7 @@ export const ChangeOrdersImpactCard: React.FC<Props> = ({ data }) => {
               <TabsTrigger
                 key={t}
                 value={t.replace(/\s+/g, "")}
-                className="rounded-md px-3 py-2 text-sm font-semibold text-[#667085]"
+                className="!flex-none shrink-0 rounded-md px-3 py-2 text-sm font-semibold text-[#667085] dark:text-slate-400 data-[state=active]:bg-[#F0F0F0] data-[state=active]:text-[#2A4467] data-[state=active]:dark:bg-slate-800 data-[state=active]:dark:text-slate-100"
               >
                 {t}
               </TabsTrigger>
@@ -65,12 +100,14 @@ export const ChangeOrdersImpactCard: React.FC<Props> = ({ data }) => {
           </TabsList>
         </Tabs>
       </CardHeader>
-      <CardContent className="pt-0 space-y-4">
+      <CardContent className="pt-0 space-y-4 flex-1 min-h-0 overflow-y-auto">
         <ChartContainer config={{} as ChartConfig} className="">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={chart}
-              margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
+              // Right padding so the final month's point and its angled label
+              // aren't clipped at the plot edge (QA #261).
+              margin={{ top: 0, right: 16, left: 0, bottom: 0 }}
             >
               <CartesianGrid
                 stroke="#E5E7EB"
@@ -81,44 +118,58 @@ export const ChangeOrdersImpactCard: React.FC<Props> = ({ data }) => {
                 domain={[0, domainMax]}
                 tick={{ fill: "#344054", fontSize: 12, fontWeight: 700 }}
               />
-              <XAxis dataKey="month" tick={{ fill: "#6B7280", fontSize: 12 }} />
-              <Tooltip />
+              {/* interval={0} forces every month's tick to render (Recharts'
+                  default `preserveEnd` drops every other month on a dense series);
+                  angling keeps all 12-13 monthly labels legible instead of
+                  crushing them together. Mirrors the angled category axis on the
+                  sibling "Contract Value by Category" chart. */}
+              <XAxis
+                dataKey="month"
+                interval={0}
+                angle={-35}
+                textAnchor="end"
+                height={48}
+                tickMargin={8}
+                tick={{ fill: "#6B7280", fontSize: 12 }}
+              />
+              {/* Values are already scaled to millions; format the tooltip so
+                  it shows "$53.6M" instead of the raw 53.63158659275845. */}
+              <Tooltip
+                formatter={(value) => `$${Number(value).toFixed(1)}M`}
+              />
               <Line
                 type="monotone"
                 dataKey="Original"
                 stroke="#10b981"
                 strokeWidth={2}
-                dot={false}
+                dot={showDots}
               />
               <Line
                 type="monotone"
                 dataKey="Revised"
                 stroke="#1e3a8a"
                 strokeWidth={2}
-                dot={false}
+                dot={showDots}
               />
             </LineChart>
           </ResponsiveContainer>
         </ChartContainer>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl bg-[#F9FAFB] p-3 text-center">
-            <p className="text-[12px] text-[#6B6B6B]">Total COs</p>
-            <p className="text-[18px] font-semibold text-[#030712]">
-              {data?.totalCOs ?? 142}
+          <div className="rounded-xl bg-[#F9FAFB] dark:bg-slate-800 p-3 text-center">
+            <p className="text-[12px] text-[#6B6B6B] dark:text-slate-400">Total COs</p>
+            <p className="text-[18px] font-semibold text-[#030712] dark:text-slate-100">
+              {totalChangeOrders}
             </p>
           </div>
-          <div className="rounded-xl bg-[#FEE2E2] p-3 text-center">
-            <p className="text-[12px] text-[#6B6B6B]">Value Increase</p>
-            <p className="text-[18px] font-semibold text-[#B91C1C]">
-              $
-              {(
-                ((data?.valueIncrease ?? 100_000_000) as number) / 1_000_000
-              ).toFixed(1)}
+          <div className="rounded-xl bg-[#FEE2E2] dark:bg-red-900/30 p-3 text-center">
+            <p className="text-[12px] text-[#6B6B6B] dark:text-slate-300">Value Increase</p>
+            <p className="text-[18px] font-semibold text-[#B91C1C] dark:text-red-300">
+              ${valueIncreaseM.toFixed(1)}
               M{" "}
-              <span className="text-[12px] text-[#B91C1C]">
-                ({(data?.percentageIncrease ?? 15.8) >= 0 ? "+" : ""}
-                {data?.percentageIncrease ?? 15.8}%)
+              <span className="text-[12px] text-[#B91C1C] dark:text-red-300">
+                ({valueIncreasePercentage >= 0 ? "+" : ""}
+                {valueIncreasePercentage}%)
               </span>
             </p>
           </div>
@@ -127,11 +178,11 @@ export const ChangeOrdersImpactCard: React.FC<Props> = ({ data }) => {
         <div className="flex items-center justify-center gap-6">
           <div className="flex items-center gap-2">
             <span className="inline-block w-3 h-3 rounded-[2px] bg-[#10b981]" />
-            <span className="text-xs text-[#030712]">Original</span>
+            <span className="text-xs text-[#030712] dark:text-slate-300">Original</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="inline-block w-3 h-3 rounded-[2px] bg-[#1e3a8a]" />
-            <span className="text-xs text-[#030712]">Revised</span>
+            <span className="text-xs text-[#030712] dark:text-slate-300">Revised</span>
           </div>
         </div>
       </CardContent>

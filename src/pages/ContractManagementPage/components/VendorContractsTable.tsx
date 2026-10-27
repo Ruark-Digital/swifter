@@ -10,8 +10,18 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
 import VendorEmptyState from "./VendorEmptyState";
 import { Link } from "react-router-dom";
+import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
+import { applyVendorContractFilters } from "../lib/vendorContractFilters";
 
 export type VendorContractRow = {
   id: string;
@@ -31,9 +41,11 @@ export type VendorContractRow = {
     | "Terminated"
     | "Expired"
     | "Cancelled"
+    | "Completed"
     | "Published"
     | "Draft"
     | "Pending Approval";
+  isOwner?: boolean;
 };
 
 const columns: ColumnDef<VendorContractRow>[] = [
@@ -41,15 +53,16 @@ const columns: ColumnDef<VendorContractRow>[] = [
     accessorKey: "title",
     header: "Contracts",
     cell: ({ row }) => (
-      <div className="flex flex-col">
+      <div className="flex flex-col max-w-[320px] min-w-0">
         <a
           href={`/dashboard/contract-management/${row.original.id}`}
           data-testid="vendor-contract-name-link"
-          className="font-medium text-slate-900 underline-offset-2 hover:underline"
+          title={row.original.title}
+          className="block truncate font-medium text-slate-900 dark:text-slate-100 underline-offset-2 hover:underline"
         >
           {row.original.title}
         </a>
-        <span className="text-xs text-slate-500">{row.original.code}</span>
+        <span className="truncate text-xs text-slate-500 dark:text-slate-400">{row.original.code}</span>
       </div>
     ),
   },
@@ -57,21 +70,25 @@ const columns: ColumnDef<VendorContractRow>[] = [
   { accessorKey: "contractRelationship", header: "Contract Relationship" },
   {
     accessorKey: "value",
-    header: "Value",
+    header: "Original Value",
     cell: ({ getValue }) => {
       const v = getValue<string | undefined>();
-      return <span className="font-semibold text-slate-900">{v ?? "-"}</span>;
+      return (
+        <span className="font-semibold text-slate-900 dark:text-slate-100">
+          {v ?? "-"}
+        </span>
+      );
     },
   },
   {
     id: "date",
     header: "Date",
     cell: ({ row }) => (
-      <div className="text-xs text-slate-500">
+      <div className="text-xs text-slate-500 dark:text-slate-400">
         {row.original.published && (
           <div>
             Published:{" "}
-            <span className="font-semibold text-slate-900">
+            <span className="font-semibold text-slate-900 dark:text-slate-100">
               {row.original.published}
             </span>
           </div>
@@ -79,7 +96,7 @@ const columns: ColumnDef<VendorContractRow>[] = [
         {row.original.endDate && (
           <div>
             End Date:{" "}
-            <span className="font-semibold text-slate-900">
+            <span className="font-semibold text-slate-900 dark:text-slate-100">
               {row.original.endDate}
             </span>
           </div>
@@ -99,6 +116,8 @@ const columns: ColumnDef<VendorContractRow>[] = [
             ? "bg-gray-100 text-gray-700"
             : s === "Pending Approval"
             ? "bg-yellow-100 text-yellow-700"
+            : s === "Completed"
+            ? "bg-blue-100 text-blue-700"
             : "bg-red-100 text-red-700";
       return (
         <span
@@ -139,11 +158,73 @@ const columns: ColumnDef<VendorContractRow>[] = [
   },
 ];
 
+// Actions cell with its dropdown open-state lifted to the table level —
+// an uncontrolled DropdownMenu per row keeps independent Radix state, so
+// a menu left open doesn't close when another row's menu is opened.
+const buildActionsColumn = (
+  openMenuRowId: string | null,
+  setOpenMenuRowId: (id: string | null) => void,
+  enableTakeOver: boolean,
+  onOpenTakeOver: (id: string) => void,
+): ColumnDef<VendorContractRow> => ({
+  id: "actions",
+  header: "Actions",
+  cell: ({ row }) => (
+    <DropdownMenu
+      open={openMenuRowId === row.original.id}
+      onOpenChange={(open) => setOpenMenuRowId(open ? row.original.id : null)}
+    >
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          data-testid="vendor-contract-actions-dropdown"
+        >
+          ⋮
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem asChild>
+          <Link
+            to={`/dashboard/contract-management/${row.original.id}`}
+            data-testid="vendor-view-contract-detail"
+          >
+            View Details
+          </Link>
+        </DropdownMenuItem>
+        {enableTakeOver &&
+          row.original.isOwner === false &&
+          (row.original.status === "Active" ||
+            row.original.status === "Published") && (
+            <DropdownMenuItem
+              data-testid="vendor-request-takeover"
+              onClick={() => onOpenTakeOver(row.original.id)}
+            >
+              Request take-over
+            </DropdownMenuItem>
+          )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  ),
+});
+
 type VendorContractsTableProps = {
   rows?: VendorContractRow[];
   isLoading?: boolean;
   totalCount?: number;
   isReadOnly?: boolean;
+  pagination?: PaginationState;
+  setPagination?: React.Dispatch<React.SetStateAction<PaginationState>>;
+  statusFilter?: string;
+  onStatusFilterChange?: (status: string) => void;
+  enableCompanyFilter?: boolean;
+  onCompanyFilterChange?: (company: string) => void;
+  companyOptions?: { label: string; value: string }[];
+  dateFilter?: string;
+  onDateFilterChange?: (date: string) => void;
+  enableTakeOver?: boolean;
+  onRequestTakeOver?: (contractId: string) => void;
+  isRequestingTakeOver?: boolean;
 };
 
 const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
@@ -151,29 +232,76 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
   isLoading,
   totalCount,
   isReadOnly,
+  pagination: paginationProp,
+  setPagination: setPaginationProp,
+  statusFilter,
+  onStatusFilterChange,
+  enableCompanyFilter,
+  onCompanyFilterChange,
+  companyOptions = [{ label: "All", value: "all" }],
+  dateFilter,
+  onDateFilterChange,
+  enableTakeOver,
+  onRequestTakeOver,
+  isRequestingTakeOver,
 }) => {
   const [search, setSearch] = React.useState("");
-  const [pagination, setPagination] = React.useState<PaginationState>({
+  const [openMenuRowId, setOpenMenuRowId] = React.useState<string | null>(null);
+  const [takeOverId, setTakeOverId] = React.useState<string | null>(null);
+  const [localPagination, setLocalPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
+  const pagination = paginationProp ?? localPagination;
+  const setPagination = setPaginationProp ?? setLocalPagination;
+
+  // Close the take-over dialog once the parent's mutation settles (loading
+  // flips back to false) instead of holding dialog-open state in the parent.
+  const wasRequestingTakeOverRef = React.useRef(false);
+  React.useEffect(() => {
+    if (wasRequestingTakeOverRef.current && !isRequestingTakeOver) {
+      setTakeOverId(null);
+    }
+    wasRequestingTakeOverRef.current = Boolean(isRequestingTakeOver);
+  }, [isRequestingTakeOver]);
 
   const tableColumns = React.useMemo(() => {
-    if (!isReadOnly) return columns;
-    return columns.filter((column) => column.id !== "actions");
-  }, [isReadOnly]);
+    if (isReadOnly) return columns.filter((column) => column.id !== "actions");
+    return columns.map((column) =>
+      column.id === "actions"
+        ? buildActionsColumn(
+            openMenuRowId,
+            setOpenMenuRowId,
+            Boolean(enableTakeOver),
+            setTakeOverId,
+          )
+        : column,
+    );
+  }, [isReadOnly, openMenuRowId, enableTakeOver]);
 
-  const filteredRows = React.useMemo(() => {
-    if (!search) return rows;
-    const query = search.toLowerCase();
-    return rows.filter((row) => {
-      return (
-        row.title.toLowerCase().includes(query) ||
-        row.code.toLowerCase().includes(query)
-      );
-    });
-  }, [rows, search]);
+  // Search + status stay client-side (current page), as before. Company is now
+  // filtered server-side via the `company` query param (QA #129), so it is not
+  // applied here.
+  const filteredRows = React.useMemo(
+    () =>
+      applyVendorContractFilters(rows, {
+        search,
+        statusFilter,
+      }),
+    [rows, search, statusFilter],
+  );
 
+  // DropdownFilters emits (filterTitle, value) scalars — route each to the
+  // matching filter state and reset to the first page as the result set changes.
+  const handleFilterChange = (filterTitle: string, value: string) => {
+    if (filterTitle === "Status") {
+      onStatusFilterChange?.(value);
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    } else if (filterTitle === "Company") {
+      onCompanyFilterChange?.(value);
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    }
+  };
 
   return (
     <div data-testid="vendor-contracts-table">
@@ -182,13 +310,16 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
           <div className="flex items-center w-full justify-between border-b border-[#E9E9EB] dark:border-slate-600 p-3 pt-0">
             <div className="flex items-center gap-3 w-full">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-slate-700">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                   Contracts
                 </span>
                 <Input
                   placeholder="Search contract"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+                  }}
                   data-testid="vendor-search-input"
                   className="h-10 w-[260px]"
                   disabled={isReadOnly}
@@ -202,44 +333,85 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
                 }
                 aria-disabled={isReadOnly}
               >
+                {/* Single-date filter (BE `date` param is a single YYYY-MM-DD
+                    day, so a date picker rather than a range dropdown). */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      data-testid="vendor-date-filter"
+                      disabled={isReadOnly}
+                    >
+                      <CalendarIcon className="h-4 w-4 mr-2" />
+                      {dateFilter
+                        ? format(new Date(`${dateFilter}T00:00:00`), "dd MMM yyyy")
+                        : "Date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                      mode="single"
+                      selected={
+                        dateFilter
+                          ? new Date(`${dateFilter}T00:00:00`)
+                          : undefined
+                      }
+                      onSelect={(d) => {
+                        onDateFilterChange?.(d ? format(d, "yyyy-MM-dd") : "");
+                        setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+                      }}
+                    />
+                    {dateFilter && (
+                      <div className="border-t p-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full"
+                          data-testid="vendor-date-filter-clear"
+                          onClick={() => {
+                            onDateFilterChange?.("");
+                            setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+                          }}
+                        >
+                          Clear date
+                        </Button>
+                      </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
                 <DropdownFilters
                   filters={[
-                    {
-                      title: "Date",
-                      showIcon: true,
-                      options: [
-                        {
-                          hasOptions: true,
-                          value: "date",
-                          label: "Date Created",
-                          subOptions: [
-                            { title: "All", value: "all" },
-                            { title: "Today", value: "today" },
-                            { title: "Last 7 Days", value: "last7days" },
-                            { title: "Last 30 Days", value: "last30days" },
-                            { title: "Custom", value: "custom" },
-                          ],
-                        },
-                      ],
-                    },
                     {
                       title: "Status",
                       showIcon: true,
                       options: [
+                        { label: "All", value: "all" },
                         { label: "Active", value: "active" },
+                        { label: "Completed", value: "completed" },
                         { label: "Suspended", value: "suspended" },
-                        { label: "Closed", value: "closed" },
                         { label: "Terminated", value: "terminated" },
+                        { label: "Expired", value: "expired" },
                       ],
                     },
+                    ...(enableCompanyFilter
+                      ? [
+                          {
+                            title: "Company",
+                            showIcon: true,
+                            options: companyOptions,
+                          },
+                        ]
+                      : []),
                     {
                       title: "Category",
                       options: [
+                        { label: "All", value: "all" },
                         { label: "Software", value: "software" },
                         { label: "Construction", value: "construction" },
                       ],
                     },
                   ]}
+                  onFilterChange={handleFilterChange}
                 />
               </div>
             </div>
@@ -260,6 +432,20 @@ const VendorContractsTable: React.FC<VendorContractsTableProps> = ({
           pagination,
           setPagination,
         }}
+      />
+      <ConfirmAlert
+        open={Boolean(takeOverId)}
+        onClose={(o) => !o && setTakeOverId(null)}
+        type="info"
+        title="Request take-over"
+        text="Request to take over this contract? A Contract Manager or Procurement Lead must approve before it becomes yours."
+        primaryButtonText="Request"
+        secondaryButtonText="Cancel"
+        primaryButtonLoading={isRequestingTakeOver}
+        onPrimaryAction={() => {
+          if (takeOverId) onRequestTakeOver?.(takeOverId);
+        }}
+        onSecondaryAction={() => setTakeOverId(null)}
       />
     </div>
   );

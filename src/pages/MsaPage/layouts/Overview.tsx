@@ -11,6 +11,8 @@ type VendorPerson = {
   phone?: string;
 };
 
+type StageRange = { start?: string; end?: string };
+
 type Props = {
   msa: {
     title?: string;
@@ -27,16 +29,45 @@ type Props = {
     approval?: string;
     execution?: string;
   };
+  formationStages?: {
+    draft?: StageRange;
+    review?: StageRange;
+    approval?: StageRange;
+    execution?: StageRange;
+  };
   status: { label?: Status; className?: string };
+  contractManager?: string;
+  contractManagerContact?: {
+    name?: string;
+    email?: string;
+    role?: string;
+    phone?: string;
+  };
+  vendorName?: string;
   internalTeam: InternalMember[];
   vendorPersonnel: VendorPerson[];
+};
+
+// QA #151: MSA stage durations render as a plain "N days" string to match
+// the current Contract detail page. The date range is intentionally dropped
+// even when it's available from `formationStages`.
+const formatStageValue = (
+  duration: string | undefined,
+  _range: StageRange | undefined,
+) => {
+  const dur = duration && duration !== "N/A" ? duration : "";
+  return dur || "N/A";
 };
 
 const Overview: React.FC<Props> = ({
   msa,
   dates,
   durations,
+  formationStages,
   status,
+  contractManager,
+  contractManagerContact,
+  vendorName,
   internalTeam,
   vendorPersonnel,
 }) => {
@@ -66,28 +97,54 @@ const Overview: React.FC<Props> = ({
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <LabelItem label="Effective Date" value={dates.effective || "N/A"} />
           <LabelItem label="End Date" value={dates.end || "N/A"} />
-          <LabelItem label="Draft Duration" value={durations.draft || "N/A"} />
+          <LabelItem
+            label="Draft Duration"
+            value={formatStageValue(durations.draft, formationStages?.draft)}
+          />
         </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <LabelItem
             label="Review Duration"
-            value={durations.review || "N/A"}
+            value={formatStageValue(durations.review, formationStages?.review)}
           />
           <LabelItem
             label="Approval Duration"
-            value={durations.approval || "N/A"}
+            value={formatStageValue(
+              durations.approval,
+              formationStages?.approval,
+            )}
           />
           <LabelItem
             label="Execution Duration"
-            value={durations.execution || "N/A"}
+            value={formatStageValue(
+              durations.execution,
+              formationStages?.execution,
+            )}
           />
         </div>
       </div>
 
       <div className="space-y-4">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-          <LabelItem label="Contract Manager" value="N/A" />
+          <LabelItem
+            label="Contract Manager"
+            children={
+              contractManager ? (
+                // #99 — make the CM name clickable to reveal contact info,
+                // mirroring the Contract Team members below.
+                <EmployeeCardPopover
+                  triggerLabel={contractManager}
+                  name={contractManagerContact?.name || contractManager}
+                  email={contractManagerContact?.email || "N/A"}
+                  jobTitle={contractManagerContact?.role || "N/A"}
+                  phone={contractManagerContact?.phone || "N/A"}
+                />
+              ) : (
+                <span className="text-slate-900 dark:text-slate-100">N/A</span>
+              )
+            }
+          />
           <LabelItem
             label="Status"
             children={
@@ -100,12 +157,12 @@ const Overview: React.FC<Props> = ({
       </div>
 
       <div className="col-span-1 md:col-span-3 space-y-4">
-        <div className="text-base font-semibold text-gray-600">
+        <div className="text-base font-semibold text-gray-600 dark:text-slate-300">
           Contract Team
         </div>
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
           <div className="space-y-2">
-            <span className="text-slate-500 block">Internal Stakeholder</span>
+            <span className="text-slate-500 dark:text-slate-400 block">Internal Stakeholder</span>
             <div className="flex flex-col gap-1">
               {internalTeam.length > 0 ? (
                 internalTeam.map((member, idx) => {
@@ -121,18 +178,30 @@ const Overview: React.FC<Props> = ({
                       triggerLabel={name || "View Member"}
                       name={name || email || "Member"}
                       email={email || "N/A"}
-                      role={role || "N/A"}
+                      jobTitle={role || "N/A"}
                       phone="N/A"
                     />
                   );
                 })
               ) : (
-                <span className="text-slate-900">N/A</span>
+                <span className="text-slate-900 dark:text-slate-100">N/A</span>
               )}
             </div>
           </div>
           <div className="space-y-2">
-            <span className="text-slate-500 block">
+            <span className="text-slate-500 dark:text-slate-400 block">Vendor/Contractor</span>
+            {vendorName ? (
+              <EmployeeCardPopover
+                triggerLabel={vendorName}
+                name={vendorName}
+                email="N/A"
+                jobTitle="N/A"
+                phone="N/A"
+              />
+            ) : (
+              <span className="text-slate-900 dark:text-slate-100">N/A</span>
+            )}
+            <span className="text-slate-500 dark:text-slate-400 block mt-5">
               Vendor/Contractor Key Personnel
             </span>
             <div className="flex flex-col gap-1">
@@ -145,12 +214,12 @@ const Overview: React.FC<Props> = ({
                     }
                     name={person?.name || "N/A"}
                     email={person?.email || "N/A"}
-                    role={person?.role || "N/A"}
+                    jobTitle={person?.role || "N/A"}
                     phone={person?.phone || "N/A"}
                   />
                 ))
               ) : (
-                <span className="text-slate-900">N/A</span>
+                <span className="text-slate-900 dark:text-slate-100">N/A</span>
               )}
             </div>
           </div>

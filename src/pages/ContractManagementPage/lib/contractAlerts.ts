@@ -1,0 +1,208 @@
+// Helpers for the "Alerts & Recommended Actions" card (QA #141).
+// The alerts endpoint's per-contract `pendingApprovals[]` / `rfiAlerts[]` are
+// expanded into one detailed line each (replacing the old aggregate
+// "N items pending approval" summary). Approval lines use the `pendingWith`
+// ROLE — the payload ships `responsibleUsers` as raw ObjectIds, not names, so
+// the exact "{Name}'s approval" wording now uses the payload's `pendingWith`
+// name (with `pendingWithRole` present). Every pending approval is surfaced as
+// soon as it exists (no 24h delay gate) — a submission awaiting approval is
+// actionable immediately.
+
+export type PendingApproval = {
+  entity?: string;
+  id?: string;
+  title?: string;
+  status?: string;
+  daysWaiting?: number;
+  /** New payload: the responsible person's NAME. Legacy payload: a role slug. */
+  pendingWith?: string;
+  /** New payload: the responsible person's ROLE (e.g. "approver"). Its presence
+   *  is what tells us `pendingWith` is a name rather than a role. */
+  pendingWithRole?: string;
+  /** BE-authored one-line summary, when present. */
+  message?: string;
+  amount?: number;
+};
+
+export type RfiAlert = {
+  rfiId?: string;
+  title?: string;
+  isOverdue?: boolean;
+  daysOverdue?: number;
+  daysUntilDeadline?: number | null;
+  status?: string;
+  daysOpen?: number;
+};
+
+const APPROVAL_ENTITY_LABELS: Record<string, string> = {
+  change_directive: "Change Directive",
+  change_order: "Change Order",
+  change_request: "Change Request",
+  change_proposal: "Change Proposal",
+  invoice: "Invoice",
+  rfi: "RFI",
+  ncr: "NCR",
+};
+
+/** Human label for an alert entity: "change_order" -> "Change Order". Unknown
+ *  values are title-cased on `_`/space so the card never shows a raw enum. */
+export const formatAlertEntityLabel = (entity?: string): string => {
+  if (!entity || !entity.trim()) return "Item";
+  const key = entity.trim().toLowerCase();
+  if (APPROVAL_ENTITY_LABELS[key]) return APPROVAL_ENTITY_LABELS[key];
+  return key
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+};
+
+/** Short number from a prefixed id: "CO-004" -> "004", "INV-001" -> "001".
+ *  Falls back to the whole id when there's no `-` separator. */
+export const extractAlertItemNumber = (id?: string): string => {
+  if (!id || !id.trim()) return "";
+  const parts = id.trim().split("-");
+  return parts.length > 1 ? parts[parts.length - 1] : id.trim();
+};
+
+/** #141 — only surface approvals a user has been sitting on for 24h+. The
+ *  payload's `daysWaiting` is whole days since submission, so >= 1 == 24h+. */
+export const isApprovalDelayed = (item?: { daysWaiting?: number }): boolean =>
+  typeof item?.daysWaiting === "number" && item.daysWaiting >= 1;
+
+/** Capitalize the first letter of each name part so a person's name always
+ *  reads title-cased in alerts & recommended actions, regardless of how the
+ *  backend casing arrives ("eric mobley" -> "Eric Mobley") (QA #9). Only the
+ *  first letter of each token is forced upper — the rest is preserved, so
+ *  intentional casing like "McDonald" or "Ap1" is left intact. Hyphenated names
+ *  ("mary-jane") capitalize each part. */
+export const titleCaseName = (raw?: string): string => {
+  if (!raw) return "";
+  return raw
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .map((word) =>
+      word
+        .split("-")
+        .map((part) =>
+          part ? part.charAt(0).toUpperCase() + part.slice(1) : part,
+        )
+        .join("-"),
+    )
+    .join(" ");
+};
+
+/** "Change Order 004 is pending {who} approval ($5,000,000)". `formatAmount`
+ *  is optional — when given and the amount is > 0 it's appended in parens.
+ *
+ *  `pendingWith` is a person's NAME in the current payload (with a separate
+ *  `pendingWithRole`) and a role slug in the legacy payload. When a role is
+ *  present we read `pendingWith` as a name → "pending {Name}'s approval";
+ *  otherwise we keep the legacy "pending {role} approval". */
+export const buildPendingApprovalLine = (
+  item: PendingApproval,
+  formatAmount?: (amount: number) => string,
+): string => {
+  const label = formatAlertEntityLabel(item?.entity);
+  const number = extractAlertItemNumber(item?.id);
+  const ref = number ? `${label} ${number}` : label;
+  const who = (item?.pendingWith ?? "").replace(/\s+/g, " ").trim();
+  const isDirective = (item?.entity ?? "")
+    .toLowerCase()
+    .includes("directive");
+  let line: string;
+  if (isDirective) {
+    // A change directive is issued by the contract manager and does not require
+    // approval — it awaits the vendor/vendor PM's response, not anyone's
+    // approval. Never frame it as "pending {manager}'s approval".
+    line = `${ref} is awaiting the vendor's response`;
+  } else if (item?.pendingWithRole && who) {
+    // `pendingWith` is a name → possessive "{Name}'s approval", title-cased so
+    // the person's first/last names always read capitalized (QA #9).
+    line = `${ref} is pending ${titleCaseName(who)}'s approval`;
+  } else if (who) {
+    // Legacy: `pendingWith` is a role slug.
+    line = `${ref} is pending ${who.toLowerCase()} approval`;
+  } else {
+    line = `${ref} is pending approval`;
+  }
+  if (formatAmount && typeof item?.amount === "number" && item.amount > 0) {
+    return `${line} (${formatAmount(item.amount)})`;
+  }
+  return line;
+};
+
+export type ExpiryWarning = {
+  category?: string;
+  label?: string;
+  daysToExpiry?: number;
+};
+
+/**
+ * Only a Certificate of Insurance (COI) is an insurance policy. The other
+ * instruments tracked under Compliance & Security — letter of credit, bank
+ * guarantee, performance bond, labor/material bond, etc. — are contract
+ * *securities*, not insurance. The alerts payload lumps them all into
+ * `insuranceWarnings`, tagged by `category`: the BE ships `category: "COI"`
+ * for insurance and `category: "contractSecurity"` for securities, so the
+ * category is the authoritative discriminator (the label is only a fallback).
+ */
+export const isInsurancePolicyType = (raw?: string): boolean => {
+  const v = (raw ?? "").toLowerCase().replace(/[\s_-]+/g, " ").trim();
+  if (!v) return false;
+  // Contract securities (letter of credit, bonds, guarantees) carry the
+  // `contractSecurity` category and are never insurance.
+  if (v.includes("security")) return false;
+  return (
+    v === "coi" ||
+    v.includes("certificate of insurance") ||
+    v.includes("insurance")
+  );
+};
+
+/** Expiry/submission alert line for a compliance instrument.
+ *  - A COI is insurance: it "expires" and is renewed —
+ *    "Insurance warning: COI (expires in 18 days)".
+ *  - Every other security (LOC, bonds, guarantees) has a submission deadline.
+ *    While there's time left it's "due soon", and once the deadline has passed
+ *    (a negative `daysToExpiry`) it's "overdue" — for every security type (QA
+ *    #276): "Performance bond submission is due soon (7 days left)" /
+ *    "Performance bond submission is overdue (3 days overdue)". */
+export const buildExpiryWarningLine = (w: ExpiryWarning): string => {
+  const rawLabel = (w?.label ?? w?.category ?? "policy").replace(/_/g, " ");
+  const hasDays = typeof w?.daysToExpiry === "number";
+  // Prefer the authoritative `category`; fall back to the label only when the
+  // category is absent.
+  const isInsurance = isInsurancePolicyType(w?.category ?? w?.label);
+  if (isInsurance) {
+    const days = hasDays ? ` (expires in ${w.daysToExpiry} days)` : "";
+    return `Insurance warning: ${rawLabel}${days}`;
+  }
+  // Contract securities are tracked by their submission deadline. Sentence-case
+  // the instrument name so the line reads as a statement about the submission.
+  const label = rawLabel.charAt(0).toUpperCase() + rawLabel.slice(1);
+  const days = w?.daysToExpiry as number;
+  if (hasDays && days < 0) {
+    const overdue = Math.abs(days);
+    return `${label} submission is overdue (${overdue} day${overdue === 1 ? "" : "s"} overdue)`;
+  }
+  if (hasDays) {
+    return `${label} submission is due soon (${days} day${days === 1 ? "" : "s"} left)`;
+  }
+  return `${label} submission is due soon`;
+};
+
+/** "RFI 001 is overdue by 3 days" when overdue, else "RFI 001 is still open".
+ *  The alerts endpoint only surfaces OPEN RFIs, so the non-overdue line is a
+ *  state nudge ("still open") rather than "response pending": the RFI is a
+ *  two-way thread, so a response may already have been provided while it stays
+ *  open until the initiator closes it (QA #264). */
+export const buildRfiAlertLine = (rfi: RfiAlert): string => {
+  const number = extractAlertItemNumber(rfi?.rfiId);
+  const ref = number ? `RFI ${number}` : "RFI";
+  if (rfi?.isOverdue && typeof rfi.daysOverdue === "number") {
+    return `${ref} is overdue by ${rfi.daysOverdue} day${rfi.daysOverdue === 1 ? "" : "s"}`;
+  }
+  return `${ref} is still open`;
+};

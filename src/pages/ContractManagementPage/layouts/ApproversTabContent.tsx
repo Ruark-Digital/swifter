@@ -2,19 +2,30 @@ import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Share2 } from "lucide-react";
+import { Plus, Share2 } from "lucide-react";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
+import { useUserRole } from "@/hooks/useUserRole";
 import type { ApiResponseError } from "@/types";
 import ApproversTable, { type ApproverRow } from "../components/ApproversTable";
+import AddApproverDialog from "../components/AddApproverDialog";
 import { contractManagerApi } from "../api/contractManagerApi";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type Props = {
   contractId: string;
+  currency?: string;
   isActive?: boolean;
+  owner?: boolean;
 };
 
-const ApproversTabContent: React.FC<Props> = ({ contractId, isActive }) => {
+const ApproversTabContent: React.FC<Props> = ({
+  contractId,
+  isActive,
+  owner,
+}) => {
+  const { isManager, isCompanyAdmin } = useUserRole();
+  const canManage = (isManager || isCompanyAdmin) && Boolean(owner);
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
   const lastErrorRef = React.useRef<unknown>(null);
@@ -44,7 +55,9 @@ const ApproversTabContent: React.FC<Props> = ({ contractId, isActive }) => {
   }, [error]);
 
   const rows = React.useMemo<ApproverRow[]>(() => {
-    const approvers = approversResponse?.data ?? [];
+    const approvers = (approversResponse?.data ?? []).filter(
+      (approver) => approver.approverStatus !== "deleted",
+    );
     return approvers.map((approver, index) => {
       const status = approver.status === "Completed" ? "Completed" : "Pending";
       return {
@@ -58,6 +71,8 @@ const ApproversTabContent: React.FC<Props> = ({ contractId, isActive }) => {
             : "-",
         assignedApprovals: approver.assignedApprovals ?? "-",
         status,
+        groupId: approver.groupId,
+        approverStatus: approver.approverStatus,
       };
     });
   }, [approversResponse?.data]);
@@ -65,13 +80,32 @@ const ApproversTabContent: React.FC<Props> = ({ contractId, isActive }) => {
   return (
     <TabsContent value="approvers" className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-slate-900">Approvers</h3>
-        <Button variant="outline" className="h-10 rounded-xl px-4">
-          <Share2 className="mr-2 h-4 w-4" /> Export Report
-        </Button>
+        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Approvers</h3>
+        <div className="flex items-center gap-3">
+          {canManage && (
+            <AddApproverDialog
+              contractId={contractId}
+              trigger={
+                <Button className="h-10 rounded-xl bg-[#2A4467] px-4 text-white">
+                  <Plus className="mr-2 h-4 w-4" /> Add Approver
+                </Button>
+              }
+            />
+          )}
+          <ExportReportSheet contractId={contractId} contractType="Contract">
+            <Button variant="outline" className="h-10 rounded-xl px-4">
+              <Share2 className="mr-2 h-4 w-4" /> Export Report
+            </Button>
+          </ExportReportSheet>
+        </div>
       </div>
 
-      <ApproversTable rows={rows} isLoading={isLoading} contractId={contractId} />
+      <ApproversTable
+        rows={rows}
+        isLoading={isLoading}
+        contractId={contractId}
+        canManage={canManage}
+      />
     </TabsContent>
   );
 };

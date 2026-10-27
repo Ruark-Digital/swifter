@@ -1,4 +1,5 @@
 import React from "react";
+import { resolveEnvFileUrl } from "@/config";
 import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
@@ -18,23 +19,31 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft,
   FileText,
   Search,
-  Share2,
   UploadCloud,
   X,
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
+import { useUser } from "@/store/authSlice";
+import { useUserRole } from "@/hooks/useUserRole";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
+import MessageComposer from "@/pages/SolicitationManagementPage/components/MessageComposer";
+import type {
+  ContractChangeCommentDTO,
+  ContractCommentDTO,
+} from "../api/contractManagerApi";
 import {
   formatFileSize,
   getFileIcon,
   getSimpleFileExtension,
 } from "@/lib/fileUtils";
 import { useToastHandler } from "@/hooks/useToaster";
-import { Forge, Forger, useForge } from "@/lib/forge";
+import { Forge, Forger, useForge } from "@adexdsamson/forge";
 import {
   TextArea,
   TextFileUploader,
@@ -46,15 +55,24 @@ import { useWatch, useFormContext } from "react-hook-form";
 import Spinner from "@/components/ui/Spinner";
 import { DocumentItem } from "@/pages/ContractManagementPage/components/DocumentItem";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
-import { formatDate } from "date-fns";
+import { formatDate, isValid } from "date-fns";
 import { vendorApi } from "@/pages/ContractManagementPage/api/vendorApi";
 import { Option } from "@/components/ui/multiselect";
+import { cn } from "@/lib/utils";
 
 type UploadedFilePayload = {
   name: string;
   url: string;
   type: string;
   size: string;
+};
+
+type DeliverablePersonnelOptionSource = {
+  _id?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  role?: Array<{ name?: string }> | { name?: string } | string;
 };
 
 type SubmitDeliverableFormValues = {
@@ -89,8 +107,63 @@ const getStatusTone = (status?: string) => {
   if (normalized === "pending" || normalized === "under review") {
     return "bg-[#FFF8E1] text-[#F4B400]";
   }
+  if (normalized === "late") {
+    return "bg-[#FEECEC] text-[#E53935]";
+  }
   return "bg-gray-100 text-gray-700";
 };
+
+// Guard against malformed/unparseable date strings from the backend.
+// date-fns formatDate throws "RangeError: Invalid time value" on invalid dates.
+const safeFormatDate = (value: string | undefined | null, fmt: string) => {
+  if (!value) return "-";
+  const parsed = new Date(value);
+  return isValid(parsed) ? formatDate(parsed, fmt) : "-";
+};
+
+const excludedDeliverableResponderRoles = new Set(["vendor"]);
+
+const normalizeDeliverableResponderRole = (role?: string) =>
+  (role ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "");
+
+const getDeliverableResponderRoles = (
+  personnel: DeliverablePersonnelOptionSource,
+): string[] => {
+  if (Array.isArray(personnel.role)) {
+    return personnel.role.map((role) => role?.name ?? "");
+  }
+
+  if (typeof personnel.role === "string") {
+    return [personnel.role];
+  }
+
+  if (personnel.role?.name) {
+    return [personnel.role.name];
+  }
+
+  return [];
+};
+
+export const buildDeliverableResponderOptions = (
+  personnel: DeliverablePersonnelOptionSource[],
+): Option[] =>
+  personnel
+    .filter((person) =>
+      !getDeliverableResponderRoles(person).some((role) =>
+        excludedDeliverableResponderRoles.has(
+          normalizeDeliverableResponderRole(role),
+        ),
+      ),
+    )
+    .flatMap((person) => {
+      const value = person._id;
+      const label =
+        person.firstName && person.lastName
+          ? `${person.firstName} ${person.lastName}`
+          : person.firstName || person.email || person._id;
+
+      return value && label ? [{ value, label }] : [];
+    });
 
 export type DeliverableRow = {
   id: string;
@@ -99,7 +172,7 @@ export type DeliverableRow = {
   date?: string;
   submissionStatus: "Submitted" | "Late" | "Pending";
   kpi: KPIDetail;
-  status: "Approved" | "Rejected" | "Pending" | "Under Review";
+  status: "Approved" | "Rejected" | "Pending" | "Under Review" | "Late";
   approverStatus?: "N/A" | "pending" | "approved" | "rejected";
 };
 
@@ -117,6 +190,9 @@ type DeliverableDetailsSheetProps = {
   isApprover?: boolean;
   isContractManager?: boolean;
   basePath: string;
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
+  personnelPath?: string;
 };
 
 const LabelRow = ({
@@ -127,8 +203,8 @@ const LabelRow = ({
   value: React.ReactNode;
 }) => (
   <div className="space-y-2">
-    <div className="text-xs font-medium text-[#9CA3AF]">{label}</div>
-    <div className="text-sm font-medium text-[#111827]">{value}</div>
+    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">{label}</div>
+    <div className="text-sm font-medium text-[#111827] dark:text-slate-100">{value}</div>
   </div>
 );
 
@@ -185,15 +261,53 @@ const SubmitDeliverableDialog: React.FC<{
   contractId: string;
   deliverableId: string;
   basePath: string;
-}> = ({ trigger, contractId, deliverableId, basePath }) => {
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
+  personnelPath?: string;
+  /** Files already attached to the deliverable (i.e. from the prior, rejected
+   *  submission). Shown as "Previously attached" so a resubmission retains them
+   *  unless the user explicitly removes them (QA #37). */
+  existingFiles?: Array<{ name?: string; url?: string; type?: string; size?: string }>;
+}> = ({
+  trigger,
+  contractId,
+  deliverableId,
+  basePath,
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
+  personnelPath,
+  existingFiles,
+}) => {
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const toast = useToastHandler();
   const queryClient = useQueryClient();
 
+  // Previously-attached files the user removed in this dialog, keyed by
+  // url||name. Tracked separately from the upload field so existing
+  // attachments are retained (and only dropped when explicitly removed) on a
+  // resubmission that also adds new files (QA #37).
+  const [removedExistingKeys, setRemovedExistingKeys] = React.useState<
+    Set<string>
+  >(() => new Set());
+  const priorFiles = React.useMemo(
+    () => (existingFiles ?? []).filter((f) => f?.url || f?.name),
+    [existingFiles],
+  );
+  const visibleExistingFiles = React.useMemo(
+    () =>
+      priorFiles.filter(
+        (f) => !removedExistingKeys.has((f.url || f.name) as string),
+      ),
+    [priorFiles, removedExistingKeys],
+  );
+
   const { data: personnelData } = useQuery({
-    queryKey: ["deliverable-personnel", contractId],
-    queryFn: async () => vendorApi.listPersonnel(contractId),
+    queryKey: ["deliverable-personnel", contractId, personnelPath ?? "default"],
+    queryFn: async () =>
+      personnelPath
+        ? getRequest({ url: personnelPath })
+        : vendorApi.listPersonnel(contractId),
     enabled: !!contractId,
     staleTime: 60000,
   });
@@ -201,13 +315,7 @@ const SubmitDeliverableDialog: React.FC<{
   const personnelOptions = React.useMemo<Option[]>(() => {
     const data = personnelData?.data?.data;
     if (!Array.isArray(data)) return [];
-    return data.map((p: any) => ({
-      value: p._id,
-      label:
-        p.firstName && p.lastName
-          ? `${p.firstName} ${p.lastName}`
-          : p.firstName || p.email || p._id,
-    }));
+    return buildDeliverableResponderOptions(data);
   }, [personnelData]);
 
   const { control, reset } = useForge<SubmitDeliverableFormValues>({
@@ -257,11 +365,31 @@ const SubmitDeliverableDialog: React.FC<{
         uploadedFiles = await Promise.all(uploadPromises);
       }
 
+      // Retain the previously-attached files the user kept, merged with any
+      // new uploads and deduped by url||name, so a resubmission never silently
+      // drops the earlier attachments (QA #37).
+      const keptExisting = priorFiles
+        .filter((f) => !removedExistingKeys.has((f.url || f.name) as string))
+        .map((f) => ({
+          name: f.name || "",
+          url: f.url || "",
+          type: f.type || "application/octet-stream",
+          size: f.size || "",
+        }));
+      const seen = new Set<string>();
+      const files = [...keptExisting, ...uploadedFiles].filter((f) => {
+        const key = f.url || f.name;
+        if (!key) return true;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
       return postRequest({
         url: `${basePath}/${deliverableId}/submit`,
         payload: {
           description: data.description,
-          files: uploadedFiles,
+          files,
           responders: data.responders.map((r) => r.value),
         },
       });
@@ -269,10 +397,16 @@ const SubmitDeliverableDialog: React.FC<{
     onSuccess: () => {
       toast.success("Success", "Deliverable submitted successfully");
       queryClient.invalidateQueries({
-        queryKey: ["deliverables", contractId, basePath],
+        queryKey:
+          listInvalidateQueryKey ?? ["deliverables", contractId, basePath],
       });
       queryClient.invalidateQueries({
-        queryKey: ["deliverables-stats", contractId, basePath],
+        queryKey:
+          statsInvalidateQueryKey ?? [
+            "deliverables-stats",
+            contractId,
+            basePath,
+          ],
       });
       queryClient.invalidateQueries({
         queryKey: ["deliverable-detail", contractId, deliverableId, basePath],
@@ -305,12 +439,15 @@ const SubmitDeliverableDialog: React.FC<{
       onOpenChange={(next) => {
         if (!isSubmitting) {
           setOpen(next);
-          if (!next) reset();
+          if (!next) {
+            reset();
+            setRemovedExistingKeys(new Set());
+          }
         }
       }}
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="rounded-2xl p-8">
+      <DialogContent className="rounded-2xl p-8 max-h-[90vh] overflow-y-auto">
         <DialogHeader className="space-y-0">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-base font-semibold text-[#0F0F0F]">
@@ -320,6 +457,55 @@ const SubmitDeliverableDialog: React.FC<{
         </DialogHeader>
 
         <Forge control={control} onSubmit={onSubmit} className="space-y-6">
+          {visibleExistingFiles.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-[#374151] dark:text-slate-200">
+                Previously attached
+              </p>
+              <div className="space-y-2">
+                {visibleExistingFiles.map((file) => {
+                  const key = (file.url || file.name) as string;
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-center justify-between rounded-lg border border-[#E5E7EB] px-3 py-2"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#EAF1FB]">
+                          <FileText className="h-5 w-5 text-[#1F3B63]" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100 truncate">
+                            {file.name}
+                          </p>
+                          <p className="text-xs text-[#9CA3AF]">
+                            {getSimpleFileExtension(
+                              file.name ?? "",
+                            ).toUpperCase() || "FILE"}
+                            {file.size ? ` • ${file.size}` : ""}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={`Remove ${file.name}`}
+                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-[#EF4444]"
+                        onClick={() =>
+                          setRemovedExistingKeys((prev) => {
+                            const nextSet = new Set(prev);
+                            nextSet.add(key);
+                            return nextSet;
+                          })
+                        }
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <div className="">
             <Forger
               name="files"
@@ -400,6 +586,9 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
   isApprover,
   isContractManager,
   basePath,
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
+  personnelPath,
 }) => {
   const [open, setOpen] = React.useState(false);
   const [viewerOpen, setViewerOpen] = React.useState(false);
@@ -407,12 +596,15 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
     url: string;
     name: string;
   } | null>(null);
-  const isVendor = basePath.includes("/vendor/");
+  // Active-role gating (strict): only an active Vendor-PM may submit/resubmit
+  // or comment; a plain vendor is read-only. basePath is /vendor/ for BOTH
+  // vendor and PM, so role — not basePath — is the discriminator.
+  const { isVendor, isProjectManager } = useUserRole();
   const toast = useToastHandler();
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["deliverable-detail", contractId, deliverableId, basePath, open],
+    queryKey: useUserQueryKey(["deliverable-detail", contractId, deliverableId, basePath, open]),
     queryFn: async () => {
       const res = await getRequest({
         url: `${basePath}/${deliverableId}`,
@@ -426,11 +618,49 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
   const detail = data?.data?.data;
   const approverStatus = detail?.approverStatus;
   const isSubmitted = detail?.submissionStatus === "submitted";
-  const isRejected = approverStatus === "rejected";
+  // Backend doesn't always set `submissionStatus` — once the PM/vendor
+  // uploads, the deliverable carries `submittedBy` and a non-empty
+  // `files[]` instead. Treat that combo as "already submitted" so the
+  // Submit button doesn't re-appear after the first upload.
+  const hasBeenSubmitted =
+    Boolean(detail?.submittedBy) &&
+    Array.isArray(detail?.files) &&
+    detail.files.length > 0;
+  // Approve/Reject visibility is gated on `approverStatus === "pending"`
+  // for both the approver and the contract manager. Once the deliverable
+  // transitions out of pending the buttons hide for everyone.
   const canShowApproveButtons =
-    approverStatus && approverStatus !== "N/A" && !isSubmitted && !isRejected;
+    (isApprover || isContractManager) &&
+    approverStatus === "pending" &&
+    !isSubmitted;
+  // QA #432 (Deliverables): once the vendor's first submission is rejected,
+  // they need the Submit button back so they can upload a corrected version.
+  // POST .../deliverables/{id}/submit is not documented as one-shot in the BE
+  // spec, so re-calling it with a fresh payload should work.
+  // QA #198: a rejected deliverable must offer edit+resubmit to the vendor/PM.
+  // Rejection is conveyed by the deliverable's `status` field (which drives the
+  // "Rejected" badge) — `approverStatus` isn't reliably set to "rejected", so
+  // read both. Keying only off `approverStatus` left rejected deliverables with
+  // no Resubmit button.
+  const isDeliverableRejected =
+    approverStatus === "rejected" ||
+    (detail?.status ?? "").toLowerCase() === "rejected";
   const canShowSubmitButton =
-    isVendor && !isSubmitted && approverStatus !== "N/A";
+    isProjectManager &&
+    (isDeliverableRejected ||
+      (approverStatus !== "N/A" && !isSubmitted && !hasBeenSubmitted));
+
+  // Approve / reject opens a comment dialog first. `pendingAction` drives
+  // both the dialog visibility and which variant (Approve vs Reject) we
+  // render — `commentDraft` is reset whenever the dialog closes.
+  const [pendingAction, setPendingAction] = React.useState<
+    "approved" | "rejected" | null
+  >(null);
+  const [commentDraft, setCommentDraft] = React.useState("");
+
+  React.useEffect(() => {
+    if (pendingAction === null) setCommentDraft("");
+  }, [pendingAction]);
 
   const approveRejectMutation = useMutation({
     mutationKey: [
@@ -439,27 +669,40 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
       deliverableId,
       basePath,
     ],
-    mutationFn: async (action: "approved" | "rejected") =>
+    mutationFn: async ({
+      action,
+      comment,
+    }: {
+      action: "approved" | "rejected";
+      comment: string;
+    }) =>
       postRequest({
         url: `${basePath}/${deliverableId}/approve`,
-        payload: { action, comment: "" },
+        payload: { action, comment },
       }),
-    onSuccess: (_, action) => {
+    onSuccess: (_, { action }) => {
       toast.success(
         "Success",
         `Deliverable ${action === "approved" ? "approved" : "rejected"} successfully`,
       );
       queryClient.invalidateQueries({
-        queryKey: ["deliverables", contractId, basePath],
+        queryKey:
+          listInvalidateQueryKey ?? ["deliverables", contractId, basePath],
       });
       queryClient.invalidateQueries({
-        queryKey: ["deliverables-stats", contractId, basePath],
+        queryKey:
+          statsInvalidateQueryKey ?? [
+            "deliverables-stats",
+            contractId,
+            basePath,
+          ],
       });
       queryClient.invalidateQueries({
         queryKey: ["deliverable-detail", contractId, deliverableId, basePath],
       });
+      setPendingAction(null);
     },
-    onError: (error: any, action) => {
+    onError: (error: any, { action }) => {
       toast.error(
         "Error",
         error?.response?.data?.message ||
@@ -467,6 +710,90 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
       );
     },
   });
+
+  // Comments — the docs.json spec exposes GET/POST
+  // .../deliverables/{id}/comments across all roles; the basePath prop already
+  // encodes the role prefix so we just append.
+  const user = useUser();
+  const commentsQueryKey = useUserQueryKey([
+    "deliverable-comments",
+    contractId,
+    deliverableId,
+    basePath,
+  ]);
+  const { data: commentsRes, isLoading: isCommentsLoading } = useQuery<{
+    message?: string;
+    data?: { data?: ContractCommentDTO[]; page?: number; limit?: number };
+  }>({
+    queryKey: commentsQueryKey,
+    queryFn: async () => {
+      const res = await getRequest({
+        url: `${basePath}/${deliverableId}/comments`,
+      });
+      return (res as { data?: unknown })?.data as {
+        message?: string;
+        data?: {
+          data?: ContractCommentDTO[];
+          page?: number;
+          limit?: number;
+        };
+      };
+    },
+    enabled: open && !!contractId && !!deliverableId,
+    staleTime: 60000,
+  });
+
+  const addCommentMutation = useMutation<
+    { message?: string; data?: ContractCommentDTO },
+    unknown,
+    ContractChangeCommentDTO
+  >({
+    mutationKey: [
+      "deliverable-comments-add",
+      contractId,
+      deliverableId,
+      basePath,
+    ],
+    mutationFn: async (payload) => {
+      const res = await postRequest({
+        url: `${basePath}/${deliverableId}/comments`,
+        payload,
+      });
+      return (res as { data?: unknown })?.data as {
+        message?: string;
+        data?: ContractCommentDTO;
+      };
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: commentsQueryKey });
+    },
+    onError: (error: any) => {
+      toast.error(
+        "Deliverable Comment",
+        error?.response?.data?.message || "Failed to add comment",
+      );
+    },
+  });
+
+  const comments = (commentsRes?.data?.data ?? []) as Array<
+    ContractCommentDTO & { createdBy?: { name?: string; email?: string } }
+  >;
+
+  const getCommentAuthor = (c: ContractCommentDTO) =>
+    c.user?.name ??
+    (c as { createdBy?: { name?: string } }).createdBy?.name ??
+    c.replyTo?.name ??
+    "Unknown";
+
+  const handleSendComment = async (content: string) => {
+    const trimmed = content.trim();
+    if (!trimmed) return;
+    try {
+      await addCommentMutation.mutateAsync({ content: trimmed });
+    } catch {
+      // handled in onError
+    }
+  };
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -479,13 +806,16 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
           <SheetHeader className="space-y-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827]"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </button>
-                <SheetTitle className="text-base font-semibold text-[#0F0F0F]">
+                <SheetClose asChild>
+                  <button
+                    type="button"
+                    aria-label="Close deliverable details"
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827] dark:text-slate-100"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                </SheetClose>
+                <SheetTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   Deliverable Details
                 </SheetTitle>
               </div>
@@ -500,122 +830,178 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
             </div>
           </SheetHeader>
 
-          <div className="space-y-8">
-            <div className="flex items-center justify-between">
-              <div className="text-base font-semibold text-[#0F0F0F]">
-                {detail?.name ?? "Deliverable Details"}
-              </div>
-              <Button
-                variant="outline"
-                className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F]"
+          <Tabs defaultValue="overview" className="space-y-6">
+            <TabsList className="h-auto rounded-none border-b border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 w-full justify-start bg-transparent">
+              <TabsTrigger
+                value="overview"
+                className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
               >
-                <Share2 className="mr-2 h-4 w-4" /> Export
-              </Button>
-            </div>
+                Overview
+              </TabsTrigger>
+              <TabsTrigger
+                value="comments"
+                className="data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3"
+              >
+                Comments
+              </TabsTrigger>
+            </TabsList>
 
-            {isLoading ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="space-y-2">
-                    <div className="h-3 w-24 rounded bg-slate-200" />
-                    <div className="h-4 w-40 rounded bg-slate-200" />
+            <TabsContent value="overview" className="space-y-8">
+              <div className="space-y-8">
+                <div className="flex items-center justify-between">
+                  <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+                    {detail?.name ?? "Deliverable Details"}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="grid gap-6 sm:grid-cols-2 mt-5">
-                <LabelRow
-                  label="Deliverable Title"
-                  value={detail?.name ?? "-"}
-                />
-                <LabelRow
-                  label="Amount"
-                  value={
-                    typeof detail?.amount === "number"
-                      ? `$${detail.amount.toLocaleString()}`
-                      : (detail?.amount ?? "-")
-                  }
-                />
-                <LabelRow
-                  label="Due Date"
-                  value={
-                    detail?.dueDate
-                      ? formatDate(detail?.dueDate, "yyyy MMMM dd")
-                      : "-"
-                  }
-                />
-                <LabelRow
-                  label="Submission Date"
-                  value={
-                    detail?.submissionDate
-                      ? formatDate(detail?.submissionDate, "yyyy MMMM dd")
-                      : "-"
-                  }
-                />
-              </div>
-            )}
+                </div>
 
-            <div className="space-y-2">
-              <div className="text-xs font-medium text-[#9CA3AF]">Status</div>
-              <div
-                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusTone(detail?.status)}`}
-              >
-                {detail?.status
-                  ? detail.status
-                      .replace(/_/g, " ")
-                      .replace(/\b\w/g, (c: string) => c.toUpperCase())
-                  : "Under Review"}
-              </div>
-            </div>
+                {isLoading ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {[...Array(6)].map((_, i) => (
+                      <div key={i} className="space-y-2">
+                        <div className="h-3 w-24 rounded bg-slate-200" />
+                        <div className="h-4 w-40 rounded bg-slate-200" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid gap-6 sm:grid-cols-2 mt-5">
+                    <LabelRow
+                      label="Deliverable Title"
+                      value={detail?.name ?? "-"}
+                    />
+                    <LabelRow
+                      label="Due Date"
+                      value={safeFormatDate(detail?.dueDate, "dd MMM yyyy")}
+                    />
+                    <LabelRow
+                      label="Submission Date"
+                      value={safeFormatDate(detail?.submissionDate, "dd MMM yyyy")}
+                    />
+                  </div>
+                )}
 
-            <div className="space-y-2">
-              <div className="text-xs font-medium text-[#9CA3AF]">
-                Description
-              </div>
-              <div className="text-sm text-[#374151]">
-                {detail?.description ?? "-"}
-              </div>
-            </div>
-          </div>
+                <div className="space-y-2">
+                  <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
+                    Status
+                  </div>
+                  <div
+                    className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusTone(detail?.status)}`}
+                  >
+                    {detail?.status
+                      ? detail.status
+                          .replace(/_/g, " ")
+                          .replace(/\b\w/g, (c: string) => c.toUpperCase())
+                      : ""}
+                  </div>
+                </div>
 
-          <div className="space-y-3">
-            <div className="text-base font-semibold text-[#0F0F0F]">
-              Attached Documents
-            </div>
-            <div className="grid gap-3 sm:grid-cols-1">
-              {(detail?.files ?? []).map((f: any, idx: number) => (
-                <DocumentItem
-                  key={idx}
-                  d={{
-                    id: `${f?.name ?? "file"}-${idx}`,
-                    name: f?.name ?? "File",
-                    type: f?.type ?? "DOC",
-                    size:
-                      typeof f?.size === "string"
-                        ? f.size
-                        : String(f?.size ?? ""),
-                    url: f?.url,
-                    icon: getFileIcon(f?.type ?? "DOC"),
+                <div className="space-y-2">
+                  <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-400">
+                    Description
+                  </div>
+                  <div className="text-sm text-[#374151] dark:text-slate-300">
+                    {detail?.description ?? "-"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+                  Attached Documents
+                </div>
+                <div className="grid gap-3 sm:grid-cols-1">
+                  {(detail?.files ?? []).map((f: any, idx: number) => (
+                    <DocumentItem
+                      key={idx}
+                      d={{
+                        id: `${f?.name ?? "file"}-${idx}`,
+                        name: f?.name ?? "File",
+                        type: f?.type ?? "DOC",
+                        size:
+                          typeof f?.size === "string"
+                            ? f.size
+                            : String(f?.size ?? ""),
+                        url: f?.url,
+                        icon: getFileIcon(f?.type ?? "DOC"),
+                      }}
+                      handlePreview={(doc) => {
+                        if (doc.url) {
+                          setSelectedDoc({ url: doc.url, name: doc.name });
+                          setViewerOpen(true);
+                        }
+                      }}
+                      handleDownload={(doc) => {
+                        if (!doc.url) return;
+                        const a = window.document.createElement("a");
+                        a.href = resolveEnvFileUrl(doc.url);
+                        a.download = doc.name;
+                        window.document.body.appendChild(a);
+                        a.click();
+                        window.document.body.removeChild(a);
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="comments" className="space-y-4">
+              <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
+                Comments
+              </div>
+              {isCommentsLoading ? (
+                <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
+                  Loading comments...
+                </div>
+              ) : comments.length ? (
+                <div className="space-y-3">
+                  {comments.map((comment, index) => (
+                    <div
+                      key={comment._id ?? `${index}`}
+                      className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
+                          {getCommentAuthor(comment)}
+                        </div>
+                        <div className="text-xs text-[#6B7280] dark:text-slate-400">
+                          {comment.createdAt
+                            ? safeFormatDate(comment.createdAt, "dd MMM yyyy, HH:mm")
+                            : ""}
+                        </div>
+                      </div>
+                      <div
+                        className="mt-2 text-sm text-[#374151] dark:text-slate-200 prose prose-sm dark:prose-invert max-w-none"
+                        dangerouslySetInnerHTML={{
+                          __html: comment.content ?? "",
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-[#E5E7EB] dark:border-slate-700 p-4 text-sm text-[#6B7280] dark:text-slate-400">
+                  No comments yet.
+                </div>
+              )}
+
+              {!isVendor && (
+                <MessageComposer
+                  onSend={(content) => {
+                    void handleSendComment(content);
                   }}
-                  handlePreview={(doc) => {
-                    if (doc.url) {
-                      setSelectedDoc({ url: doc.url, name: doc.name });
-                      setViewerOpen(true);
-                    }
-                  }}
-                  handleDownload={(doc) => {
-                    if (!doc.url) return;
-                    const a = window.document.createElement("a");
-                    a.href = doc.url;
-                    a.download = doc.name;
-                    window.document.body.appendChild(a);
-                    a.click();
-                    window.document.body.removeChild(a);
-                  }}
+                  isLoading={addCommentMutation.isPending}
+                  currentUser={
+                    user ? { name: user.name } : { name: "You" }
+                  }
+                  sendType="reply"
+                  isNewChat={false}
+                  onSendTypeChange={() => {}}
+                  sendLabel="Send"
                 />
-              ))}
-            </div>
-          </div>
+              )}
+            </TabsContent>
+          </Tabs>
 
           {selectedDoc && (
             <DocumentViewer
@@ -631,18 +1017,18 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
               <>
                 <Button
                   variant="outline"
-                  className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
+                  className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827] dark:text-slate-100"
                   disabled={approveRejectMutation.isPending}
-                  onClick={() => approveRejectMutation.mutate("rejected")}
+                  onClick={() => setPendingAction("rejected")}
                 >
-                  {approveRejectMutation.isPending ? "Rejecting..." : "Reject"}
+                  Reject
                 </Button>
                 <Button
                   className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
                   disabled={approveRejectMutation.isPending}
-                  onClick={() => approveRejectMutation.mutate("approved")}
+                  onClick={() => setPendingAction("approved")}
                 >
-                  {approveRejectMutation.isPending ? "Approving..." : "Approve"}
+                  Approve
                 </Button>
               </>
             ) : canShowSubmitButton && !isLoading ? (
@@ -650,15 +1036,92 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
                 contractId={contractId}
                 deliverableId={deliverableId}
                 basePath={basePath}
+                listInvalidateQueryKey={listInvalidateQueryKey}
+                statsInvalidateQueryKey={statsInvalidateQueryKey}
+                personnelPath={personnelPath}
+                existingFiles={
+                  isDeliverableRejected ? (detail?.files ?? []) : []
+                }
                 trigger={
                   <Button className="h-11 w-64 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white">
-                    Submit
+                    {isDeliverableRejected ? "Resubmit" : "Submit"}
                   </Button>
                 }
               />
             ) : null}
           </div>
         </div>
+
+        <Dialog
+          open={pendingAction !== null}
+          onOpenChange={(next) => {
+            if (!next && !approveRejectMutation.isPending) {
+              setPendingAction(null);
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-md p-0 overflow-hidden">
+            <DialogHeader className="px-6 pt-6 pb-2">
+              <DialogTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
+                {pendingAction === "approved"
+                  ? "Approve Deliverable"
+                  : "Reject Deliverable"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="px-6 pb-6 space-y-4">
+              <p className="text-sm text-[#6B7280] dark:text-slate-400">
+                {pendingAction === "approved"
+                  ? "Add an optional comment for the vendor before approving."
+                  : "Let the vendor know why this deliverable is being rejected."}
+              </p>
+              <textarea
+                value={commentDraft}
+                onChange={(e) => setCommentDraft(e.target.value)}
+                placeholder="Enter your comment"
+                rows={5}
+                className="w-full resize-none rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm text-[#0F0F0F] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#2A4467] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+                autoFocus
+              />
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827] dark:text-slate-100"
+                  disabled={approveRejectMutation.isPending}
+                  onClick={() => setPendingAction(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  className={cn(
+                    "h-11 flex-1 rounded-xl text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed",
+                    pendingAction === "approved"
+                      ? "bg-[#16A34A] hover:bg-[#15803D]"
+                      : "bg-[#E53935] hover:bg-[#C62828]",
+                  )}
+                  disabled={approveRejectMutation.isPending}
+                  aria-busy={approveRejectMutation.isPending}
+                  onClick={() => {
+                    if (pendingAction === null) return;
+                    approveRejectMutation.mutate({
+                      action: pendingAction,
+                      comment: commentDraft.trim(),
+                    });
+                  }}
+                >
+                  {approveRejectMutation.isPending
+                    ? pendingAction === "approved"
+                      ? "Approving..."
+                      : "Rejecting..."
+                    : pendingAction === "approved"
+                      ? "Approve"
+                      : "Confirm Reject"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </SheetContent>
     </Sheet>
   );
@@ -670,7 +1133,7 @@ const columns: ColumnDef<DeliverableRow>[] = [
     accessorKey: "title",
     header: "Deliverable Title",
     cell: ({ getValue }) => (
-      <div className="max-w-[260px] text-sm text-slate-700">
+      <div className="max-w-[260px] text-sm text-slate-700 dark:text-slate-300">
         {getValue<string>()}
       </div>
     ),
@@ -679,13 +1142,11 @@ const columns: ColumnDef<DeliverableRow>[] = [
     id: "date",
     header: "Date",
     cell: ({ row }) => (
-      <div className="space-y-1 text-xs text-slate-600">
+      <div className="space-y-1 text-xs text-slate-600 dark:text-slate-400">
         <p>
-          <span className="text-slate-500">Due Date:&nbsp;</span>
-          <span className="text-slate-900">
-            {row.original.dueDate
-              ? formatDate(row.original.dueDate ?? "", "yyyy MMM dd")
-              : "-"}
+          <span className="text-slate-500 dark:text-slate-400">Due Date:&nbsp;</span>
+          <span className="text-slate-900 dark:text-slate-100">
+            {safeFormatDate(row.original.dueDate, "yyyy MMM dd")}
           </span>
         </p>
         {/* {row.original.submissionDate && <p>
@@ -698,7 +1159,13 @@ const columns: ColumnDef<DeliverableRow>[] = [
     ),
   },
   { accessorKey: "submissionStatus", header: "Submission Status" },
-  { accessorKey: "kpi", header: "KPI" },
+  {
+    accessorKey: "kpi",
+    header: "KPI",
+    cell: ({ row }) => (
+      <div className="text-sm text-slate-700 dark:text-slate-300">{row.original.kpi?.kpiText ?? "-"}</div>
+    ),
+  },
   {
     accessorKey: "status",
     header: "Status",
@@ -709,6 +1176,8 @@ const columns: ColumnDef<DeliverableRow>[] = [
           ? "bg-green-100 text-green-700"
           : s === "Rejected"
             ? "bg-red-100 text-red-600"
+            : s === "Late"
+              ? "bg-red-100 text-red-600"
             : s === "Pending"
               ? "bg-yellow-100 text-yellow-700"
               : "bg-yellow-100 text-yellow-700";
@@ -725,16 +1194,20 @@ const columns: ColumnDef<DeliverableRow>[] = [
     id: "actions",
     header: () => <div className="text-right">Actions</div>,
     cell: ({ row, table }) => {
-      const contractId: string = (table.options.meta as any)?.contractId ?? "";
-      const basePath: string = (table.options.meta as any)?.basePath ?? "";
+      const meta = table.options.meta as any;
+      const contractId: string = meta?.contractId ?? "";
+      const basePath: string = meta?.basePath ?? "";
       return (
         <div className="text-right">
           <DeliverableDetailsSheet
             contractId={contractId}
             deliverableId={row.original.id}
-            isApprover={(table.options.meta as any)?.isApprover}
-            isContractManager={(table.options.meta as any)?.isContractManager}
+            isApprover={meta?.isApprover}
+            isContractManager={meta?.isContractManager}
             basePath={basePath}
+            listInvalidateQueryKey={meta?.listInvalidateQueryKey}
+            statsInvalidateQueryKey={meta?.statsInvalidateQueryKey}
+            personnelPath={meta?.personnelPath}
             trigger={
               <button
                 type="button"
@@ -757,6 +1230,9 @@ type DeliverablesTableProps = {
   isApprover?: boolean;
   isContractManager?: boolean;
   basePath: string;
+  listInvalidateQueryKey?: readonly unknown[];
+  statsInvalidateQueryKey?: readonly unknown[];
+  personnelPath?: string;
 };
 
 const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
@@ -766,6 +1242,9 @@ const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
   isApprover = false,
   isContractManager = false,
   basePath,
+  listInvalidateQueryKey,
+  statsInvalidateQueryKey,
+  personnelPath,
 }) => {
   const [search, setSearch] = React.useState("");
 
@@ -780,7 +1259,7 @@ const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
         row.date,
         row.submissionStatus,
         row.status,
-        row.kpi.kpiText,
+        row.kpi?.kpiText,
       ]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(q)),
@@ -793,8 +1272,8 @@ const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
         data={filteredRows}
         columns={columns}
         header={() => (
-          <div className="flex items-center w-full gap-3 border-b border-[#E5E7EB] px-5 py-4">
-            <span className="text-sm font-medium text-slate-900">
+          <div className="flex items-center w-full gap-3 border-b border-[#E5E7EB] dark:border-slate-800 px-5 py-4">
+            <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
               Deliverables
             </span>
             <div className="relative">
@@ -817,16 +1296,24 @@ const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
           setPagination: () => {},
           pagination: { pageIndex: 0, pageSize: 10 },
           isLoading: !!isLoading,
-          meta: { contractId, isApprover, isContractManager, basePath },
+          meta: {
+            contractId,
+            isApprover,
+            isContractManager,
+            basePath,
+            listInvalidateQueryKey,
+            statsInvalidateQueryKey,
+            personnelPath,
+          },
         }}
         classNames={{
-          container: "border border-[#E5E7EB] rounded-xl bg-white",
-          tHeader: "bg-[#F9FAFB]",
-          tHeadRow: "border-b border-[#E5E7EB]",
-          tBody: "bg-white",
-          tRow: "border-b border-[#E5E7EB]",
-          tHead: "px-6 py-3 text-xs font-semibold text-slate-500",
-          tCell: "px-6 py-4 text-sm text-slate-700 align-top",
+          container: "border border-[#E5E7EB] dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900",
+          tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
+          tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tBody: "bg-white dark:bg-slate-900",
+          tRow: "border-b border-[#E5E7EB] dark:border-slate-800",
+          tHead: "px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400",
+          tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-200 align-top",
         }}
       />
     </div>

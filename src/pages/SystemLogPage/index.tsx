@@ -6,19 +6,27 @@ import { ApiResponse, ApiResponseError } from "@/types";
 import { DataTable } from "@/components/layouts/DataTable";
 import { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { formatDateTZ } from "@/lib/utils";
+import { SearchInput } from "@/components/layouts/SearchInput";
 
-// System log entry type definition based on API response
+// System log entry type definition based on the real API response.
+// SYSTEM-actor rows (login, upload, …) carry no `performedBy`; and the BE
+// describes the target via companyId / targetModule / targetType rather than a
+// single `targetAffected` object — so every entity field here is optional.
 type SystemLogEntry = {
   _id: string;
   actionType: string;
-  performedBy: {
+  actorType?: string;
+  performedBy?: {
     _id: string;
     name: string;
   };
-  targetAffected: {
+  companyId?: {
     _id: string;
     name: string;
   };
+  targetModule?: string;
+  targetType?: string;
+  targetId?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -71,7 +79,7 @@ const EmptyState = () => {
 };
 
 const SystemLogPage = () => {
-  const [searchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -151,7 +159,8 @@ const SystemLogPage = () => {
       header: "Performed By",
       cell: ({ row }) => (
         <span className="text-sm text-gray-700 dark:text-gray-300">
-          {row.original.performedBy.name}
+          {/* SYSTEM-actor events (login, upload, …) have no performedBy. */}
+          {row.original.performedBy?.name ?? "System"}
         </span>
       ),
     },
@@ -160,7 +169,12 @@ const SystemLogPage = () => {
       header: "Target/Affected",
       cell: ({ row }) => (
         <span className="text-sm text-gray-700 dark:text-gray-300">
-          {row.original.targetAffected.name}
+          {/* The BE has no `targetAffected` — surface the affected company,
+              falling back to the target type/module. */}
+          {row.original.companyId?.name ??
+            row.original.targetType ??
+            row.original.targetModule ??
+            "—"}
         </span>
       ),
     },
@@ -169,15 +183,21 @@ const SystemLogPage = () => {
   return (
     <div className="p-6 min-h-full">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col gap-4 mb-8 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">
             System Log
           </h1>
         </div>
+        {/* Server-side search over the log (action type, performer and company,
+            per the BE `search` param). QA #50. Date / company-scoped filters
+            await dedicated BE query params on /admins/system-logs. */}
+        <SearchInput
+          placeholder="logs"
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+        />
       </div>
-
-      {/* Search and Filter */}
 
       {/* System Logs Table */}
       <DataTable

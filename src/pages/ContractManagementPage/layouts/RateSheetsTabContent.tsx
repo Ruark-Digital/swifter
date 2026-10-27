@@ -4,12 +4,12 @@ import { Input } from "@/components/ui/input";
 import { DataTable } from "@/components/layouts/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getRequest, postRequest } from "@/lib/axiosInstance";
+import { useUserQueryKey } from "@/hooks/useUserQueryKey";
+import { getRequest, postRequest, putRequest } from "@/lib/axiosInstance";
 import {
   Search,
   ArrowLeft,
   X,
-  Share2,
   FileText,
   UploadCloud,
 } from "lucide-react";
@@ -27,11 +27,13 @@ import {
   formatFileSize,
   getSimpleFileExtension,
 } from "@/lib/fileUtils";
+import { cn, formatCurrency, resolveCurrency } from "@/lib/utils";
+import { resolveEnvFileUrl } from "@/config";
+import { useUser } from "@/store/authSlice";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { Forge, Forger, useForge } from "@/lib/forge";
+import { Forge, Forger, useForge } from "@adexdsamson/forge";
 import {
   TextArea,
-  TextCurrencyInput,
   TextFileUploader,
   TextInput,
 } from "@/components/layouts/FormInputs";
@@ -45,10 +47,21 @@ import type { ApiResponse, ApiResponseError } from "@/types";
 import type { UploadURLs } from "../lib/contractChanges";
 import { formatDate } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import Spinner from "@/components/ui/Spinner";
+import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 
 type Props = {
   contractId: string;
+  currency?: string;
   isActive?: boolean;
+  /** Selects the `contracts` vs `msa-contracts` API segment. Defaults to
+   *  "Contract" — MSA's Rate Sheets tab reuses this component as-is. */
+  contractType?: "Contract" | "MsaContract";
+  actionsDisabled?: boolean;
+  /** BE-computed flag: is the logged-in user the contract's owner/manager.
+   *  Gates the manager (CM) approve action — a manager who doesn't own the
+   *  contract can view but not approve rate sheets on it. */
+  owner?: boolean;
 };
 
 type RateSheetRow = {
@@ -69,7 +82,7 @@ type SubmitRateSheetFormValues = {
 
 const submitRateSheetSchema = yup.object({
   title: yup.string().required("Rate Title is required"),
-  amount: yup.string().required("Amount is required"),
+  amount: yup.string().notRequired(),
   description: yup.string().required("Description is required"),
   files: yup.mixed().nullable().notRequired(),
 });
@@ -86,7 +99,7 @@ const StatusBadge = ({ status }: { status: string }) => {
       case "pending approval":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
       default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
+        return "bg-gray-100 text-gray-800 dark:text-slate-100 dark:bg-gray-800 dark:text-gray-300";
     }
   };
 
@@ -105,20 +118,20 @@ const LabelRow = ({
   value: React.ReactNode;
 }) => (
   <div className="space-y-2">
-    <div className="text-xs font-medium text-[#9CA3AF]">{label}</div>
-    <div className="text-sm font-medium text-[#111827]">{value}</div>
+    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-500">{label}</div>
+    <div className="text-sm font-medium text-[#111827] dark:text-slate-100">{value}</div>
   </div>
 );
 
 const RateSheetUploadElement = () => {
   return (
-    <div className="flex h-40 w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[#9CA3AF] bg-white px-4">
-      <UploadCloud className="h-10 w-10 text-[#2A4467]" />
+    <div className="flex h-40 w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[#9CA3AF] dark:border-slate-600 bg-white dark:bg-slate-800 px-4">
+      <UploadCloud className="h-10 w-10 text-[#2A4467] dark:text-blue-300" />
       <div className="flex flex-col items-center gap-1 text-center">
-        <div className="text-sm font-semibold text-[#2A4467]">
+        <div className="text-sm font-semibold text-[#2A4467] dark:text-blue-300">
           Drag &amp; Drop or Click to choose files
         </div>
-        <div className="text-xs font-medium text-[#9CA3AF]">
+        <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-500">
           Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
         </div>
       </div>
@@ -131,16 +144,16 @@ const RateSheetFilesListItem = ({ file }: { file: File }) => {
   const value = useWatch({ control, name: "files" });
 
   return (
-    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] bg-white p-3">
+    <div className="flex items-center justify-between rounded-lg border border-[#E5E7EB] dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB]">
-          <FileText className="h-5 w-5 text-[#2A4467]" />
+        <div className="flex h-10 w-10 items-center justify-center rounded bg-[#EAF1FB] dark:bg-slate-700">
+          <FileText className="h-5 w-5 text-[#2A4467] dark:text-blue-300" />
         </div>
         <div className="min-w-0">
-          <div className="truncate text-sm font-medium max-w-xs text-[#0F0F0F]">
+          <div className="truncate text-sm font-medium max-w-xs text-[#0F0F0F] dark:text-slate-100">
             {file.name}
           </div>
-          <div className="text-xs font-medium text-[#9CA3AF]">
+          <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-500">
             {getSimpleFileExtension(file.name).toUpperCase()} •{" "}
             {formatFileSize(file.size)}
           </div>
@@ -154,7 +167,7 @@ const RateSheetFilesListItem = ({ file }: { file: File }) => {
             (value ?? []).filter((f: File) => f.name !== file.name),
           )
         }
-        className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF] hover:text-red-500 transition-colors"
+        className="inline-flex h-8 w-8 items-center justify-center text-[#9CA3AF] dark:text-slate-500 hover:text-red-500 transition-colors"
       >
         <X className="h-4 w-4" />
       </button>
@@ -162,11 +175,43 @@ const RateSheetFilesListItem = ({ file }: { file: File }) => {
   );
 };
 
+type ExistingRateSheetFile = {
+  name: string;
+  url: string;
+  type: string;
+  size: string | number;
+};
+
 const SubmitRateSheetDialog: React.FC<{
   trigger: React.ReactElement;
   contractId: string;
-  queryKeyPath: string;
-}> = ({ trigger, contractId, queryKeyPath }) => {
+  /** Vendor-scoped rate sheets base path, e.g.
+   *  `/contract/vendor/contracts/{contractId}/ratesheets` or the
+   *  `msa-contracts` equivalent — used for both the submit POST and the
+   *  list-invalidation query key. */
+  basePath: string;
+  /** "edit" resubmits a rejected rate sheet via PUT to
+   *  `{basePath}/{rateSheetId}` instead of POSTing a new one. Vendor/PM only. */
+  mode?: "create" | "edit";
+  /** In edit mode, distinguishes a rejected-item resubmit ("Resubmit") from a
+   *  pending-item edit ("Edit"). Both hit the same PUT. */
+  isResubmit?: boolean;
+  rateSheetId?: string;
+  initialValues?: { title?: string; description?: string; amount?: number | string };
+  /** Existing uploaded files, retained on resubmit so they aren't wiped when
+   *  the vendor doesn't re-upload. Newly chosen files are appended. */
+  initialFiles?: ExistingRateSheetFile[];
+}> = ({
+  trigger,
+  contractId,
+  basePath,
+  mode = "create",
+  isResubmit = false,
+  rateSheetId,
+  initialValues,
+  initialFiles = [],
+}) => {
+  const isEdit = mode === "edit" && !!rateSheetId;
   const [open, setOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const toastHandler = useToastHandler();
@@ -175,12 +220,28 @@ const SubmitRateSheetDialog: React.FC<{
   const { control, reset } = useForge<SubmitRateSheetFormValues>({
     resolver: yupResolver(submitRateSheetSchema) as any,
     defaultValues: {
-      title: "",
-      amount: "",
-      description: "",
+      title: initialValues?.title ?? "",
+      amount:
+        initialValues?.amount != null ? String(initialValues.amount) : "",
+      description: initialValues?.description ?? "",
       files: null,
     },
   });
+
+  // useForge builds the form once, so re-seed edit values whenever the dialog
+  // opens for a (possibly changed) rate sheet.
+  React.useEffect(() => {
+    if (open && isEdit) {
+      reset({
+        title: initialValues?.title ?? "",
+        amount:
+          initialValues?.amount != null ? String(initialValues.amount) : "",
+        description: initialValues?.description ?? "",
+        files: null,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, isEdit, initialValues?.title, initialValues?.description, initialValues?.amount]);
 
   const { mutateAsync: uploadFile, isPending } = useMutation<
     ApiResponse<UploadURLs[]>,
@@ -204,15 +265,21 @@ const SubmitRateSheetDialog: React.FC<{
   });
 
   const submitMutation = useMutation({
-    mutationKey: ["submitRateSheet", contractId],
+    mutationKey: ["submitRateSheet", contractId, isEdit ? rateSheetId : "new"],
     mutationFn: async (payload: {
       title: string;
       description: string;
       amount: number;
       files: { name: string; url: string; type: string; size: string }[];
     }) => {
+      if (isEdit) {
+        return await putRequest({
+          url: `${basePath}/${rateSheetId}`,
+          payload,
+        });
+      }
       return await postRequest({
-        url: `/contract/vendor/contracts/${contractId}/ratesheets`,
+        url: basePath,
         payload,
       });
     },
@@ -220,17 +287,32 @@ const SubmitRateSheetDialog: React.FC<{
       setOpen(false);
       reset();
       await queryClient.invalidateQueries({
-        queryKey: ["rate-sheets", contractId, queryKeyPath],
+        queryKey: ["rate-sheets", contractId, basePath],
       });
+      if (isEdit) {
+        await queryClient.invalidateQueries({
+          queryKey: ["rate-sheet-detail", basePath, contractId, rateSheetId],
+        });
+      }
       toastHandler.success(
         "Success",
-        res?.data?.message || "Rate sheet submitted successfully",
+        res?.data?.message ||
+          (isEdit
+            ? isResubmit
+              ? "Rate sheet resubmitted successfully"
+              : "Rate sheet updated successfully"
+            : "Rate sheet submitted successfully"),
       );
     },
     onError: (error: any) => {
       toastHandler.error(
         "Error",
-        error?.response?.data?.message || "Failed to submit rate sheet",
+        error?.response?.data?.message ||
+          (isEdit
+            ? isResubmit
+              ? "Failed to resubmit rate sheet"
+              : "Failed to update rate sheet"
+            : "Failed to submit rate sheet"),
       );
     },
   });
@@ -271,17 +353,28 @@ const SubmitRateSheetDialog: React.FC<{
           }[];
         }
 
+        // On resubmit, retain the sheet's existing files (they aren't
+        // re-selected via the uploader) and append any newly chosen ones.
+        const retainedFiles = isEdit
+          ? initialFiles.map((f) => ({
+              name: f.name,
+              url: f.url,
+              type: f.type,
+              size: f.size?.toString?.() ?? "0",
+            }))
+          : [];
+
         await submitMutation.mutateAsync({
           title: data.title,
-          amount: Number(data.amount),
+          amount: data.amount ? Number(data.amount) : 0,
           description: data.description,
-          files: uploadedFiles,
+          files: [...retainedFiles, ...uploadedFiles],
         });
       } finally {
         setIsSubmitting(false);
       }
     },
-    [submitMutation, uploadFile],
+    [submitMutation, uploadFile, isEdit, initialFiles],
   );
 
   return (
@@ -298,8 +391,12 @@ const SubmitRateSheetDialog: React.FC<{
       <DialogContent className="max-h-[70vh] overflow-auto gap-0 border-0 p-0 sm:max-w-xl">
         <Forge control={control} onSubmit={onSubmit} className="flex flex-col">
           <div className="flex items-center justify-between px-8 py-8">
-            <h2 className="text-xl font-semibold text-[#0F0F0F]">
-              Submit Rate Sheet
+            <h2 className="text-xl font-semibold text-[#0F0F0F] dark:text-slate-100">
+              {isEdit
+                ? isResubmit
+                  ? "Resubmit Rate Sheet"
+                  : "Edit Rate Sheet"
+                : "Submit Rate Sheet"}
             </h2>
           </div>
 
@@ -312,22 +409,15 @@ const SubmitRateSheetDialog: React.FC<{
             />
 
             <Forger
-              name="amount"
-              label="Amount"
-              component={TextCurrencyInput}
-              placeholder="Enter Amount"
-            />
-
-            <Forger
               name="description"
               label="Description"
               component={TextArea}
-              placeholder="Duration"
+              placeholder="Enter description"
               rows={6}
             />
 
             <div className="flex flex-col gap-3">
-              <label className="text-base font-normal text-[#0F0F0F]">
+              <label className="text-base font-normal text-[#0F0F0F] dark:text-slate-100">
                 Upload Files
               </label>
               <Forger
@@ -358,16 +448,38 @@ const SubmitRateSheetDialog: React.FC<{
               type="button"
               onClick={() => setOpen(false)}
               disabled={isSubmitting}
-              className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-3.5 text-base font-semibold text-[#0F0F0F] shadow-sm hover:bg-[#E5E7EB]"
+              className="flex-1 rounded-xl border border-[#E5E7EB] bg-[#F3F4F6] py-3.5 text-base font-semibold text-[#0F0F0F] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 shadow-sm hover:bg-[#E5E7EB] dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Back
             </button>
             <button
               type="submit"
-              disabled={isPending || submitMutation.isPending}
-              className="flex-1 rounded-xl bg-[#2A4467] py-3.5 text-base font-semibold text-white shadow-sm hover:bg-[#1e3a5f]"
+              disabled={isSubmitting}
+              aria-busy={isSubmitting}
+              className="flex-1 rounded-xl bg-[#2A4467] py-3.5 text-base font-semibold text-white shadow-sm hover:bg-[#1e3a5f] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Submit Rate Sheet
+              {isSubmitting ? (
+                <div className="flex items-center justify-center gap-2">
+                  <Spinner className="h-5 w-5 text-white" />
+                  <span>
+                    {isPending
+                      ? "Uploading files…"
+                      : isEdit
+                        ? isResubmit
+                          ? "Resubmitting…"
+                          : "Saving…"
+                        : "Submitting…"}
+                  </span>
+                </div>
+              ) : isEdit ? (
+                isResubmit ? (
+                  "Resubmit Rate Sheet"
+                ) : (
+                  "Edit Rate Sheet"
+                )
+              ) : (
+                "Submit Rate Sheet"
+              )}
             </button>
           </div>
         </Forge>
@@ -376,8 +488,18 @@ const SubmitRateSheetDialog: React.FC<{
   );
 };
 
+type RateSheetApproverStatus =
+  | "pendingApproval"
+  | "approved"
+  | "N/A"
+  | "rejected"
+  | "pending";
+
+// Wire shape: the BE returns approverStatus as a sibling of `sheet`,
+// not as a field on the sheet itself.
 export interface RateSheetDetailResponse {
   sheet: RateSheetDetailResponseSheet;
+  approverStatus: RateSheetApproverStatus;
 }
 
 export interface RateSheetDetailResponseSheet {
@@ -395,15 +517,15 @@ export interface RateSheetDetailResponseSheet {
   files: File[];
   createdAt: Date;
   updatedAt: Date;
-  approverStatus:
-    | "pendingApproval"
-    | "approved"
-    | "N/A"
-    | "rejected"
-    | "pending";
   __v: number;
   summary: Summary[];
 }
+
+// View-model: the sheet with its sibling approverStatus grafted on, so the
+// approve/reject gate can read a single object.
+export type RateSheetDetail = RateSheetDetailResponseSheet & {
+  approverStatus: RateSheetApproverStatus;
+};
 
 export interface File {
   name: string;
@@ -435,51 +557,121 @@ export interface SheetElement {
 
 const EMPTY_RATE_SHEET_SUMMARY: Summary[] = [];
 
+const RATE_SHEET_SUMMARY_INITIAL_ROWS = 50;
+const RATE_SHEET_SUMMARY_ROW_STEP = 150;
+const RATE_SHEET_SUMMARY_INITIAL_GROUPS = 3;
+const RATE_SHEET_SUMMARY_GROUP_STEP = 3;
+const RATE_SHEET_SUMMARY_INITIAL_SHEETS = 2;
+const RATE_SHEET_SUMMARY_SHEET_STEP = 3;
+
 const RateSheetSummaryTable = React.memo(
   ({ headers, rows }: { headers: string[]; rows: SheetElement["rows"] }) => {
+    // Stash the rows identity alongside the user-expanded count; whenever rows
+    // change identity (BE refetch / sheet switch) the read auto-evicts back to
+    // INITIAL without a sync-from-prop effect.
+    const [visibleState, setVisibleState] = React.useState<{
+      rowsRef: SheetElement["rows"];
+      count: number;
+    }>({ rowsRef: rows, count: RATE_SHEET_SUMMARY_INITIAL_ROWS });
+    const visibleRowCount =
+      visibleState.rowsRef === rows
+        ? visibleState.count
+        : RATE_SHEET_SUMMARY_INITIAL_ROWS;
+
+    // BE sometimes declares fewer headers than the rows actually carry
+    // (xlsx parsing truncates header row at the first empty cell). Union
+    // any extra row keys onto the declared headers so every populated cell
+    // gets a column to render under.
+    const effectiveHeaders = React.useMemo(() => {
+      const declared = new Set(headers);
+      const merged: string[] = [...headers];
+      for (const r of rows) {
+        if (!r) continue;
+        for (const k of Object.keys(r)) {
+          if (!declared.has(k)) {
+            declared.add(k);
+            merged.push(k);
+          }
+        }
+      }
+      return merged;
+    }, [headers, rows]);
+
     const headerCells = React.useMemo(
       () =>
-        headers.map((h) => (
+        effectiveHeaders.map((h) => (
           <th key={h} className="whitespace-nowrap px-4 py-3">
-            {h}
+            {/^__EMPTY(_\d+)?$/.test(h) ? "" : h}
           </th>
         )),
-      [headers],
+      [effectiveHeaders],
     );
 
     const bodyRows = React.useMemo(() => {
-      if (rows.length === 0) {
+      const visibleRows = rows.slice(0, visibleRowCount);
+
+      if (visibleRows.length === 0) {
         return (
           <tr className="border-t border-[#E5E7EB]">
-            <td className="px-4 py-3 text-[#6B7280]" colSpan={headers.length}>
+            <td
+              className="px-4 py-3 text-[#6B7280] dark:text-slate-400"
+              colSpan={effectiveHeaders.length}
+            >
               No rows available.
             </td>
           </tr>
         );
       }
 
-      return rows.map((r, rowIndex) => (
+      return visibleRows.map((r, rowIndex) => (
         <tr key={rowIndex} className="border-t border-[#E5E7EB]">
-          {headers.map((h) => (
-            <td
-              key={`${rowIndex}-${h}`}
-              className="whitespace-nowrap px-4 py-3"
-            >
-              {(r as any)?.[h] ?? "—"}
-            </td>
-          ))}
+          {effectiveHeaders.map((h) => {
+            const cell = (r as any)?.[h];
+            return (
+              <td
+                key={`${rowIndex}-${h}`}
+                className="whitespace-nowrap px-4 py-3"
+              >
+                {cell == null || cell === "" ? "" : String(cell)}
+              </td>
+            );
+          })}
         </tr>
       ));
-    }, [headers, rows]);
+    }, [effectiveHeaders, rows, visibleRowCount]);
 
     return (
       <div className="overflow-x-auto rounded-lg border border-[#E5E7EB] bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-[#F9FAFB] text-xs font-semibold text-[#6B7280]">
+        <table className="min-w-max w-full text-left text-sm">
+          <thead className="bg-[#F9FAFB] text-xs font-semibold text-[#6B7280] dark:text-slate-400">
             <tr>{headerCells}</tr>
           </thead>
           <tbody>{bodyRows}</tbody>
         </table>
+        {rows.length > visibleRowCount && (
+          <div className="flex items-center justify-between border-t border-[#E5E7EB] px-4 py-3">
+            <div className="text-xs font-medium text-[#6B7280] dark:text-slate-400">
+              Showing {Math.min(rows.length, visibleRowCount).toLocaleString()} of{" "}
+              {rows.length.toLocaleString()} rows
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-8 rounded-md px-3 text-xs font-semibold"
+              onClick={() => {
+                setVisibleState({
+                  rowsRef: rows,
+                  count: Math.min(
+                    rows.length,
+                    visibleRowCount + RATE_SHEET_SUMMARY_ROW_STEP,
+                  ),
+                });
+              }}
+            >
+              Show more rows
+            </Button>
+          </div>
+        )}
       </div>
     );
   },
@@ -490,7 +682,7 @@ const RateSheetSummarySheet = React.memo(
   ({ sheet }: { sheet: SheetElement }) => {
     return (
       <div className="space-y-3">
-        <div className="text-sm font-semibold text-[#0F0F0F]">
+        <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
           {sheet?.sheetName || "—"}
         </div>
         {Array.isArray(sheet?.headers) && sheet.headers.length > 0 ? (
@@ -499,7 +691,7 @@ const RateSheetSummarySheet = React.memo(
             rows={sheet.rows || []}
           />
         ) : (
-          <div className="text-sm text-[#6B7280]">No headers available.</div>
+          <div className="text-sm text-[#6B7280] dark:text-slate-400">No headers available.</div>
         )}
       </div>
     );
@@ -510,20 +702,59 @@ const RateSheetSummarySheet = React.memo(
 const RateSheetSummaryGroup = React.memo(
   ({ group }: { group: Summary }) => {
     const sheets = group?.sheets || [];
+    // Group-identity-bound visible count (see RateSheetSummaryTable for the
+    // same pattern). Avoids a sync-from-prop effect on group change.
+    const [visibleState, setVisibleState] = React.useState<{
+      groupRef: Summary;
+      count: number;
+    }>({ groupRef: group, count: RATE_SHEET_SUMMARY_INITIAL_SHEETS });
+    const visibleSheetCount =
+      visibleState.groupRef === group
+        ? visibleState.count
+        : RATE_SHEET_SUMMARY_INITIAL_SHEETS;
+    const [isPending, startTransition] = React.useTransition();
+
+    const visibleSheets = React.useMemo(
+      () => sheets.slice(0, visibleSheetCount),
+      [sheets, visibleSheetCount],
+    );
 
     return (
       <div className="space-y-4">
-        <div className="text-sm font-semibold text-[#0F0F0F]">
+        <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
           {group?.name || "Summary"}
         </div>
         <div className="space-y-5">
-          {sheets.map((s, sheetIndex) => (
+          {visibleSheets.map((s, sheetIndex) => (
             <RateSheetSummarySheet
               key={`${s?.sheetName || "sheet"}-${sheetIndex}`}
               sheet={s}
             />
           ))}
         </div>
+        {sheets.length > visibleSheetCount && (
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-8 rounded-md px-3 text-xs font-semibold"
+              disabled={isPending}
+              onClick={() => {
+                startTransition(() => {
+                  setVisibleState({
+                    groupRef: group,
+                    count: Math.min(
+                      sheets.length,
+                      visibleSheetCount + RATE_SHEET_SUMMARY_SHEET_STEP,
+                    ),
+                  });
+                });
+              }}
+            >
+              Show more sheets
+            </Button>
+          </div>
+        )}
       </div>
     );
   },
@@ -538,18 +769,58 @@ const RateSheetSummaryTab = React.memo(
     detailLoading: boolean;
     summary: Summary[];
   }) => {
+    // Summary-identity-bound visible count (see RateSheetSummaryTable for the
+    // same pattern). Avoids a sync-from-prop effect on summary refresh.
+    const [visibleState, setVisibleState] = React.useState<{
+      summaryRef: Summary[];
+      count: number;
+    }>({ summaryRef: summary, count: RATE_SHEET_SUMMARY_INITIAL_GROUPS });
+    const visibleGroupCount =
+      visibleState.summaryRef === summary
+        ? visibleState.count
+        : RATE_SHEET_SUMMARY_INITIAL_GROUPS;
+    const [isPending, startTransition] = React.useTransition();
+
+    const visibleGroups = React.useMemo(
+      () => summary.slice(0, visibleGroupCount),
+      [summary, visibleGroupCount],
+    );
+
     return (
-      <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-6 text-sm text-[#6B7280]">
+      <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-6 text-sm text-[#6B7280] dark:text-slate-400">
         {detailLoading ? (
           <div>Loading summary...</div>
         ) : summary.length > 0 ? (
-          <div className="space-y-6 text-[#111827]">
-            {summary.map((group, groupIndex) => (
+          <div className="space-y-6 text-[#111827] dark:text-slate-100">
+            {visibleGroups.map((group, groupIndex) => (
               <RateSheetSummaryGroup
                 key={`${group?.name || "summary"}-${groupIndex}`}
                 group={group}
               />
             ))}
+            {summary.length > visibleGroupCount && (
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-8 rounded-md px-3 text-xs font-semibold"
+                  disabled={isPending}
+                  onClick={() => {
+                    startTransition(() => {
+                      setVisibleState({
+                        summaryRef: summary,
+                        count: Math.min(
+                          summary.length,
+                          visibleGroupCount + RATE_SHEET_SUMMARY_GROUP_STEP,
+                        ),
+                      });
+                    });
+                  }}
+                >
+                  Show more groups
+                </Button>
+              </div>
+            )}
           </div>
         ) : (
           <div>No summary available.</div>
@@ -566,29 +837,40 @@ const RateSheetDetailsSheet: React.FC<{
   contractId: string;
   row: RateSheetRow;
   basePath: string;
-}> = ({ trigger, contractId, row, basePath }) => {
+  /** Is the logged-in user the contract's owner/manager — gates the manager
+   *  approve action. */
+  owner?: boolean;
+}> = ({ trigger, contractId, row, basePath, owner }) => {
   const [open, setOpen] = React.useState(false);
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
-  const { isManager } = useUserRole();
+  const { isManager, isProjectManager } = useUserRole();
+  const rateSheetId = row.sheetId || row.id;
 
   const { data: detailRes, isLoading: detailLoading } = useQuery({
-    queryKey: ["rate-sheet-detail", basePath, contractId, row.sheetId],
+    queryKey: useUserQueryKey(["rate-sheet-detail", basePath, contractId, rateSheetId]),
     queryFn: async () => {
       const res = await getRequest({
-        url: `${basePath}/${row.sheetId}`,
+        url: `${basePath}/${rateSheetId}`,
       });
-      const sheet = res?.data?.data?.sheet as RateSheetDetailResponseSheet;
-      return sheet ?? null;
+      const data = res?.data?.data as RateSheetDetailResponse | undefined;
+      const sheet = data?.sheet;
+      if (!sheet) return null;
+      // BE returns approverStatus as a sibling of `sheet`, not inside it.
+      // Graft it on so the approve/reject gate can read a single object.
+      return {
+        ...sheet,
+        approverStatus: data?.approverStatus,
+      } as RateSheetDetail;
     },
-    enabled: open && !!contractId && !!row.sheetId && !!basePath,
+    enabled: open && !!contractId && !!rateSheetId && !!basePath,
   });
 
   const { mutate: mutateApproval, isPending: isApproving } = useMutation({
-    mutationKey: ["approveRateSheet", contractId, row.id],
+    mutationKey: ["approveRateSheet", contractId, rateSheetId],
     mutationFn: async (action: "approved" | "rejected") => {
       return await postRequest({
-        url: `${basePath}/${row.id}/approve`,
+        url: `${basePath}/${rateSheetId}/approve`,
         payload: { action, comment: "" },
       });
     },
@@ -601,7 +883,7 @@ const RateSheetDetailsSheet: React.FC<{
         queryKey: ["rate-sheets", contractId, basePath],
       });
       queryClient.invalidateQueries({
-        queryKey: ["rate-sheet-detail", basePath, contractId, row.id],
+        queryKey: ["rate-sheet-detail", basePath, contractId, rateSheetId],
       });
     },
     onError: (err: any) => {
@@ -609,18 +891,30 @@ const RateSheetDetailsSheet: React.FC<{
     },
   });
 
-  const sheet = detailRes as RateSheetDetailResponseSheet | null;
+  const sheet = detailRes as RateSheetDetail | null;
   const files = sheet?.files ?? [];
   const summary = sheet?.summary ?? EMPTY_RATE_SHEET_SUMMARY;
 
-  const canApprove = isManager && sheet?.approverStatus === "pending";
+  const canApprove =
+    isManager && Boolean(owner) && sheet?.approverStatus === "pending";
+  // Vendor/PM edits a rate sheet via PUT {basePath}/{rateSheetId} — labelled
+  // "Edit" while pending approval and "Resubmit" once rejected (same endpoint).
+  const rsStatus = (sheet?.status || row.status || "").toLowerCase();
+  const isRejected = rsStatus === "rejected";
+  const canEditOrResubmit =
+    isProjectManager && (rsStatus === "pending" || isRejected);
 
+  const [activeTab, setActiveTab] = React.useState("overview");
+  
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-2xl rounded-2xl overflow-y-auto [&>button]:hidden"
+        className={cn(
+          "rounded-2xl overflow-y-auto transition-all duration-300 [&>button]:hidden",
+          activeTab === "summary" ? "w-full sm:max-w-4xl" : "w-full sm:max-w-2xl"
+        )}
       >
         <div className="space-y-6" data-testid="rate-sheet-details-sheet">
           <SheetHeader className="space-y-0">
@@ -628,11 +922,13 @@ const RateSheetDetailsSheet: React.FC<{
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827]"
+                  aria-label="Go back"
+                  onClick={() => setOpen(false)}
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E7EB] text-[#111827] dark:text-slate-100"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
-                <SheetTitle className="text-base font-semibold text-[#0F0F0F]">
+                <SheetTitle className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                   Rate Sheet Details
                 </SheetTitle>
               </div>
@@ -649,18 +945,12 @@ const RateSheetDetailsSheet: React.FC<{
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <div className="text-base font-semibold text-[#0F0F0F]">
+              <div className="text-base font-semibold text-[#0F0F0F] dark:text-slate-100">
                 {sheet?.title || row.title || "—"}
               </div>
-              <Button
-                variant="outline"
-                className="h-9 rounded-lg border-[#E5E7EB] px-3 text-xs font-semibold text-[#0F0F0F]"
-              >
-                <Share2 className="mr-2 h-4 w-4" /> Export
-              </Button>
             </div>
 
-            <Tabs defaultValue="overview" className="space-y-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
               <TabsList className="h-auto rounded-none border-b w-full border-gray-300 dark:border-gray-600 dark:bg-transparent p-0 justify-start bg-transparent">
                 <TabsTrigger
                   value="overview"
@@ -683,14 +973,6 @@ const RateSheetDetailsSheet: React.FC<{
                       label="Rate Sheet Title"
                       value={sheet?.title || row.title}
                     />
-                    <LabelRow
-                      label="Amount"
-                      value={
-                        sheet?.amount !== undefined
-                          ? `$${sheet.amount.toLocaleString()}`
-                          : row.amount
-                      }
-                    />
                   </div>
                   <div className="grid grid-cols-2 gap-6">
                     <LabelRow
@@ -707,20 +989,20 @@ const RateSheetDetailsSheet: React.FC<{
                     />
                   </div>
                   <div className="space-y-2">
-                    <div className="text-xs font-medium text-[#9CA3AF]">
+                    <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-500">
                       Description
                     </div>
-                    <div className="text-sm font-medium text-[#111827]">
+                    <div className="text-sm font-medium text-[#111827] dark:text-slate-100">
                       {sheet?.description || "—"}
                     </div>
                   </div>
                   {detailLoading ? (
-                    <div className="text-sm text-[#6B7280]">
+                    <div className="text-sm text-[#6B7280] dark:text-slate-400">
                       Loading attachments...
                     </div>
                   ) : files.length > 0 ? (
                     <div className="space-y-3">
-                      <div className="text-sm font-semibold text-[#0F0F0F]">
+                      <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
                         Attachment
                       </div>
                       <div className="space-y-3">
@@ -744,12 +1026,19 @@ const RateSheetDetailsSheet: React.FC<{
                               key={d.id}
                               d={d}
                               handlePreview={() => {
-                                window.open(d.url || "#", "_blank");
+                                // Re-home the stored URL onto the env-configured
+                                // API base so preview/download always hit the
+                                // current environment (the URL bakes in whatever
+                                // host was active at upload).
+                                window.open(
+                                  d.url ? resolveEnvFileUrl(d.url) : "#",
+                                  "_blank",
+                                );
                               }}
                               handleDownload={() => {
                                 if (!d.url) return;
                                 const link = document.createElement("a");
-                                link.href = d.url;
+                                link.href = resolveEnvFileUrl(d.url);
                                 link.download = d.name;
                                 document.body.appendChild(link);
                                 link.click();
@@ -761,7 +1050,7 @@ const RateSheetDetailsSheet: React.FC<{
                       </div>
                     </div>
                   ) : (
-                    <div className="text-sm text-[#6B7280]">
+                    <div className="text-sm text-[#6B7280] dark:text-slate-400">
                       No attachments.
                     </div>
                   )}
@@ -781,7 +1070,7 @@ const RateSheetDetailsSheet: React.FC<{
             <div className="flex gap-3 pt-6">
               <Button
                 variant="outline"
-                className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827]"
+                className="h-11 flex-1 rounded-xl border-[#E5E7EB] text-sm font-semibold text-[#111827] dark:text-slate-100"
                 disabled={!canApprove || isApproving}
                 onClick={() => {
                   if (!canApprove) {
@@ -794,7 +1083,7 @@ const RateSheetDetailsSheet: React.FC<{
                   mutateApproval("rejected");
                 }}
               >
-                Reject Change
+                Reject
               </Button>
               <Button
                 className="h-11 flex-1 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
@@ -814,27 +1103,79 @@ const RateSheetDetailsSheet: React.FC<{
               </Button>
             </div>
           )}
+
+          {canEditOrResubmit && (
+            <div className="flex gap-3 pt-6 justify-end">
+              <SubmitRateSheetDialog
+                contractId={contractId}
+                basePath={basePath}
+                mode="edit"
+                isResubmit={isRejected}
+                rateSheetId={rateSheetId}
+                initialValues={{
+                  title: sheet?.title ?? row.title,
+                  description: sheet?.description ?? "",
+                  amount: sheet?.amount,
+                }}
+                initialFiles={(sheet?.files ?? []).map((f) => ({
+                  name: f.name,
+                  url: f.url,
+                  type: f.type,
+                  size: f.size,
+                }))}
+                trigger={
+                  <Button
+                    className="h-11 w-64 rounded-xl bg-[#1F3B63] text-sm font-semibold text-white"
+                    data-testid="resubmit-rate-sheet-trigger"
+                  >
+                    {isRejected ? "Resubmit" : "Edit"}
+                  </Button>
+                }
+              />
+            </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>
   );
 };
 
-const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
+const RateSheetsTabContent: React.FC<Props> = ({
+  contractId,
+  currency,
+  isActive,
+  contractType = "Contract",
+  actionsDisabled,
+  owner,
+}) => {
+  const currencyCode = resolveCurrency(currency, useUser()?.currency);
   const [search, setSearch] = React.useState("");
-  const { isVendor, isApprover, isManager, isAdmin, isViewOnly } =
+  const { isVendor, isProjectManager, isApprover, isManager, isAdmin, isViewOnly } =
     useUserRole();
+  const isContractVendorLike = isVendor || isProjectManager;
+  const entitySegment = contractType === "MsaContract" ? "msa-contracts" : "contracts";
 
   const basePath = React.useMemo(() => {
-    if (isVendor) return `/contract/vendor/contracts/${contractId}/ratesheets`;
+    if (isContractVendorLike) return `/contract/vendor/${entitySegment}/${contractId}/ratesheets`;
     if (isApprover)
-      return `/contract/approver/contracts/${contractId}/ratesheets`;
-    if (isManager)
-      return `/contract/manager/contracts/${contractId}/ratesheets`;
-    if (isAdmin || isViewOnly)
-      return `/contract/user/contracts/${contractId}/ratesheets`;
-    return `/contract/user/contracts/${contractId}/ratesheets`;
-  }, [contractId, isVendor, isApprover, isManager, isAdmin, isViewOnly]);
+      return `/contract/approver/${entitySegment}/${contractId}/ratesheets`;
+    // QA #298: company/super admins read via the manager (org-scoped) endpoint,
+    // like the main contract fetch. The /contract/user endpoint is
+    // participant-scoped and returns empty for admins.
+    if (isManager || isAdmin)
+      return `/contract/manager/${entitySegment}/${contractId}/ratesheets`;
+    if (isViewOnly)
+      return `/contract/user/${entitySegment}/${contractId}/ratesheets`;
+    return `/contract/user/${entitySegment}/${contractId}/ratesheets`;
+  }, [
+    contractId,
+    entitySegment,
+    isContractVendorLike,
+    isApprover,
+    isManager,
+    isAdmin,
+    isViewOnly,
+  ]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["rate-sheets", contractId, basePath],
@@ -842,14 +1183,15 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
       const res = await getRequest({
         url: basePath,
       });
-      const items = (res as any)?.data?.data || [];
+      const raw = (res as any)?.data?.data ?? [];
+      const items = Array.isArray(raw) ? raw : [];
       const rows: RateSheetRow[] = items.map((it: any) => ({
-        id: it?.rateId || it?._id || "",
-        sheetId: it?.sheetId || "",
+        id: it?.sheetId || it?.rateId || it?._id || "",
+        sheetId: it?.sheetId || it?.rateId || it?._id || "",
         title: it?.title || "",
         amount:
           typeof it?.amount === "number"
-            ? `$${it.amount.toLocaleString()}`
+            ? formatCurrency(it.amount, "en-US", currencyCode)
             : it?.amount || "",
         submissionDate: it?.createdAt || "",
         status: it?.status
@@ -866,7 +1208,7 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
     const q = search.trim().toLowerCase();
     if (!q) return source;
     return source.filter((row) =>
-      [row.id, row.title].some((v) => v.toLowerCase().includes(q)),
+      [row.sheetId, row.title].some((v) => v.toLowerCase().includes(q)),
     );
   }, [data, search]);
 
@@ -877,18 +1219,9 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         accessorKey: "title",
         header: "Rate Title",
         cell: ({ getValue }) => (
-          <div className="max-w-[260px] text-sm text-slate-700">
+          <div className="max-w-[260px] text-sm text-slate-700 dark:text-slate-300">
             {getValue<string>()}
           </div>
-        ),
-      },
-      {
-        accessorKey: "amount",
-        header: "Amount",
-        cell: ({ getValue }) => (
-          <span className="font-medium text-slate-900">
-            {getValue<string>()}
-          </span>
         ),
       },
       // { accessorKey: "submissionDate", header: "Submission Date" },
@@ -923,6 +1256,7 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
                 basePath={basePath}
                 contractId={contractId}
                 row={rs}
+                owner={owner}
                 trigger={
                   <button
                     type="button"
@@ -937,23 +1271,28 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         },
       },
     ],
-    [basePath, contractId],
+    [basePath, contractId, owner],
   );
 
   return (
     <TabsContent value="rate-sheets" className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-slate-900">Rate Sheets</h3>
+        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Rate Sheets</h3>
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="h-10 rounded-xl px-4">
-            Export Report
-          </Button>
-          {isVendor && (
+          <ExportReportSheet contractId={contractId} contractType={contractType}>
+            <Button variant="outline" className="h-10 rounded-xl px-4">
+              Export Report
+            </Button>
+          </ExportReportSheet>
+          {isProjectManager && (
             <SubmitRateSheetDialog
               contractId={contractId}
-              queryKeyPath={basePath}
+              basePath={basePath}
               trigger={
-                <Button className="h-10 rounded-xl bg-[#2A4467] px-4 text-sm font-semibold text-white hover:bg-[#2A4467]/90">
+                <Button
+                  className="h-10 rounded-xl bg-[#2A4467] px-4 text-sm font-semibold text-white hover:bg-[#2A4467]/90"
+                  disabled={!!actionsDisabled}
+                >
                   Submit Rate Sheet
                 </Button>
               }
@@ -966,12 +1305,12 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
         data={filtered}
         columns={columns}
         header={() => (
-          <div className="flex items-center gap-3 border-b w-full border-[#E5E7EB] px-5 py-4">
-            <span className="text-sm font-medium text-slate-900">
+          <div className="flex items-center gap-3 border-b w-full border-[#E5E7EB] dark:border-slate-700 px-5 py-4">
+            <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
               Rate Sheets
             </span>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
               <Input
                 placeholder="Search"
                 value={search}
@@ -991,13 +1330,13 @@ const RateSheetsTabContent: React.FC<Props> = ({ contractId, isActive }) => {
           isLoading: !!isLoading,
         }}
         classNames={{
-          container: "border border-[#E5E7EB] rounded-xl bg-white",
-          tHeader: "bg-[#F9FAFB]",
-          tHeadRow: "border-b border-[#E5E7EB]",
-          tBody: "bg-white",
-          tRow: "border-b border-[#E5E7EB]",
-          tHead: "px-6 py-3 text-xs font-semibold text-slate-500",
-          tCell: "px-6 py-4 text-sm text-slate-700 align-top",
+          container: "border border-[#E5E7EB] dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900",
+          tHeader: "bg-[#F9FAFB] dark:bg-slate-800",
+          tHeadRow: "border-b border-[#E5E7EB] dark:border-slate-700",
+          tBody: "bg-white dark:bg-slate-900",
+          tRow: "border-b border-[#E5E7EB] dark:border-slate-700",
+          tHead: "px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 dark:text-slate-500",
+          tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-300 align-top",
         }}
       />
     </TabsContent>

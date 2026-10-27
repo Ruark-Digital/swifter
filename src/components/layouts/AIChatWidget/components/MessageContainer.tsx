@@ -4,7 +4,7 @@ import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import rehypeRaw from "rehype-raw";
 import { cn } from "@/lib/utils";
-import { Bot, User, CheckCircle2, Quote } from "lucide-react";
+import { Bot, User, CheckCircle2, Quote, Paperclip } from "lucide-react";
 import "@/assets/highlight-github.css";
 
 export interface ReferencedMessage {
@@ -14,31 +14,49 @@ export interface ReferencedMessage {
   timestamp: Date;
 }
 
+export interface MessageAttachment {
+  name: string;
+  type: string;
+  size: number;
+}
+
 export interface MessageContainerProps {
   id: string;
   content: string;
   sender: "user" | "ai";
   timestamp: Date;
   referencedMessage?: ReferencedMessage;
+  attachments?: MessageAttachment[];
   className?: string;
 }
+
+const formatAttachmentSize = (bytes: number) => {
+  if (!bytes) return "";
+  const units = ["B", "KB", "MB", "GB"];
+  const i = Math.min(
+    units.length - 1,
+    Math.floor(Math.log(bytes) / Math.log(1024))
+  );
+  return `${parseFloat((bytes / Math.pow(1024, i)).toFixed(1))} ${units[i]}`;
+};
+
+const formatTime = (date: Date) => {
+  return date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+};
 
 const MessageContainer: React.FC<MessageContainerProps> = memo(({
   content,
   sender,
   timestamp,
   referencedMessage,
+  attachments,
   className,
 }) => {
   const isUser = sender === "user";
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-  };
 
   // Memoize markdown components for performance
   const markdownComponents = useMemo(() => ({
@@ -117,7 +135,7 @@ const MessageContainer: React.FC<MessageContainerProps> = memo(({
     // Custom blockquote styling
     blockquote: ({ children, ...props }: any) => (
       <blockquote
-        className="border-l-4 border-blue-500 pl-4 py-2 mb-4 bg-blue-50 dark:bg-blue-900/20 rounded-r-lg"
+        className="shadow-[inset_3px_0_0_0_#07004D] pl-4 py-2 mb-4 bg-[#07004D]/5 dark:bg-violet-900/20 rounded-r-lg"
         {...props}
       >
         <div className="text-gray-700 dark:text-gray-300 italic">
@@ -154,7 +172,7 @@ const MessageContainer: React.FC<MessageContainerProps> = memo(({
     a: ({ children, href, ...props }: any) => (
       <a
         href={href}
-        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline transition-colors"
+        className="text-[#07004D] dark:text-violet-300 hover:text-[#0a0668] dark:hover:text-violet-200 underline transition-colors"
         target="_blank"
         rel="noopener noreferrer"
         {...props}
@@ -196,12 +214,12 @@ const MessageContainer: React.FC<MessageContainerProps> = memo(({
           <div className="flex items-center gap-2 flex-1">
             <div className="flex items-center gap-1">
               {isReferencedUser ? (
-                <User className="h-3 w-3 text-green-600" />
+                <User className="h-3 w-3 text-slate-500" />
               ) : (
-                <Bot className="h-3 w-3 text-blue-600" />
+                <Bot className="h-3 w-3 text-[#07004D] dark:text-violet-300" />
               )}
               <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                {isReferencedUser ? "You" : "AI Assistant"}
+                {isReferencedUser ? "You" : "SwiftPro Assistant"}
               </span>
             </div>
             <span className="text-xs text-gray-500 dark:text-gray-500">
@@ -227,8 +245,8 @@ const MessageContainer: React.FC<MessageContainerProps> = memo(({
       )}
     >
       {!isUser && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-          <Bot className="h-4 w-4 text-white" />
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-[#07004D] font-quicksand text-sm font-bold text-white">
+          S
         </div>
       )}
 
@@ -236,15 +254,40 @@ const MessageContainer: React.FC<MessageContainerProps> = memo(({
         className={cn(
           "max-w-[75%] rounded-2xl px-4 py-3 text-sm shadow-sm",
           isUser
-            ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-br-md"
-            : "bg-white border border-gray-200 text-gray-900 rounded-bl-md dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
+            ? "bg-[#07004D] text-white rounded-br-md"
+            : "bg-slate-50 border border-slate-200 text-slate-900 rounded-bl-md dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
         )}
       >
         {/* Referenced message */}
         {renderReferencedMessage()}
 
+        {/* Attachments sent with this message */}
+        {attachments && attachments.length > 0 && (
+          <div className={cn("flex flex-wrap gap-2", content ? "mb-2" : "")}>
+            {attachments.map((file) => (
+              <span
+                key={`${file.name}-${file.size}`}
+                className={cn(
+                  "inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs",
+                  isUser
+                    ? "border-white/20 bg-white/10 text-white"
+                    : "border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                )}
+              >
+                <Paperclip className="h-3.5 w-3.5 flex-shrink-0" />
+                <span className="truncate font-medium">{file.name}</span>
+                {file.size > 0 && (
+                  <span className="flex-shrink-0 opacity-70">
+                    {formatAttachmentSize(file.size)}
+                  </span>
+                )}
+              </span>
+            ))}
+          </div>
+        )}
+
         {/* Main message content with markdown support */}
-        <div 
+        {content && <div
           className={cn(
             "prose prose-sm max-w-none whitespace-normal leading-relaxed",
             isUser ? "prose-invert" : ""
@@ -257,13 +300,13 @@ const MessageContainer: React.FC<MessageContainerProps> = memo(({
           >
             {content}
           </ReactMarkdown>
-        </div>
+        </div>}
 
         {/* Message metadata */}
         <div
           className={cn(
             "flex items-center justify-between mt-2 text-xs opacity-70",
-            isUser ? "text-blue-100" : "text-gray-500 dark:text-gray-400"
+            isUser ? "text-white/70" : "text-slate-500 dark:text-slate-400"
           )}
         >
           <span>{formatTime(timestamp)}</span>
@@ -272,8 +315,8 @@ const MessageContainer: React.FC<MessageContainerProps> = memo(({
       </div>
 
       {isUser && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
-          <User className="h-4 w-4 text-white" />
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-slate-200 dark:bg-slate-700">
+          <User className="h-4 w-4 text-slate-600 dark:text-slate-300" />
         </div>
       )}
     </div>
