@@ -667,8 +667,12 @@ export function zonedTimeToUtc(
       local.getMilliseconds()
     );
 
-    // Determine the timezone offset (in minutes) at that instant for the target IANA timezone
-    const offsetMin = getTimeZoneOffset(new Date(utcTsFromLocalWall), timeZone);
+    // Abbreviations (e.g. "EST") resolve through the same table as the display
+    // helpers, so a summer EST wall clock uses EDT. Anything else is an IANA name.
+    const probe = new Date(utcTsFromLocalWall);
+    const offsetMin =
+      resolveZone(probe, timeZone)?.offsetMin ??
+      getTimeZoneOffset(probe, timeZone);
 
     // Adjust the UTC timestamp by subtracting the offset to get the true UTC instant
     const adjustedUtcTs = utcTsFromLocalWall - offsetMin * 60000;
