@@ -40,7 +40,12 @@ import {
   getStatusColorClass,
   normalizeStatus,
 } from "@/lib/solicitationStatusUtils";
-import { cn, formatDateTZ, formatQuestionDeadline } from "@/lib/utils";
+import {
+  cn,
+  formatDateTZ,
+  formatQuestionDeadline,
+  formatWallClockWithZone,
+} from "@/lib/utils";
 import { applySolicitationCompanyFilter } from "./lib/solicitationCompanyFilter";
 // import ExportReportSheet from "@/components/layouts/ExportReportSheet";
 
@@ -918,10 +923,11 @@ export const SolicitationManagementPage = () => {
               )}
               <div className="text-gray-500 dark:text-gray-400 font-medium">
                 Deadline:
-                {safeFormatDate(
+                {/* Deadlines are stored as the solicitation's wall clock, so
+                    echo them as entered (the Timezone column names the zone). */}
+                {formatWallClockWithZone(
                   row.original.submissionDeadline,
-                  "MMM d, yyyy, h:mm a",
-                  row.original.timezone
+                  "MMM d, yyyy, h:mm a"
                 )}
               </div>
             </div>
@@ -1123,10 +1129,9 @@ export const SolicitationManagementPage = () => {
           header: "Submission Deadline",
           cell: ({ row }) => (
             <span>
-              {safeFormatDate(
+              {formatWallClockWithZone(
                 row.original.submissionDeadline,
-                "MMM d, yyyy, KK:mm a",
-                row.original.timezone
+                "MMM d, yyyy, hh:mm a"
               )}
             </span>
           ),
@@ -1357,9 +1362,10 @@ export const SolicitationManagementPage = () => {
               </span>
               <span>
                 <strong>Closing:</strong>{" "}
-                {safeFormatDate(
+                {formatWallClockWithZone(
                   row.original.submissionDeadline,
-                  "MMM d, yyyy hh:mm a"
+                  "MMM d, yyyy hh:mm a",
+                  row.original.timezone
                 )}
               </span>
             </>

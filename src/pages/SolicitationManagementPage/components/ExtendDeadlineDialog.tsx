@@ -18,7 +18,7 @@ import { ApiResponse, ApiResponseError } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useWatch } from "react-hook-form";
 import timezoneData from "@/assets/timezones.json";
-import { formatDateTZ, zonedTimeToUtc } from "@/lib/utils";
+import { formatWallClockWithZone, toWallClockPayload } from "@/lib/utils";
 
 const extendDeadlineSchema = yup.object({
   submissionDeadline: yup
@@ -79,13 +79,11 @@ const ExtendDeadlineDialog: React.FC<ExtendDeadlineDialogProps> = ({
   const toast = useToastHandler();
   const queryClient = useQueryClient();
 
-  // Helper to get solicitation timezone
-  const getSolicitationTimezone = () => solicitation?.timezone || "Africa/Lagos";
-
-  // Helper function to format date for input
+  // Deadlines are stored as the solicitation's wall clock (see
+  // formatWallClockWithZone), so prefill the picker with those digits as-is.
   const formatDateForInput = (dateString: string) => {
     if (!dateString) return "";
-    return formatDateTZ(dateString, "yyyy-MM-dd'T'HH:mm", getSolicitationTimezone());
+    return formatWallClockWithZone(dateString, "yyyy-MM-dd'T'HH:mm");
   };
 
   const { control, reset } = useForge<FormValues>({
@@ -168,9 +166,9 @@ const ExtendDeadlineDialog: React.FC<ExtendDeadlineDialogProps> = ({
           ? "invite-only" 
           : solicitation.visibility,
         status: solicitation.status,
-        submissionDeadline: zonedTimeToUtc(data.submissionDeadline, data.timezone).toISOString(),
+        submissionDeadline: toWallClockPayload(data.submissionDeadline),
         questionDeadline: data.questionDeadline
-          ? zonedTimeToUtc(data.questionDeadline, data.timezone).toISOString()
+          ? toWallClockPayload(data.questionDeadline)
           : solicitation.questionDeadline,
         bidIntent: solicitation.bidIntent,
         bidIntentDeadline: solicitation.bidIntentDeadline,
@@ -188,7 +186,9 @@ const ExtendDeadlineDialog: React.FC<ExtendDeadlineDialogProps> = ({
           type: file.type,
         })),
         vendors: solicitation.vendors?.map((vendor: any) => ({
-          id: vendor._id,
+          // The real vendor id, not the solicitation-vendor row `_id` — the
+          // row id makes the BE reply "Vendor not found".
+          id: vendor?.id?._id ?? vendor.id,
           status: vendor.status,
         })),
       };

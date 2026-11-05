@@ -20,9 +20,13 @@ import Step3Form from "./Step3Form";
 import Step4Form from "./Step4Form";
 import Step5Form from "./Step5Form";
 import Step6Form from "./Step6Form";
-import { cn } from "@/lib/utils";
+import {
+  buildEventDate,
+  cn,
+  formatWallClockWithZone,
+  toWallClockPayload,
+} from "@/lib/utils";
 import { useClearSession } from "@/store/solicitationFileSlice";
-import { format } from "date-fns";
 
 // Form validation schemas for each step
 const step1Schema = yup.object({
@@ -313,20 +317,19 @@ const EditSolicitationDialogContent = ({
     solicitationData?.data?.data?.solicitation || solicitationData?.data?.data;
   const effectiveSolicitation = detailedSolicitation || solicitation;
 
-  // Helper function to format date for input
+  // Solicitation datetimes are stored as the solicitation's wall clock stamped
+  // UTC (see formatWallClockWithZone). Prefill the pickers with those digits as
+  // a naive local datetime, so they show the time as entered and save back
+  // unshifted through `toWallClockPayload`.
   const formatDateForInput = (dateString: string) => {
     if (!dateString) return "";
-    console.log({ dateString })
-    const date = dateString;
-    return date;
+    return formatWallClockWithZone(dateString, "yyyy-MM-dd'T'HH:mm:ss");
   };
 
   // Helper function to format time for input
   const formatTimeForInput = (dateString: string) => {
     if (!dateString) return "";
-    const date = format(dateString,  "yyyy-MM-dd'T'HH:mm:ss");
-    return date.split("T")[1].substring(0, 5);
-    // return date.toTimeString().split(" ")[0].substring(0, 5);
+    return formatWallClockWithZone(dateString, "HH:mm");
   };
 
   // Prepare default values from solicitation data
@@ -543,18 +546,15 @@ const EditSolicitationDialogContent = ({
         description: completeData.description,
         visibility: completeData.visibility as "public" | "invite-only",
         status: "active", // Set status to active when updating
-        submissionDeadline: new Date(
+        submissionDeadline: toWallClockPayload(
           completeData.submissionDeadlineDate
-        ).toISOString(),
+        ),
         questionDeadline: completeData.questionAcceptanceDeadlineDate
-          ? format(
-              completeData.questionAcceptanceDeadlineDate,
-              "yyyy-MM-dd'T'HH:mm:ss"
-            )
+          ? toWallClockPayload(completeData.questionAcceptanceDeadlineDate)
           : undefined,
         bidIntent: completeData.bidIntent as "required" | "not required",
         bidIntentDeadline: completeData.bidIntentDeadlineDate
-          ? format(completeData.bidIntentDeadlineDate, "yyyy-MM-dd'T'HH:mm:ss")
+          ? toWallClockPayload(completeData.bidIntentDeadlineDate)
           : undefined,
         timezone: completeData.timezone || "",
         events: completeData.event
@@ -568,18 +568,9 @@ const EditSolicitationDialogContent = ({
               return null;
             }
 
-            // Handle Date object from TextDatePicker
-            const dateStr =
-              evt.date instanceof Date
-                ? evt.date.toISOString().split("T")[0] // Extract YYYY-MM-DD
-                : evt.date;
-
-            // Validate the constructed date string
-            const dateTimeStr = `${dateStr}T${evt.time}`;
-            const eventDate = format(dateTimeStr, "yyyy-MM-dd'T'HH:mm:ss");
-
-            if (isNaN(Date.parse(eventDate))) {
-              console.warn("Invalid date constructed:", dateTimeStr);
+            const eventDate = buildEventDate(evt.date, evt.time);
+            if (!eventDate) {
+              console.warn("Invalid event date or time:", evt);
               return null;
             }
 
@@ -730,16 +721,16 @@ const EditSolicitationDialogContent = ({
             : effectiveSolicitation.visibility),
         status: "draft", // Always save as draft
         submissionDeadline: formData.submissionDeadlineDate
-            ? format(formData.submissionDeadlineDate,  "yyyy-MM-dd'T'HH:mm:ss")
+          ? toWallClockPayload(formData.submissionDeadlineDate)
           : effectiveSolicitation.submissionDeadline,
-        questionDeadline: formData.questionAcceptanceDeadlineDate 
-          ? format(formData.questionAcceptanceDeadlineDate,  "yyyy-MM-dd'T'HH:mm:ss")
+        questionDeadline: formData.questionAcceptanceDeadlineDate
+          ? toWallClockPayload(formData.questionAcceptanceDeadlineDate)
           : effectiveSolicitation.questionDeadline,
         bidIntent:
           (formData.bidIntent as "required" | "not required") ||
           effectiveSolicitation.bidIntent,
         bidIntentDeadline: formData.bidIntentDeadlineDate
-          ? format(formData.bidIntentDeadlineDate,  "yyyy-MM-dd'T'HH:mm:ss")
+          ? toWallClockPayload(formData.bidIntentDeadlineDate)
           : effectiveSolicitation.bidIntentDeadline,
         timezone:
           formData.timezone || effectiveSolicitation.timezone || "Africa/Lagos",
@@ -750,19 +741,14 @@ const EditSolicitationDialogContent = ({
                   if (!evt.date || !evt.time) {
                     return null;
                   }
-                  const dateStr =
-                    evt.date instanceof Date
-                      ? evt.date.toISOString().split("T")[0]
-                      : evt.date;
-                  const dateTimeStr = `${dateStr}T${evt.time}`;
-                  const eventDate = new Date(dateTimeStr);
-                  if (isNaN(eventDate.getTime())) {
+                  const eventDate = buildEventDate(evt.date, evt.time);
+                  if (!eventDate) {
                     return null;
                   }
                   return {
                     eventType: evt.event,
                     eventLocation: evt.location,
-                    eventDate: eventDate.toISOString(),
+                    eventDate,
                     eventDescription: evt.note || undefined,
                   };
                 })

@@ -436,6 +436,32 @@ export function formatWallClockWithZone(
   }
 }
 
+// Serialize a picked datetime as a naive wall clock, matching the create flow.
+// Pickers hold either a local `Date` (once changed) or the naive prefill string.
+export const toWallClockPayload = (value: string | Date) =>
+  format(value, "yyyy-MM-dd'T'HH:mm:ss");
+
+// Combine an event's date and "HH:mm" time into a naive wall-clock datetime, or
+// undefined when either part is missing or invalid. The date is a picked `Date`
+// or a prefilled datetime string; only its calendar day is used. Appending the
+// time to a full datetime string used to make `format` throw "Invalid time
+// value" when an existing event was saved unchanged.
+export const buildEventDate = (
+  date: string | Date | undefined,
+  time: string | undefined
+): string | undefined => {
+  if (!date || !time) return undefined;
+  const day =
+    date instanceof Date
+      ? isNaN(date.getTime())
+        ? undefined
+        : format(date, "yyyy-MM-dd")
+      : /^\d{4}-\d{2}-\d{2}/.exec(date.trim())?.[0];
+  if (!day) return undefined;
+  const combined = new Date(`${day}T${time}`);
+  return isNaN(combined.getTime()) ? undefined : toWallClockPayload(combined);
+};
+
 // One format for the question acceptance deadline, so the Timeline tab and the
 // Questions tab banner render it identically (QA #190).
 export const QUESTION_DEADLINE_FORMAT = "MMM d, yyyy h:mm a";

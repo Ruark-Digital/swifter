@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import SolicitationDetailsSheet from "./components/SolicitationDetailsSheet";
 import { DropdownFilters } from "@/components/layouts/SolicitationFilters";
 import { IconMap } from "@/components/layouts/RoleBasedDashboard/components/StatsCard";
-import { formatDateTZ } from "@/lib/utils";
+import { formatDateTZ, formatWallClockWithZone } from "@/lib/utils";
 
 // API Types based on Swagger documentation
 export interface VendorSolicitation {
@@ -91,10 +91,10 @@ const transformSolicitationToInvitation = (
       "MMM d, yyyy hh:mm a",
       solicitation?.timezone,
     ),
-    deadline: formatDateTZ(
+    // The deadline is the solicitation's wall clock; echo it as entered.
+    deadline: formatWallClockWithZone(
       solicitation.submissionDeadline as any,
       "MMM d, yyyy hh:mm a",
-      solicitation?.timezone,
     ),
     timezone: solicitation?.timezone || "UTC",
     status: mapApiStatusToUIStatus(solicitation.vendor.status),
