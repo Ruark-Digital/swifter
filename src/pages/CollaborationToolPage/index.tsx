@@ -48,8 +48,8 @@ import {
 import {
   useRedlineTurn,
   isVersionConflict,
-  type RedlineBatchItem,
 } from "./collab/useRedlineTurn";
+import { buildBatchItems } from "./collab/redlineBatch";
 import TurnControls from "./components/TurnControls";
 import EditorModeToggle, {
   type EditableMode,
@@ -975,7 +975,7 @@ const CollaborationToolPage: React.FC = () => {
   // POST per card). For "modified" we apply each item's chosen-tier replacement
   // to the document first (mirroring handleApproveAi), then batch-record.
   const handleResolveAllAi = useCallback(
-    (action: "modified" | "rejected", tier: "low" | "medium" | "high" = "medium") => {
+    async (action: "modified" | "rejected", tier: "low" | "medium" | "high" = "medium") => {
       const adapter = editorAdapterRef.current;
       if (redlineTurn.isLocked) {
         toastHandler.error(
@@ -986,25 +986,48 @@ const CollaborationToolPage: React.FC = () => {
         );
         return;
       }
-      const pending = aiItems.filter((i) => i.state === "pending");
-      if (pending.length === 0) return;
+      // The backend requires the file id in the batch body. Stop here rather
+      // than send a request it will reject.
+      if (!fileId) {
+        toastHandler.error(
+          "Redline",
+          "Cannot approve: the file ID is missing. Reload the page and try again.",
+        );
+        return;
+      }
 
-      // Record this side's approval/rejection for every pending redline. The
+      // Refetch before building the batch. The local cards can be stale (the
+      // other side may have resolved or accepted since they loaded), and a batch
+      // built from them is what the server rejects with a 409.
+      const [freshSuggestions, freshVersions] = await Promise.all([
+        persistedQuery.refetch(),
+        fileVersionsQuery.refetch(),
+      ]);
+      if (
+        freshSuggestions.isError ||
+        !freshSuggestions.data ||
+        freshVersions.isError
+      ) {
+        toastHandler.error(
+          "Redline",
+          "Could not refresh the suggestions. Try again.",
+        );
+        return;
+      }
+
+      // Record this side's approval/rejection for every still-open redline. The
       // backend applies the bilateral-accepted ones to the document from the
       // submitted `documentState`; the FE no longer mutates the doc itself.
-      const resolutions: RedlineBatchItem[] =
-        action === "modified"
-          ? pending.map((item) => ({
-              redlineId: item.redline.redlineId,
-              action: "modified" as const,
-              tier,
-              appliedTier: tier,
-            }))
-          : pending.map((item) => ({
-              redlineId: item.redline.redlineId,
-              action: "rejected" as const,
-            }));
-      if (resolutions.length === 0) return;
+      const resolutions = buildBatchItems(freshSuggestions.data.suggestions, {
+        decision: action === "modified" ? "approve" : "reject",
+        tier,
+        mySide: redlineTurn.mySide,
+      });
+      if (resolutions.length === 0) {
+        toastHandler.success("Redline", "Nothing left to resolve.");
+        return;
+      }
+      const baseVersionId = freshVersions.data?.activeVersionId ?? null;
 
       const resolvedIds = new Set(resolutions.map((r) => r.redlineId));
       const nextState: AiItem["state"] =
@@ -1014,7 +1037,7 @@ const CollaborationToolPage: React.FC = () => {
         {
           resolutions,
           docName,
-          baseVersionId: fileVersionsQuery.data?.activeVersionId ?? null,
+          baseVersionId,
           documentState,
         },
         {
@@ -1044,12 +1067,15 @@ const CollaborationToolPage: React.FC = () => {
             );
           },
           onError: (error) => {
-            toastHandler.error(
-              "Redline",
-              isVersionConflict(error)
-                ? "This document changed since you loaded it. Reload the latest version, then try again."
-                : (error as ApiResponseError),
-            );
+            if (isVersionConflict(error)) {
+              toastHandler.error(
+                "Redline",
+                "Some suggestions changed. The list has been refreshed.",
+              );
+              void persistedQuery.refetch();
+              return;
+            }
+            toastHandler.error("Redline", error as ApiResponseError);
           },
         },
       );
@@ -1064,14 +1090,7 @@ const CollaborationToolPage: React.FC = () => {
         submitBatch();
       }
     },
-    [
-      aiItems,
-      redlineTurn,
-      docName,
-      fileVersionsQuery.data?.activeVersionId,
-      toastHandler,
-      persistedQuery,
-    ],
+    [redlineTurn, docName, fileId, fileVersionsQuery, toastHandler, persistedQuery],
   );
 
   // Clicking a suggestion card scrolls the editor to that redline.
