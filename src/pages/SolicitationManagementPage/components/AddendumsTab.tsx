@@ -208,13 +208,12 @@ interface AddendumsTabProps {
 }
 
 // Transform API addendum data to component format
-const transformAddendumData = (
-  apiAddendum: SolicitationAddendum,
-  timezone?: string
-): Addendum => {
+const transformAddendumData = (apiAddendum: SolicitationAddendum): Addendum => {
+  // The publish date is a record timestamp: viewer's zone, not the
+  // solicitation's.
   const formatDate = (dateString: string | undefined) => {
     if (!dateString) return "N/A";
-    return formatDateTZ(dateString, "MMMM dd, yyyy KK:mm a", timezone);
+    return formatDateTZ(dateString, "MMMM dd, yyyy KK:mm a");
   };
   return {
     id: apiAddendum._id,
@@ -398,9 +397,9 @@ const AddendumsTab: React.FC<AddendumsTabProps> = ({
   const addendums = useMemo(() => {
     if (!addendumsData?.data?.data) return [] as Addendum[];
     return addendumsData.data.data.map((a: SolicitationAddendum) =>
-      transformAddendumData(a, timezone)
+      transformAddendumData(a)
     );
-  }, [addendumsData, timezone]);
+  }, [addendumsData]);
 
   // Filter addendums based on search query
   const filteredAddendums = useMemo(() => {

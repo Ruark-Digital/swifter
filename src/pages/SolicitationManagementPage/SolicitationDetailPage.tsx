@@ -1296,13 +1296,14 @@ export const SolicitationDetailPage = () => {
                         Published Date
                       </label>
                       <p className="text-gray-900 dark:text-gray-200 font-medium">
-                        {formatWallClockWithZone(
+                        {formatDateTZ(
                           // Show the actual publish date; fall back to
                           // createdAt only when the solicitation has not been
-                          // published yet (no datePublished from the BE).
+                          // published yet (no datePublished from the BE). A
+                          // record timestamp, so in the viewer's zone, not the
+                          // solicitation's.
                           solicitation.datePublished ?? solicitation.createdAt,
-                          "MMMM dd, yyyy hh:mm a",
-                          solicitation.timezone
+                          "MMMM dd, yyyy hh:mm a"
                         )}
                       </p>
                     </div>
