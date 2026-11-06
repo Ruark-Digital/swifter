@@ -17,7 +17,7 @@ import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
 import { useToastHandler } from "@/hooks/useToaster";
 // import { useUser } from "@/store/authSlice";
 
-import { formatDateTZ, formatQuestionDeadline } from "@/lib/utils";
+import { formatQuestionDeadline, formatWallClockWithZone } from "@/lib/utils";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils.tsx";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
@@ -277,9 +277,13 @@ const SolicitationDetailsSheet: React.FC<SolicitationDetailsSheetProps> = ({
     return false;
   };
 
-  // Helper function to format date
+  // Deadlines are the solicitation's wall clock; echo them with its zone.
   const formatDate = (dateString: string): string => {
-    return formatDateTZ(dateString, "MMMM dd, yyyy hh:mm a", details?.timezone);
+    return formatWallClockWithZone(
+      dateString,
+      "MMMM dd, yyyy hh:mm a",
+      details?.timezone
+    );
   };
 
   // console.log({ status: shouldHideButtons(), title: originalData?.name });

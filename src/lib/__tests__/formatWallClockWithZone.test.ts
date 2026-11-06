@@ -1,49 +1,41 @@
 import { describe, it, expect } from "vitest";
+import { format } from "date-fns";
 import { formatWallClockWithZone } from "../utils";
 
 const FMT = "MMMM dd, yyyy hh:mm a";
 
-// These assertions are independent of the machine's local timezone: the helper
-// echoes the stored wall-clock digits from UTC fields, so the output is
-// deterministic regardless of where the test runs.
-describe("formatWallClockWithZone — echo wall clock + zone label", () => {
-  it("renders a UTC-stamped instant as the wall clock it was entered in", () => {
-    // 1 PM EST was stored as 13:00 stamped UTC; it must read back as 1 PM,
-    // not shift into the viewer's zone.
-    const out = formatWallClockWithZone(
-      "2026-10-05T13:00:00.000Z",
-      FMT,
-      "EST"
-    );
-    expect(out).toBe("October 05, 2026 01:00 PM EST");
+// Stored solicitation datetimes are UTC instants. With a zone, the output is the
+// wall clock in that zone, so these assertions hold in any machine timezone.
+describe("formatWallClockWithZone — instant shown in the solicitation zone", () => {
+  it("converts a summer instant into the zone's daylight time", () => {
+    // 21:00Z on Sep 24 is 5 PM EDT (UTC-4).
+    expect(
+      formatWallClockWithZone("2026-09-24T21:00:00.000Z", FMT, "EST")
+    ).toBe("September 24, 2026 05:00 PM EST");
   });
 
-  it("formats 12 o'clock as 12 (not 00) with the hh token", () => {
-    const out = formatWallClockWithZone(
-      "2026-09-30T12:25:53.879Z",
-      FMT,
-      "EST"
-    );
-    expect(out).toBe("September 30, 2026 12:25 PM EST");
+  it("converts a winter instant into the zone's standard time", () => {
+    // 23:00Z on Nov 20 is 6 PM EST (UTC-5).
+    expect(
+      formatWallClockWithZone("2026-11-20T23:00:00.000Z", FMT, "EST")
+    ).toBe("November 20, 2026 06:00 PM EST");
   });
 
-  it("treats a naive datetime (no Z/offset) as the same wall clock", () => {
-    const out = formatWallClockWithZone(
-      "2026-11-18T00:00:00",
-      FMT,
-      "EST"
+  it("treats a naive datetime (no Z/offset) as UTC", () => {
+    expect(formatWallClockWithZone("2026-11-18T00:00:00", FMT, "EST")).toBe(
+      "November 17, 2026 07:00 PM EST"
     );
-    expect(out).toBe("November 18, 2026 12:00 AM EST");
   });
 
   it("renders a date-only string without a time shift", () => {
-    const out = formatWallClockWithZone("2026-10-09", "MMMM dd, yyyy", "EST");
-    expect(out).toBe("October 09, 2026 EST");
+    expect(formatWallClockWithZone("2026-10-09", "MMMM dd, yyyy", "EST")).toBe(
+      "October 09, 2026 EST"
+    );
   });
 
-  it("omits the label when no zone is supplied", () => {
-    const out = formatWallClockWithZone("2026-10-05T13:00:00.000Z", FMT);
-    expect(out).toBe("October 05, 2026 01:00 PM");
+  it("uses the viewer's zone and no label when no zone is supplied", () => {
+    const iso = "2026-10-05T13:00:00.000Z";
+    expect(formatWallClockWithZone(iso, FMT)).toBe(format(new Date(iso), FMT));
   });
 
   it("returns N/A for missing input", () => {

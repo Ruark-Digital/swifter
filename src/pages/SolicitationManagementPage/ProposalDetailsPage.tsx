@@ -31,7 +31,12 @@ import { useToastHandler } from "@/hooks/useToaster";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useState } from "react";
 import { isAfter, parseISO, isValid } from "date-fns";
-import { formatCurrency, formatDateInZoneAbbrev, formatDateTZ } from "@/lib/utils";
+import {
+  formatCurrency,
+  formatDateInZoneAbbrev,
+  formatDateTZ,
+  formatWallClockWithZone,
+} from "@/lib/utils";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import { getFileExtension, isViewableFile } from "@/lib/fileUtils.tsx";
 import EvaluationScorecardSheet from "@/pages/EvaluationManagementPage/components/EvaluationScorecardSheet";
@@ -963,9 +968,10 @@ const ProposalDetailsPage: React.FC = () => {
               </label>
               <p className="text-base text-gray-900 dark:text-white">
                 {solicitation?.submissionDeadline
-                  ? formatDateTZ(
-                      new Date(solicitation?.submissionDeadline),
-                      "MMMM d, yyyy KK:mm a"
+                  ? formatWallClockWithZone(
+                      solicitation?.submissionDeadline,
+                      "MMMM d, yyyy hh:mm a",
+                      solicitation?.timezone
                     )
                   : "N/A"}
               </p>

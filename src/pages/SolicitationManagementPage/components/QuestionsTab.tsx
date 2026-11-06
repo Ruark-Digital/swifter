@@ -12,7 +12,7 @@ import MessageThread from "./MessageThread";
 import MessageComposer from "./MessageComposer";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import CreateAddendumDialog from "./CreateAddendumDialog";
-import { formatQuestionDeadline, wallClockInZoneToInstant } from "@/lib/utils";
+import { formatQuestionDeadline, solicitationInstant } from "@/lib/utils";
 
 // Question type definition
 export interface Question {
@@ -85,11 +85,10 @@ const QuestionsTab: React.FC<QuestionsTabProps> = ({
     useState(false);
   const [questionDraftClearSignal, setQuestionDraftClearSignal] = useState(0);
 
-  // The deadline is a wall clock in the solicitation's timezone (stored stamped
-  // UTC), so resolve it in that zone before comparing against now (QA #190).
+  // The stored deadline is already a UTC instant; compare it against now.
   const questionDeadlineDate = useMemo(
-    () => wallClockInZoneToInstant(questionDeadline, timezone),
-    [questionDeadline, timezone],
+    () => solicitationInstant(questionDeadline),
+    [questionDeadline],
   );
   const questionDeadlinePassed = Boolean(
     questionDeadlineDate && Date.now() >= questionDeadlineDate.getTime(),

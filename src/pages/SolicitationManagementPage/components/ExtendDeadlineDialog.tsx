@@ -188,7 +188,9 @@ const ExtendDeadlineDialog: React.FC<ExtendDeadlineDialogProps> = ({
           type: file.type,
         })),
         vendors: solicitation.vendors?.map((vendor: any) => ({
-          id: vendor._id,
+          // The real vendor id, not the solicitation-vendor row `_id` — the
+          // row id makes the BE reply "Vendor not found".
+          id: vendor?.id?._id ?? vendor.id,
           status: vendor.status,
         })),
       };

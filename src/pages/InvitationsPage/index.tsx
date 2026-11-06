@@ -57,7 +57,13 @@ type Invitation = {
   invitedDate: string;
   deadline: string;
   timezone: string;
-  status: "invited" | "confirmed" | "declined" | "not available" | "closed";
+  status:
+    | "invited"
+    | "confirmed"
+    | "declined"
+    | "public"
+    | "not available"
+    | "closed";
 };
 
 // Map API status to UI status
@@ -71,6 +77,10 @@ const mapApiStatusToUIStatus = (apiStatus: string): Invitation["status"] => {
       return "invited";
     case "closed":
       return "closed";
+    // A public solicitation the vendor joined without an invite: the BE sets
+    // the vendor status to "public", which used to fall through to N/A.
+    case "public":
+      return "public";
     default:
       return "not available";
   }
@@ -111,6 +121,8 @@ const StatusBadge = ({ status }: { status: Invitation["status"] }) => {
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
       case "declined":
         return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
+      case "public":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
       case "closed":
         return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
       default:
@@ -126,6 +138,8 @@ const StatusBadge = ({ status }: { status: Invitation["status"] }) => {
         return "Invited";
       case "declined":
         return "Declined";
+      case "public":
+        return "Public";
       case "closed":
         return "Closed";
       default:
