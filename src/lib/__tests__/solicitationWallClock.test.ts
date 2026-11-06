@@ -1,28 +1,24 @@
 import { describe, it, expect } from "vitest";
-import {
-  buildEventDate,
-  formatWallClockWithZone,
-  toWallClockPayload,
-} from "../utils";
+import { buildEventDate, formatDateTZ, toWallClockPayload } from "../utils";
 
-// Solicitation datetimes are stored as the entered wall clock stamped UTC, so
-// 21:00Z on an EST solicitation means 9 PM EST. These assertions hold in any
-// machine timezone.
-describe("solicitation wall-clock round trip", () => {
-  const stored = "2026-09-24T21:00:00.000Z";
+// Solicitation datetimes are stored as UTC instants. Forms send the wall clock
+// in the solicitation's zone without an offset; the BE converts it back. These
+// assertions hold in any machine timezone.
+describe("solicitation edit round trip", () => {
+  const stored = "2026-09-24T21:00:00.000Z"; // 5 PM EDT
 
-  it("renders the stored digits, not a zone-converted time", () => {
-    expect(formatWallClockWithZone(stored, "MMM d, yyyy, h:mm a")).toBe(
-      "Sep 24, 2026, 9:00 PM"
+  it("prefills the wall clock in the solicitation zone", () => {
+    expect(formatDateTZ(stored, "yyyy-MM-dd'T'HH:mm:ss", "EST")).toBe(
+      "2026-09-24T17:00:00"
     );
   });
 
-  it("saves an untouched edit prefill back to the same wall clock", () => {
-    const prefill = formatWallClockWithZone(stored, "yyyy-MM-dd'T'HH:mm:ss");
-    expect(toWallClockPayload(prefill)).toBe("2026-09-24T21:00:00");
+  it("sends an untouched prefill back as the same zone wall clock", () => {
+    const prefill = formatDateTZ(stored, "yyyy-MM-dd'T'HH:mm:ss", "EST");
+    expect(toWallClockPayload(prefill)).toBe("2026-09-24T17:00:00");
   });
 
-  it("saves a picked local Date as its wall clock", () => {
+  it("sends a picked local Date as its wall clock", () => {
     expect(toWallClockPayload(new Date(2026, 10, 6, 14, 0))).toBe(
       "2026-11-06T14:00:00"
     );
@@ -31,11 +27,13 @@ describe("solicitation wall-clock round trip", () => {
 
 describe("buildEventDate", () => {
   it("accepts an unchanged prefilled datetime string (was 'Invalid time value')", () => {
-    const prefill = formatWallClockWithZone(
-      "2026-10-05T13:00:00.000Z",
-      "yyyy-MM-dd'T'HH:mm:ss"
+    const prefill = formatDateTZ(
+      "2026-10-07T14:00:00.000Z",
+      "yyyy-MM-dd'T'HH:mm:ss",
+      "MST"
     );
-    expect(buildEventDate(prefill, "13:00")).toBe("2026-10-05T13:00:00");
+    const time = formatDateTZ("2026-10-07T14:00:00.000Z", "HH:mm", "MST");
+    expect(buildEventDate(prefill, time)).toBe("2026-10-07T08:00:00");
   });
 
   it("uses the local calendar day of a picked Date", () => {

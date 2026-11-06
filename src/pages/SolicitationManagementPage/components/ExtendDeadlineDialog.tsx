@@ -18,7 +18,7 @@ import { ApiResponse, ApiResponseError } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useWatch } from "react-hook-form";
 import timezoneData from "@/assets/timezones.json";
-import { formatWallClockWithZone, toWallClockPayload } from "@/lib/utils";
+import { formatDateTZ, zonedTimeToUtc } from "@/lib/utils";
 
 const extendDeadlineSchema = yup.object({
   submissionDeadline: yup
@@ -79,11 +79,13 @@ const ExtendDeadlineDialog: React.FC<ExtendDeadlineDialogProps> = ({
   const toast = useToastHandler();
   const queryClient = useQueryClient();
 
-  // Deadlines are stored as the solicitation's wall clock (see
-  // formatWallClockWithZone), so prefill the picker with those digits as-is.
+  // Helper to get solicitation timezone
+  const getSolicitationTimezone = () => solicitation?.timezone || "Africa/Lagos";
+
+  // Helper function to format date for input
   const formatDateForInput = (dateString: string) => {
     if (!dateString) return "";
-    return formatWallClockWithZone(dateString, "yyyy-MM-dd'T'HH:mm");
+    return formatDateTZ(dateString, "yyyy-MM-dd'T'HH:mm", getSolicitationTimezone());
   };
 
   const { control, reset } = useForge<FormValues>({
@@ -166,9 +168,9 @@ const ExtendDeadlineDialog: React.FC<ExtendDeadlineDialogProps> = ({
           ? "invite-only" 
           : solicitation.visibility,
         status: solicitation.status,
-        submissionDeadline: toWallClockPayload(data.submissionDeadline),
+        submissionDeadline: zonedTimeToUtc(data.submissionDeadline, data.timezone).toISOString(),
         questionDeadline: data.questionDeadline
-          ? toWallClockPayload(data.questionDeadline)
+          ? zonedTimeToUtc(data.questionDeadline, data.timezone).toISOString()
           : solicitation.questionDeadline,
         bidIntent: solicitation.bidIntent,
         bidIntentDeadline: solicitation.bidIntentDeadline,

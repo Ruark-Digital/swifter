@@ -23,7 +23,7 @@ import Step6Form from "./Step6Form";
 import {
   buildEventDate,
   cn,
-  formatWallClockWithZone,
+  formatDateTZ,
   toWallClockPayload,
 } from "@/lib/utils";
 import { useClearSession } from "@/store/solicitationFileSlice";
@@ -317,19 +317,23 @@ const EditSolicitationDialogContent = ({
     solicitationData?.data?.data?.solicitation || solicitationData?.data?.data;
   const effectiveSolicitation = detailedSolicitation || solicitation;
 
-  // Solicitation datetimes are stored as the solicitation's wall clock stamped
-  // UTC (see formatWallClockWithZone). Prefill the pickers with those digits as
-  // a naive local datetime, so they show the time as entered and save back
-  // unshifted through `toWallClockPayload`.
+  // Solicitation datetimes are stored as UTC instants. Prefill the pickers with
+  // the wall clock in the solicitation's zone, as a naive datetime; it saves
+  // back through `toWallClockPayload` and the BE converts it from that zone.
+  const solicitationZone = effectiveSolicitation?.timezone;
   const formatDateForInput = (dateString: string) => {
     if (!dateString) return "";
-    return formatWallClockWithZone(dateString, "yyyy-MM-dd'T'HH:mm:ss");
+    return formatDateTZ(
+      dateString,
+      "yyyy-MM-dd'T'HH:mm:ss",
+      solicitationZone
+    );
   };
 
   // Helper function to format time for input
   const formatTimeForInput = (dateString: string) => {
     if (!dateString) return "";
-    return formatWallClockWithZone(dateString, "HH:mm");
+    return formatDateTZ(dateString, "HH:mm", solicitationZone);
   };
 
   // Prepare default values from solicitation data
