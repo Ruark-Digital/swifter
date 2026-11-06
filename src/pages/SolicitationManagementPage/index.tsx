@@ -1359,7 +1359,8 @@ export const SolicitationManagementPage = () => {
                 <strong>Closing:</strong>{" "}
                 {safeFormatDate(
                   row.original.submissionDeadline,
-                  "MMM d, yyyy hh:mm a"
+                  "MMM d, yyyy hh:mm a",
+                  row.original.timezone
                 )}
               </span>
             </>
