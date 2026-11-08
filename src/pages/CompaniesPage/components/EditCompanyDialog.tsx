@@ -31,14 +31,6 @@ const schema = yup.object().shape({
   name: yup.string().required("Company name is required"),
   // planName: yup.string().required("Subscription plan is required"),
   currency: yup.string().required("Currency is required"),
-  adminEmails: yup
-    .array()
-    .of(
-      yup.object().shape({
-        id: yup.string().required(),
-        text: yup.string().email().required(),
-      })
-    ).optional(),
   apEmails: yup
     .array()
     .of(
@@ -91,7 +83,6 @@ const EditCompanyDialog = ({
       name: "",
       // planName: "",
       // duration: 1,
-      adminEmails: [],
       apEmails: [],
     },
   });
@@ -113,14 +104,6 @@ const EditCompanyDialog = ({
       // setValue("planName", company.planName || "");
       // setValue("duration", company.duration || 1);
       setValue("currency", (company as any).currency || "");
-
-      // Transform admin emails to the expected format
-      const adminEmailTags =
-        company.admins?.map((admin, index) => ({
-          id: admin._id || index.toString(),
-          text: admin.email,
-        })) || [];
-      setValue("adminEmails", adminEmailTags);
 
       // AP emails come back as plain strings on CompanyDetails — map to tag objects
       const apEmailTags =
@@ -145,7 +128,8 @@ const EditCompanyDialog = ({
         // planName: data.planName,
         // duration: data.duration,
         currency: data.currency,
-        adminEmails: data.adminEmails?.map((admin) => admin.text), // Extract email addresses
+        // Admins are no longer edited here; resend the current list unchanged.
+        adminEmails: company.admins?.map((admin) => admin.email) ?? [],
         apEmails: data.apEmails?.map((ap) => ap.text), // AP recipients for invoice-lifecycle emails
       };
       return await putRequest({
@@ -248,7 +232,7 @@ const EditCompanyDialog = ({
   const dialogContent = (
     <>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="transition-colors duration-200 max-w-2xl">
+      <DialogContent className="transition-colors duration-200 max-w-md">
         <DialogHeader className="flex flex-row items-center justify-between pb-4">
           <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-white">
             Edit Company
@@ -289,16 +273,6 @@ const EditCompanyDialog = ({
             component={TextSelectWithSearch}
             options={currencyOptions}
           />
-
-          <Forger
-            name="adminEmails"
-            component={TextTagInput}
-            label="Assign Admins (Multi-Select)"
-          />
-
-          <div className="text-sm text-gray-500 dark:text-gray-400 mt-2 transition-colors duration-200">
-            Add up to 3 admins.
-          </div>
 
           <Forger
             name="apEmails"
