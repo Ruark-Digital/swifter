@@ -157,6 +157,10 @@ const EditCompanyDialog = ({
       toast.success("Success", "Company updated successfully");
       queryClient.invalidateQueries({ queryKey: ["companies"] });
       queryClient.invalidateQueries({ queryKey: ["companyDashboard"] });
+      // The detail page reads these keys; without them the open page keeps
+      // showing the company (and its admin list) as it was before the edit.
+      queryClient.invalidateQueries({ queryKey: ["company", company._id] });
+      queryClient.invalidateQueries({ queryKey: ["companyAdmins", company._id] });
       setIsOpen(false);
     },
     onError: (error) => {
