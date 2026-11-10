@@ -199,7 +199,9 @@ const CreateChangeDialog: React.FC<Props> = ({
     ],
     mutationFn: async (payload: ContractChangeManagerDTO) => {
       if (isEdit && changeId) {
-        return await vendorApi.updateChange(contractId, changeId, payload as any);
+        return documentType === "MsaContract"
+          ? await vendorApi.updateMsaChange(contractId, changeId, payload as any)
+          : await vendorApi.updateChange(contractId, changeId, payload as any);
       }
       if (isManager) {
         const res = await contractManagerApi.createChangeRequest(
