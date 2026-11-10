@@ -38,6 +38,7 @@ import {
 import {
   formatChangeOriginLabel,
   getApproveDraftCoUrl,
+  getChangeApproverUrls,
   getConvertDirectiveUrl,
   getManagerApproveChangeUrl,
   getPmApproveChangeUrl,
@@ -137,6 +138,11 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   }, [basePath, isManager, isApprover, isContractVendorLike, isAdmin, isViewOnly]);
 
   const isClaim = roleBasePath.includes("/claim");
+
+  const changeApproverUrls = React.useMemo(
+    () => getChangeApproverUrls({ roleBasePath, contractId, changeId }),
+    [roleBasePath, contractId, changeId],
+  );
 
   const usesListBasePath = React.useMemo(
     () =>
@@ -1097,6 +1103,8 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                     <SendApprovalDialog
                       contractId={contractId}
                       entityLabel="change"
+                      approverPoolPath={changeApproverUrls.poolPath}
+                      assignUrl={changeApproverUrls.assignUrl}
                       onSent={() =>
                         qc.invalidateQueries({ queryKey: changeDetailQueryKey })
                       }

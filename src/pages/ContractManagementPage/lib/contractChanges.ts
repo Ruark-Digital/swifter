@@ -139,6 +139,34 @@ export const getChangeLockUrl = ({
 };
 
 /**
+ * Build the Send-for-Approval endpoints for a change: the approver pool (GET)
+ * and the assign endpoint (POST `{ userIds }`). Mirrors {@link getChangeLockUrl}'s
+ * resource handling so an MSA change uses `/msa-contracts/...` for both. Using
+ * the contracts-only pool path for an MSA id returns 404 ("No approval levels
+ * configured" in the dialog).
+ */
+export const getChangeApproverUrls = ({
+  roleBasePath,
+  contractId,
+  changeId,
+}: {
+  roleBasePath: string;
+  contractId: string;
+  changeId: string;
+}): { poolPath: string; assignUrl: string } => {
+  const match = roleBasePath.match(
+    /^\/contract\/(manager|approver|vendor|user)\/(contracts|msa-contracts)/,
+  );
+  const role = match?.[1] ?? "manager";
+  const resource = match?.[2] ?? "contracts";
+  const base = `/contract/${role}/${resource}/${contractId}`;
+  return {
+    poolPath: `${base}/approvers`,
+    assignUrl: `${base}/changes/${changeId}/approvers`,
+  };
+};
+
+/**
  * Build the Vendor-PM change approve URL (#57). The BE exposes
  * `/contract/vendor/{contracts|msa-contracts}/{contractId}/changes/{changeId}/pm-approve`
  * for the assigned PM's first decision on a CM-created change order. Mirrors
