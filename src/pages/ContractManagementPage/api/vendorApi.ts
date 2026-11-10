@@ -103,6 +103,24 @@ export const createVendorApi = (
     });
     return res as ApiResponse<any>;
   },
+  updateMsaChange: async (
+    contractId: string,
+    changeId: string,
+    payload: {
+      title: string;
+      description: string;
+      type: "request" | "order" | "proposal";
+      proposalCategory?: string;
+      urgency?: "low" | "medium" | "high";
+      files?: { name: string; url: string; type: string; size: number }[];
+    },
+  ) => {
+    const res = await putRequest({
+      url: `/contract/vendor/msa-contracts/${contractId}/changes/${changeId}`,
+      payload,
+    });
+    return res as ApiResponse<any>;
+  },
   createMsaChange: async (
     contractId: string,
     payload: {
