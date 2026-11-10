@@ -172,18 +172,22 @@ export const buildUndoPayload = (scope: {
  * Build the batch-resolve POST body: the required `resolutions` array plus the
  * shared version-hint fields, each included only when the caller supplied it
  * (so `baseVersionId: null` is preserved but an omitted one is left out).
+ * `documentId` is required: the backend answers 422 "expected string, received
+ * undefined" without it, even though the published swagger omits the field.
  */
 export const buildBatchResolvePayload = (
   resolutions: RedlineBatchItem[],
   scope: {
-    documentId?: string;
+    documentId: string;
     docName?: string;
     baseVersionId?: string | null;
     documentState?: string;
   },
 ): Record<string, unknown> => {
-  const payload: Record<string, unknown> = { resolutions };
-  if (scope.documentId !== undefined) payload.documentId = scope.documentId;
+  const payload: Record<string, unknown> = {
+    resolutions,
+    documentId: scope.documentId,
+  };
   if (scope.docName !== undefined) payload.docName = scope.docName;
   if (scope.baseVersionId !== undefined)
     payload.baseVersionId = scope.baseVersionId;
@@ -336,6 +340,8 @@ export function useRedlineTurn({ documentId, fileId, isMsa }: RedlineTurnScope) 
     mutationKey: ["redline-batch-resolve", resource, documentId],
     mutationFn: async ({ resolutions, docName, baseVersionId, documentState }) => {
       if (!base) throw new Error("Redline turn is not available for this role.");
+      // Never send a batch without the file id the backend requires.
+      if (!fileId) throw new Error("File ID is missing; reload the page and try again.");
       if (resolutions.length === 0) return null;
       const payload = buildBatchResolvePayload(resolutions, {
         documentId: fileId,

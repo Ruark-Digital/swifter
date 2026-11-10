@@ -10,16 +10,11 @@ import { PageLoader } from "@/components/ui/PageLoader";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils.tsx";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import { DeadlineUpdates } from "../SolicitationDetailPage";
-import { formatDateTZ, formatQuestionDeadline } from "@/lib/utils";
-
-// Safe date formatting utility with timezone
-const safeFormatDate = (
-  dateString: string | undefined,
-  formatStr: string,
-  timezone?: string
-): string => {
-  return formatDateTZ(dateString, formatStr, timezone);
-};
+import {
+  formatDateTZ,
+  formatQuestionDeadline,
+  formatWallClockWithZone,
+} from "@/lib/utils";
 
 // API Addendum Detail type
 type AddendumDetail = {
@@ -124,7 +119,7 @@ const AddendumDetailsSheet: React.FC<AddendumDetailsSheetProps> = ({
         {/* Date and Time */}
         <div className="text-sm text-gray-500">
           {addendumDetail
-            ? safeFormatDate(addendumDetail.createdAt, "MMMM d, yyyy hh:mm a", timezone)
+            ? formatDateTZ(addendumDetail.createdAt, "MMMM d, yyyy hh:mm a")
             : addendum.datePublished}
         </div>
 
@@ -167,7 +162,7 @@ const AddendumDetailsSheet: React.FC<AddendumDetailsSheetProps> = ({
                   Publish Date
                 </h4>
                 <p className="text-sm font-medium text-gray-900">
-                  {safeFormatDate(addendumDetail.createdAt, "MMMM d, yyyy hh:mm a", timezone)}
+                  {formatDateTZ(addendumDetail.createdAt, "MMMM d, yyyy hh:mm a")}
                 </p>
               </div>
               {addendumDetail.submissionDeadline && (
@@ -176,7 +171,7 @@ const AddendumDetailsSheet: React.FC<AddendumDetailsSheetProps> = ({
                     Submissions Deadline
                   </h4>
                   <p className="text-sm font-medium text-gray-900">
-                    {safeFormatDate(
+                    {formatWallClockWithZone(
                       addendumDetail.submissionDeadline,
                       "MMMM d, yyyy hh:mm a",
                       timezone
@@ -190,7 +185,7 @@ const AddendumDetailsSheet: React.FC<AddendumDetailsSheetProps> = ({
                     Old Submissions Deadline
                   </h4>
                   <p className="text-sm font-medium text-gray-900">
-                    {safeFormatDate(
+                    {formatWallClockWithZone(
                       deadlines?.[0].submissionDeadline,
                       "MMMM d, yyyy hh:mm a",
                       timezone
@@ -235,8 +230,8 @@ const AddendumDetailsSheet: React.FC<AddendumDetailsSheetProps> = ({
 
             <div className="space-y-3">
               <div className="text-xs text-gray-500">
-                {safeFormatDate(addendumDetail.createdAt, "MMMM d, yyyy", timezone)} •{" "}
-                {safeFormatDate(addendumDetail.createdAt, "h:mm a", timezone)}
+                {formatDateTZ(addendumDetail.createdAt, "MMMM d, yyyy")} •{" "}
+                {formatDateTZ(addendumDetail.createdAt, "h:mm a")}
               </div>
               <p className="text-sm text-gray-900 leading-relaxed dark:text-gray-200">
                 {addendumDetail.questions}

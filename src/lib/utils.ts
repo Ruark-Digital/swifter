@@ -247,44 +247,84 @@ export const createFormData = (body: Record<string, any>) => {
  * local time by the JS engine, i.e. shown unconverted — that is a backend
  * contract gap, not something the display layer can recover.
  *
- * The third argument is retained for call-site compatibility but ignored: the
- * viewer's timezone is always used, never a passed-in zone.
+ * The optional third argument is a zone abbreviation (e.g. `"EST"`, as stored on
+ * solicitations and contracts). When it is recognized, the instant is rendered as
+ * the wall clock in that zone, with the zone's own DST rules applied. Without it,
+ * or with an unrecognized value, the viewer's timezone is used.
  */
 export function formatDateTZ(
   dateInput: string | Date | undefined | null,
   formatStr?: string,
-  _timezone?: string
+  timezone?: string | null
 ): string {
   // Guard: undefined/null -> safe string
   if (!dateInput) return "N/A";
 
-  const pattern = formatStr || "MMM dd, yyyy hh:mm a";
+  const pattern = formatStr || DEFAULT_DATE_PATTERN;
 
   try {
-    let instant: Date;
-
-    if (typeof dateInput === "string") {
-      // Date-only strings (YYYY-MM-DD) carry no instant. Parsing them via
-      // `new Date` would assume UTC midnight and can roll back a day for
-      // west-of-UTC viewers, so build a local-midnight date and render as-is.
-      if (/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
-        const [y, m, d] = dateInput.split("-").map(Number);
-        instant = new Date(y, m - 1, d);
-      } else {
-        // ISO datetime with a Z/offset suffix -> a real instant. `format`
-        // reads local getters, so this renders in the viewer's timezone.
-        instant = new Date(dateInput);
-      }
-    } else {
-      instant = dateInput;
+    // Date-only strings (YYYY-MM-DD) carry no instant. Parsing them via
+    // `new Date` would assume UTC midnight and can roll back a day for
+    // west-of-UTC viewers, so build a local-midnight date and render as-is.
+    if (isDateOnly(dateInput)) {
+      const [y, m, d] = dateInput.trim().split("-").map(Number);
+      return format(new Date(y, m - 1, d), pattern);
     }
 
+    if (timezone) {
+      const instant = toInstant(dateInput);
+      const zone = instant && resolveZone(instant, timezone);
+      if (instant && zone) return formatInZone(instant, pattern, zone.offsetMin);
+    }
+
+    // ISO datetime with a Z/offset suffix -> a real instant. `format` reads
+    // local getters, so this renders in the viewer's timezone.
+    const instant =
+      typeof dateInput === "string" ? new Date(dateInput) : dateInput;
     if (isNaN(instant.getTime())) return "N/A";
 
     return format(instant, pattern);
   } catch {
     return "N/A";
   }
+}
+
+const DEFAULT_DATE_PATTERN = "MMM dd, yyyy hh:mm a";
+
+const isDateOnly = (input: string | Date): input is string =>
+  typeof input === "string" && /^\d{4}-\d{2}-\d{2}$/.test(input.trim());
+
+// Parse a stored value to an instant. A naive datetime (no Z/offset) is stored
+// by the BE as UTC, so it gets a `Z` before parsing. Returns undefined when the
+// value does not parse.
+function toInstant(input: string | Date): Date | undefined {
+  let instant: Date;
+  if (input instanceof Date) {
+    instant = input;
+  } else {
+    const s = input.trim();
+    const naive =
+      !/([zZ]|[+-]\d{2}:?\d{2})$/.test(s) &&
+      /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(s);
+    instant = new Date(naive ? `${s.replace(" ", "T")}Z` : s);
+  }
+  return isNaN(instant.getTime()) ? undefined : instant;
+}
+
+// Shift an instant by a zone's offset, then rebuild a local `Date` from the
+// shifted UTC fields. `format` reads local getters, so it echoes the zone's
+// wall-clock digits regardless of the viewer's own timezone.
+function formatInZone(instant: Date, pattern: string, offsetMin: number): string {
+  const shifted = new Date(instant.getTime() + offsetMin * 60000);
+  const local = new Date(
+    shifted.getUTCFullYear(),
+    shifted.getUTCMonth(),
+    shifted.getUTCDate(),
+    shifted.getUTCHours(),
+    shifted.getUTCMinutes(),
+    shifted.getUTCSeconds()
+  );
+  return format(local, pattern);
 }
 
 /**
@@ -340,67 +380,58 @@ export const ensureUtcInstant = (
 };
 
 /**
- * Render a datetime as the wall-clock time it was entered in, plus its zone
- * label — never shifted into the viewer's own timezone.
+ * Render a solicitation datetime as the wall clock in the solicitation's zone,
+ * plus that zone's label — the same for every viewer.
  *
- * Solicitation datetimes are wall-clock times in the solicitation's declared
- * `timezone` (the picker stores abbreviations like "EST"). The BE serializes
- * them as that same wall clock stamped UTC — e.g. 1 PM EST arrives as
- * `2026-10-05T13:00:00.000Z`. `formatDateTZ` reads that instant with local
- * getters and so shifts it into the viewer's zone (QA: a 1 PM EST event showed
- * as 3 PM for a UTC+2 viewer, and its `_timezone` arg was ignored). Echo the
- * stored wall-clock digits (via UTC getters) and append the zone label, so
- * every viewer sees the time exactly as it was entered.
+ * Solicitation datetimes are real UTC instants: the forms send the entered wall
+ * clock without an offset and the BE converts it from the solicitation's
+ * `timezone` (DST-aware), e.g. 5 PM EST on Sep 24 is stored as
+ * `2026-09-24T21:00:00.000Z`. Convert that instant back into the zone via
+ * `formatDateTZ` and append the zone label as stored ("EST"). Without a zone,
+ * or with an unrecognized one, the viewer's zone is used.
  */
 export function formatWallClockWithZone(
   dateInput: string | Date | undefined | null,
   formatStr?: string,
-  zoneAbbrev?: string
+  zoneAbbrev?: string | null
 ): string {
-  if (!dateInput) return "N/A";
-  const pattern = formatStr || "MMM dd, yyyy hh:mm a";
   const label = (zoneAbbrev ?? "").trim();
-  const suffix = label ? ` ${label}` : "";
-
-  try {
-    // Date-only strings carry no time; render the calendar date as-is.
-    if (
-      typeof dateInput === "string" &&
-      /^\d{4}-\d{2}-\d{2}$/.test(dateInput.trim())
-    ) {
-      const [y, m, d] = dateInput.trim().split("-").map(Number);
-      return `${format(new Date(y, m - 1, d), pattern)}${suffix}`;
-    }
-
-    // Coerce to a UTC instant: naive datetimes (no Z/offset) are stored as UTC
-    // by the BE, so treat them as such; Z/offset strings already are one.
-    const normalized =
-      typeof dateInput === "string" ? ensureUtcInstant(dateInput) : dateInput;
-    const instant =
-      typeof normalized === "string" ? new Date(normalized) : normalized;
-    if (!(instant instanceof Date) || isNaN(instant.getTime())) return "N/A";
-
-    // Rebuild a local Date from the instant's UTC fields, so date-fns `format`
-    // echoes the stored wall-clock digits regardless of the viewer's zone.
-    const local = new Date(
-      instant.getUTCFullYear(),
-      instant.getUTCMonth(),
-      instant.getUTCDate(),
-      instant.getUTCHours(),
-      instant.getUTCMinutes(),
-      instant.getUTCSeconds()
-    );
-    return `${format(local, pattern)}${suffix}`;
-  } catch {
-    return "N/A";
-  }
+  const out = formatDateTZ(dateInput, formatStr, label || undefined);
+  return out === "N/A" || !label ? out : `${out} ${label}`;
 }
+
+// Serialize a picked datetime as a naive wall clock, matching the create flow;
+// the BE reads it in the solicitation's timezone. Pickers hold either a local
+// `Date` (once changed) or the naive prefill string.
+export const toWallClockPayload = (value: string | Date) =>
+  format(value, "yyyy-MM-dd'T'HH:mm:ss");
+
+// Combine an event's date and "HH:mm" time into a naive wall-clock datetime, or
+// undefined when either part is missing or invalid. The date is a picked `Date`
+// or a prefilled datetime string; only its calendar day is used. Appending the
+// time to a full datetime string used to make `format` throw "Invalid time
+// value" when an existing event was saved unchanged.
+export const buildEventDate = (
+  date: string | Date | undefined,
+  time: string | undefined
+): string | undefined => {
+  if (!date || !time) return undefined;
+  const day =
+    date instanceof Date
+      ? isNaN(date.getTime())
+        ? undefined
+        : format(date, "yyyy-MM-dd")
+      : /^\d{4}-\d{2}-\d{2}/.exec(date.trim())?.[0];
+  if (!day) return undefined;
+  const combined = new Date(`${day}T${time}`);
+  return isNaN(combined.getTime()) ? undefined : toWallClockPayload(combined);
+};
 
 // One format for the question acceptance deadline, so the Timeline tab and the
 // Questions tab banner render it identically (QA #190).
 export const QUESTION_DEADLINE_FORMAT = "MMM d, yyyy h:mm a";
 
-/** The question acceptance deadline as entered, with the solicitation's zone. */
+/** The question acceptance deadline in the solicitation's zone, with its label. */
 export function formatQuestionDeadline(
   dateInput: string | Date | undefined | null,
   zoneAbbrev?: string
@@ -409,29 +440,20 @@ export function formatQuestionDeadline(
 }
 
 /**
- * The real instant of a solicitation wall-clock datetime (see
- * `formatWallClockWithZone`): the stored UTC digits are read as a wall clock in
- * `zoneAbbrev` and converted to UTC — e.g. `2026-10-09T09:00:00.000Z` with "CST"
- * is 9 AM Chicago time (14:00Z in October). Use this for deadline comparisons
- * against `Date.now()`. An unknown/absent zone falls back to the stored instant.
+ * A stored solicitation datetime as an instant, for deadline comparisons against
+ * `Date.now()`. Stored values are already UTC instants (see
+ * `formatWallClockWithZone`); a naive value is read as UTC. Null when absent or
+ * unparseable.
  */
-export function wallClockInZoneToInstant(
-  dateInput: string | Date | undefined | null,
-  zoneAbbrev?: string
+export function solicitationInstant(
+  dateInput: string | Date | undefined | null
 ): Date | null {
   if (!dateInput) return null;
   const normalized =
     typeof dateInput === "string" ? ensureUtcInstant(dateInput) : dateInput;
-  const wall =
+  const instant =
     typeof normalized === "string" ? new Date(normalized) : normalized;
-  if (!(wall instanceof Date) || isNaN(wall.getTime())) return null;
-
-  const abbr = (zoneAbbrev ?? "").trim().toUpperCase();
-  const iana = ZONE_ABBREV_IANA[abbr];
-  const offsetMin = iana
-    ? getTimeZoneOffset(wall, iana)
-    : ZONE_ABBREV_OFFSET_MINUTES[abbr] ?? 0;
-  return new Date(wall.getTime() - offsetMin * 60000);
+  return instant instanceof Date && !isNaN(instant.getTime()) ? instant : null;
 }
 
 // Fixed UTC offsets (minutes east of UTC) for the timezone abbreviations in
@@ -508,58 +530,42 @@ export function formatDateInZoneAbbrev(
   if (!dateInput) return "N/A";
   const abbr = (zoneAbbrev ?? "").trim();
 
-  // A naive datetime string (no Z/offset) is stored by the BE as UTC; append a
-  // `Z` so it parses as the correct instant instead of the viewer's local wall
-  // clock. Date-only and already-zoned strings pass through unchanged.
-  let normalizedInput: string | Date = dateInput;
-  if (typeof dateInput === "string") {
-    const s = dateInput.trim();
-    const naive =
-      !/^\d{4}-\d{2}-\d{2}$/.test(s) &&
-      !/([zZ]|[+-]\d{2}:?\d{2})$/.test(s) &&
-      /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(s);
-    normalizedInput = naive ? `${s.replace(" ", "T")}Z` : s;
-  }
-  const instant =
-    typeof normalizedInput === "string"
-      ? new Date(normalizedInput)
-      : normalizedInput;
-  if (!(instant instanceof Date) || isNaN(instant.getTime())) return "N/A";
+  // Calendar dates carry no instant and never shift zones; delegate them as-is.
+  if (isDateOnly(dateInput)) return formatDateTZ(dateInput, formatStr);
 
-  // Prefer a real IANA zone for DST-observing abbreviations: resolve the offset
-  // for THIS instant (so summer timestamps aren't an hour behind) and use the
-  // instant's own seasonal label (EDT vs EST). Fall back to the fixed
-  // standard-offset table for non-DST zones, then to viewer-local.
+  const instant = toInstant(dateInput);
+  if (!instant) return "N/A";
+
+  // Absent or unrecognized zone: viewer-local, from the normalized instant, so a
+  // naive datetime (stored as UTC by the BE) is converted, not echoed as raw digits.
+  const zone = resolveZone(instant, abbr);
+  if (!zone) return formatDateTZ(instant, formatStr);
+
+  const pattern = formatStr || DEFAULT_DATE_PATTERN;
+  return `${formatInZone(instant, pattern, zone.offsetMin)} ${zone.label}`;
+}
+
+// Resolve a zone abbreviation to its offset (minutes) and display label for one
+// instant. DST-observing abbreviations resolve via their IANA zone, so the offset
+// and the seasonal label (EDT vs EST) are correct for that instant. Returns
+// undefined for an absent or unrecognized abbreviation.
+function resolveZone(
+  instant: Date,
+  zone: string
+): { offsetMin: number; label: string } | undefined {
+  const abbr = zone.trim();
+  if (!abbr) return undefined;
+
   const iana = ZONE_ABBREV_IANA[abbr.toUpperCase()];
-  let offsetMin: number | undefined;
-  let label = abbr;
   if (iana) {
-    offsetMin = getTimeZoneOffset(instant, iana);
-    label = zoneShortName(instant, iana) ?? abbr;
-  } else {
-    offsetMin = ZONE_ABBREV_OFFSET_MINUTES[abbr];
+    return {
+      offsetMin: getTimeZoneOffset(instant, iana),
+      label: zoneShortName(instant, iana) ?? abbr,
+    };
   }
-  // Fall back to viewer-local, but pass the NORMALIZED input: a naive datetime
-  // (BE stores it as UTC) must keep its `Z` suffix here, otherwise formatDateTZ
-  // reparses it as the viewer's local wall clock and echoes the raw UTC digits
-  // instead of converting the real instant to local time (action-log times
-  // showed UTC, e.g. 03:15 instead of the actor's local 08:15).
-  if (offsetMin === undefined) return formatDateTZ(normalizedInput, formatStr);
 
-  // Shift the instant so its UTC fields equal the target zone's wall clock, then
-  // rebuild via the local `Date` constructor — `format` reads local getters, so
-  // it echoes those exact digits regardless of the viewer's own timezone.
-  const shifted = new Date(instant.getTime() + offsetMin * 60000);
-  const local = new Date(
-    shifted.getUTCFullYear(),
-    shifted.getUTCMonth(),
-    shifted.getUTCDate(),
-    shifted.getUTCHours(),
-    shifted.getUTCMinutes(),
-    shifted.getUTCSeconds()
-  );
-  const pattern = formatStr || "MMM dd, yyyy hh:mm a";
-  return `${format(local, pattern)} ${label}`;
+  const offsetMin = ZONE_ABBREV_OFFSET_MINUTES[abbr];
+  return offsetMin === undefined ? undefined : { offsetMin, label: abbr };
 }
 
 // The zone's short name (e.g. "EST"/"EDT") for a given instant, via Intl.
@@ -643,8 +649,12 @@ export function zonedTimeToUtc(
       local.getMilliseconds()
     );
 
-    // Determine the timezone offset (in minutes) at that instant for the target IANA timezone
-    const offsetMin = getTimeZoneOffset(new Date(utcTsFromLocalWall), timeZone);
+    // Abbreviations (e.g. "EST") resolve through the same table as the display
+    // helpers, so a summer EST wall clock uses EDT. Anything else is an IANA name.
+    const probe = new Date(utcTsFromLocalWall);
+    const offsetMin =
+      resolveZone(probe, timeZone)?.offsetMin ??
+      getTimeZoneOffset(probe, timeZone);
 
     // Adjust the UTC timestamp by subtracting the offset to get the true UTC instant
     const adjustedUtcTs = utcTsFromLocalWall - offsetMin * 60000;

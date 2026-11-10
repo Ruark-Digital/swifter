@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/layouts/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
-import { Upload, CheckCircle } from "lucide-react";
+import { Upload, CheckCircle, X } from "lucide-react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
@@ -254,6 +254,21 @@ const SubmitProposalPage: React.FC<SubmitProposalPageProps> = () => {
     }
   };
 
+  // Remove one uploaded file before the proposal is submitted. This only
+  // changes form state: nothing is deleted on the server, and the file is
+  // left out of the submitted payload. A document entry left with no files is
+  // dropped, so its row goes back to "Upload File" and no empty `files` array
+  // is sent.
+  const handleRemoveFile = (requiredDocumentId: string, fileIndex: number) => {
+    const currentDocuments = forge.getValues("document") || [];
+    const updatedDocuments = currentDocuments.flatMap((doc) => {
+      if (doc.requiredDocumentId !== requiredDocumentId) return [doc];
+      const files = (doc.files || []).filter((_, i) => i !== fileIndex);
+      return files.length > 0 ? [{ ...doc, files }] : [];
+    });
+    forge.setValue("document", updatedDocuments);
+  };
+
   // Handle save as draft
   const handleSaveAsDraft = async () => {
     try {
@@ -467,10 +482,23 @@ const SubmitProposalPage: React.FC<SubmitProposalPageProps> = () => {
                   {documentFiles.map((file, index) => (
                     <div
                       key={index}
-                      className="text-xs text-gray-500 dark:text-gray-500 truncate max-w-[200px]"
-                      title={file.name}
+                      className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-500"
                     >
-                      {file.name}
+                      <span
+                        className="truncate max-w-[200px]"
+                        title={file.name}
+                      >
+                        {file.name}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={`Remove ${file.name}`}
+                        title="Remove file"
+                        onClick={() => handleRemoveFile(doc._id, index)}
+                        className="shrink-0 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   ))}
                 </div>
