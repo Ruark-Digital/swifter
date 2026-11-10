@@ -5,6 +5,7 @@ import {
   formatChangeOriginLabel,
   formatChangeTypeLabel,
   getApproveDraftCoUrl,
+  getChangeApproverUrls,
   getChangeLockUrl,
   getConvertDirectiveUrl,
   getCreateChangeTypeOptionsForRole,
@@ -281,6 +282,32 @@ test.describe("contractChanges helpers (unit)", () => {
     expect(
       getChangeLockUrl({ roleBasePath: "", contractId: "C1", changeId: "CHG1" })
     ).toBe("/contract/manager/contracts/C1/changes/CHG1/lock");
+  });
+
+  test("builds change approver pool + assign urls for contracts and MSA contracts", async () => {
+    // MSA change: pool and assign both stay on the msa-contracts resource.
+    expect(
+      getChangeApproverUrls({
+        roleBasePath: "/contract/manager/msa-contracts/M1/changes",
+        contractId: "M1",
+        changeId: "CHG1",
+      }),
+    ).toEqual({
+      poolPath: "/contract/manager/msa-contracts/M1/approvers",
+      assignUrl: "/contract/manager/msa-contracts/M1/changes/CHG1/approvers",
+    });
+
+    // Contract change keeps the contracts resource.
+    expect(
+      getChangeApproverUrls({
+        roleBasePath: "/contract/manager/contracts",
+        contractId: "C1",
+        changeId: "CHG1",
+      }),
+    ).toEqual({
+      poolPath: "/contract/manager/contracts/C1/approvers",
+      assignUrl: "/contract/manager/contracts/C1/changes/CHG1/approvers",
+    });
   });
 
   test("detects a 409 lock conflict only", async () => {
