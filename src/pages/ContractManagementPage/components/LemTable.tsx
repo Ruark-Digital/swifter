@@ -704,6 +704,10 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                   isResubmit
                   lemId={lemId}
                   contractId={contractId}
+                  // Resubmit is PM-only, and the PM's basePath is the vendor
+                  // LEM path on both surfaces (contracts and msa-contracts),
+                  // so this routes MSA resubmits to the MSA endpoint.
+                  updatePath={`${basePath}/${lemId}`}
                   currency={currencyCode}
                   initialLem={{
                     title: lemDetail?.title,
