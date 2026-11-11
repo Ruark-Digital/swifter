@@ -27,6 +27,9 @@ type Props = {
   currency?: string;
   isActive?: boolean;
   actionsDisabled?: boolean;
+  /** Is the logged-in manager the MSA's owner. The change sheet only gives
+   *  the owner Approve/Reject; without it the owner gets a disabled Reject. */
+  owner?: boolean;
 };
 
 type ChangesDataResponse = {
@@ -39,6 +42,7 @@ const ChangeManagement: React.FC<Props> = ({
   currency,
   isActive,
   actionsDisabled,
+  owner,
 }) => {
   const { isManager, isApprover, isAdmin, isViewOnly, isVendor, isProjectManager } =
     useUserRole();
@@ -240,6 +244,7 @@ const ChangeManagement: React.FC<Props> = ({
             variant={isApprover ? "approver" : "manager"}
             listInvalidateQueryKey={listQueryKey}
             statsInvalidateQueryKey={statsQueryKey}
+            owner={owner}
           />
         </TabsContent>
       </Tabs>
