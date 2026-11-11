@@ -7,7 +7,7 @@ import { Forge, Forger, useForge } from "@adexdsamson/forge";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { TextArea, TextCurrencyInput, TextFileUploader, TextInput } from "@/components/layouts/FormInputs";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { postRequest } from "@/lib/axiosInstance";
+import { postRequest, putRequest } from "@/lib/axiosInstance";
 import type { ApiResponse, ApiResponseError } from "@/types";
 import type { UploadURLs } from "../lib/contractChanges";
 import { vendorApi } from "../api/vendorApi";
@@ -37,6 +37,12 @@ type SubmitLemDialogProps = {
    *  `vendorApi.createLem` which hits `/contract/vendor/contracts/{id}/lems`.
    *  MSA callers pass `/contract/vendor/msa-contracts/{contractId}/lems`. */
   createPath?: string;
+  /** Optional override of the edit/resubmit PUT endpoint. When omitted,
+   *  defaults to `vendorApi.updateLem`, which hits
+   *  `/contract/vendor/contracts/{id}/lems/{lemId}`. MSA callers must pass the
+   *  `msa-contracts` equivalent: an MSA id is not in the contracts collection,
+   *  so the default returns 404. */
+  updatePath?: string;
   /** Optional extra query key to invalidate after successful submission.
    *  MSA callers pass the wrapped `useUserQueryKey` list key so the MSA tab
    *  refetches after submit. The Contract-side default keys are always
@@ -109,6 +115,7 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({
   trigger,
   contractId,
   createPath,
+  updatePath,
   invalidateQueryKey,
   mode = "create",
   isResubmit = false,
@@ -179,6 +186,10 @@ const SubmitLemDialog: React.FC<SubmitLemDialogProps> = ({
     mutationKey: ["createLem", contractId, createPath ?? "default", isEdit ? lemId : "new"],
     mutationFn: async (data: any) => {
       if (isEdit && lemId) {
+        if (updatePath) {
+          const res = await putRequest({ url: updatePath, payload: data });
+          return res as ApiResponse<any>;
+        }
         return await vendorApi.updateLem(contractId, lemId, data);
       }
       if (createPath) {
