@@ -993,6 +993,7 @@ const MsaDetailPage: React.FC = () => {
               currency={displayCurrency}
               isActive={activeTab === "change"}
               actionsDisabled={tabActionsDisabled}
+              owner={isMsaOwner}
             />
 
             <Invoice
