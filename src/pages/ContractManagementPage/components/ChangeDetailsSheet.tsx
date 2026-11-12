@@ -138,6 +138,11 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   }, [basePath, isManager, isApprover, isContractVendorLike, isAdmin, isViewOnly]);
 
   const isClaim = roleBasePath.includes("/claim");
+  // MSA changes live under `/msa-contracts/`; the edit dialog needs this to
+  // save to the MSA endpoint instead of the contract one.
+  const documentType = roleBasePath.includes("/msa-contracts")
+    ? "MsaContract"
+    : "Contract";
 
   const changeApproverUrls = React.useMemo(
     () => getChangeApproverUrls({ roleBasePath, contractId, changeId }),
@@ -941,6 +946,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                     <CreateChangeDialog
                       contractId={contractId}
                       isManager={false}
+                      documentType={documentType}
                       mode="edit"
                       isResubmit={status?.toLowerCase?.() === "rejected"}
                       changeId={changeId}
@@ -1017,6 +1023,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                   <CreateChangeDialog
                     contractId={contractId}
                     isManager={false}
+                    documentType={documentType}
                     mode="edit"
                     changeId={changeId}
                     open={editOpen}
