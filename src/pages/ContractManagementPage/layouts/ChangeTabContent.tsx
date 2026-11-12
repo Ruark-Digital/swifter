@@ -313,6 +313,7 @@ const ChangeTabContent: React.FC<Props> = ({
           <ChangeTable
             contractId={contractId}
             basePath={basePath}
+            variant={isApprover ? "approver" : "manager"}
             rows={filteredRows.filter((row) => row.type === "directive")}
             isLoading={isChangesLoading}
             totalCount={totalCount}
