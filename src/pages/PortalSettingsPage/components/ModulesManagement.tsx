@@ -48,7 +48,9 @@ const ModulesManagement: React.FC = () => {
   const user = useUser();
   const toast = useToastHandler();
   const queryClient = useQueryClient();
-  const companyId = user?.companyId;
+  // `companyId` is the populated company object ({ _id, name }), not a bare
+  // id. Interpolating the object put "[object Object]" in the URL (500).
+  const companyId = user?.companyId?._id;
 
   // Module configuration mapping API fields to UI
   const moduleConfig: ModuleType[] = [
