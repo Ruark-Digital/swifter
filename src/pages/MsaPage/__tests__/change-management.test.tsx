@@ -84,7 +84,7 @@ vi.mock("@/pages/ContractManagementPage/components/ChangeDetailsSheet", () => ({
 
 const mockedGetRequest = vi.mocked(getRequest);
 
-const renderChangeManagement = () => {
+const renderChangeManagement = (owner?: boolean) => {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -95,7 +95,7 @@ const renderChangeManagement = () => {
 
   render(
     <QueryClientProvider client={queryClient}>
-      <ChangeManagement contractId="msa-123" isActive />
+      <ChangeManagement contractId="msa-123" isActive owner={owner} />
     </QueryClientProvider>,
   );
 
@@ -174,7 +174,7 @@ describe("MSA ChangeManagement", () => {
     });
   });
 
-  test("treats admin like the contract reference for MSA changes", async () => {
+  test("reads admin changes from the manager endpoint, like contracts (QA #298)", async () => {
     Object.assign(mockedUserRole, {
       isManager: false,
       isAdmin: true,
@@ -185,11 +185,40 @@ describe("MSA ChangeManagement", () => {
     await waitFor(() => {
       expect(mockedGetRequest).toHaveBeenCalledWith(
         expect.objectContaining({
-          url: "/contract/user/msa-contracts/msa-123/changes?page=1&limit=10",
+          url: "/contract/manager/msa-contracts/msa-123/changes?page=1&limit=10",
         }),
       );
     });
 
     expect(screen.queryByRole("button", { name: "Create Change" })).not.toBeInTheDocument();
+  });
+
+  test("reads PM changes from the vendor endpoint even when also a manager", async () => {
+    Object.assign(mockedUserRole, { isManager: true, isProjectManager: true });
+
+    renderChangeManagement();
+
+    await waitFor(() => {
+      expect(mockedGetRequest).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: "/contract/vendor/msa-contracts/msa-123/changes?page=1&limit=10",
+        }),
+      );
+    });
+  });
+
+  test.each([
+    ["owning manager", { isManager: true }, true, true],
+    ["non-owner manager", { isManager: true }, false, false],
+    ["project manager", { isManager: false, isProjectManager: true }, false, true],
+    ["vendor", { isManager: false, isVendor: true }, false, false],
+  ])("Create Change matches the contract gate: %s", (_label, role, owner, visible) => {
+    Object.assign(mockedUserRole, role);
+
+    renderChangeManagement(owner);
+
+    const button = screen.queryByRole("button", { name: "Create Change" });
+    if (visible) expect(button).toBeInTheDocument();
+    else expect(button).not.toBeInTheDocument();
   });
 });
