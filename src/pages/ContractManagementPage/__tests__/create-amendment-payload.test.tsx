@@ -253,6 +253,75 @@ describe("CreateAmendmentDialog payload", () => {
     ]);
   });
 
+  it("populates `changes` for clause-only impact (regression: 'Changes are required')", async () => {
+    const { getByRole } = await renderDialog();
+    const root = document.body;
+
+    setInputValue(root, "amendmentTitle", "T4");
+    setInputValue(root, "description", "D4");
+
+    fireEvent.click(getByRole("button", { name: "Other Combinations" }));
+
+    await waitFor(() =>
+      expect(document.body.querySelector(`input[name="clause"]`)).toBeTruthy(),
+    );
+
+    setInputValue(root, "clause", "Addition of Liquidated Damages");
+
+    fireEvent.click(getByRole("button", { name: "Create Amendment" }));
+
+    await waitFor(() => expect(postRequestMock).toHaveBeenCalled());
+
+    const createCall = postRequestMock.mock.calls.find(
+      (call) =>
+        typeof call?.[0] === "object" &&
+        call[0] != null &&
+        "url" in (call[0] as any) &&
+        String((call[0] as any).url).includes("/amendments"),
+    );
+    expect(createCall).toBeTruthy();
+    const payload = (createCall?.[0] as any).payload;
+    expect(payload.changes).toEqual([
+      { field: "clause", value: "Addition of Liquidated Damages" },
+    ]);
+  });
+
+  it("populates `changes` for others-detail-only impact", async () => {
+    const { getByRole } = await renderDialog();
+    const root = document.body;
+
+    setInputValue(root, "amendmentTitle", "T5");
+    setInputValue(root, "description", "D5");
+
+    fireEvent.click(getByRole("button", { name: "Other Combinations" }));
+
+    await waitFor(() =>
+      expect(document.body.querySelector(`input[name="otherDetails"]`)).toBeTruthy(),
+    );
+
+    // All five "Other Combinations" toggles default to enabled, so only
+    // "Others" needs a value to isolate this case (see scope/expiry/cost test above).
+    setInputValue(root, "otherDetails", "Change of venue");
+
+    fireEvent.click(getByRole("button", { name: "Create Amendment" }));
+
+    await waitFor(() => expect(postRequestMock).toHaveBeenCalled());
+
+    const createCall = postRequestMock.mock.calls.find(
+      (call) =>
+        typeof call?.[0] === "object" &&
+        call[0] != null &&
+        "url" in (call[0] as any) &&
+        String((call[0] as any).url).includes("/amendments"),
+    );
+    expect(createCall).toBeTruthy();
+    const payload = (createCall?.[0] as any).payload;
+    expect(payload.changes).toContainEqual({
+      field: "others",
+      value: "Change of venue",
+    });
+  });
+
   it("updates and resubmits the same amendment record in edit mode", async () => {
     const { getByRole } = await renderDialog({
       mode: "edit",
