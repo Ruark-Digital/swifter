@@ -334,6 +334,23 @@ export const useDeleteEvaluationCriteria = () => {
   });
 };
 
+// Callers refresh "evaluation-detail" themselves: an immediate refetch would
+// reset the edit form and discard unsaved changes.
+export const useDeleteEvaluationDocument = () => {
+  return useMutation<
+    ApiResponse<any>,
+    ApiResponseError,
+    { evaluationId: string; documentId: string }
+  >({
+    mutationFn: async ({ evaluationId, documentId }) => {
+      const response = await deleteRequest({
+        url: `/procurement/evaluations/${evaluationId}/document/${documentId}`,
+      });
+      return response;
+    },
+  });
+};
+
 // Export types for use in components
 export type {
   EvaluationDetail,
