@@ -4,7 +4,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Forge, useForge } from "@adexdsamson/forge";
@@ -167,6 +167,19 @@ const EditEvaluationDialog = ({
   const toast = useToastHandler();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  // Set when a requested document is deleted from Step 3, so the
+  // evaluation detail is refreshed once the dialog closes.
+  const documentDeletedRef = useRef(false);
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen && documentDeletedRef.current) {
+      documentDeletedRef.current = false;
+      queryClient.invalidateQueries({
+        queryKey: ["evaluation-detail", evaluationId],
+      });
+    }
+  };
   const [currentStep, setCurrentStep] = useState(() => {
     switch (page) {
       case "overview":
@@ -556,7 +569,7 @@ const EditEvaluationDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {children || (
           <Button className="bg-[#2A4467] hover:bg-[#1e3147] text-white px-6 py-2 rounded-lg flex items-center gap-2">
@@ -600,7 +613,14 @@ const EditEvaluationDialog = ({
 
             {currentStep === 2 && <Step2Form control={forge.control} isEdit />}
 
-            {currentStep === 3 && <Step3Form control={forge.control} isEdit />}
+            {currentStep === 3 && <Step3Form
+                control={forge.control}
+                isEdit
+                evaluationId={evaluationId}
+                onDocumentDeleted={() => {
+                  documentDeletedRef.current = true;
+                }}
+              />}
 
             {currentStep === 4 && <Step4Form control={forge.control} />}
 

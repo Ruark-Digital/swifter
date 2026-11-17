@@ -9,14 +9,33 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { getRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { CreateEvaluationFormData } from "./CreateEvaluationDialog";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToastHandler } from "@/hooks/useToaster";
+import { useDeleteEvaluationDocument } from "../hooks/useEvaluationDetailApi";
 
 interface Step3FormProps {
   control: Control<CreateEvaluationFormData>;
   isEdit?: boolean;
+  evaluationId?: string;
+  onDocumentDeleted?: () => void;
 }
 
-const Step3Form = ({ control, isEdit = false }: Step3FormProps) => {
+const Step3Form = ({
+  control,
+  isEdit = false,
+  evaluationId,
+  onDocumentDeleted,
+}: Step3FormProps) => {
   const { fields, append, remove, update } = useFieldArray({
     control,
     name: "documents"
@@ -51,8 +70,44 @@ const Step3Form = ({ control, isEdit = false }: Step3FormProps) => {
     });
   };
 
+  const toast = useToastHandler();
+  const { mutateAsync: deleteDocument, isPending: isDeletingDocument } =
+    useDeleteEvaluationDocument();
+  // Index of a saved document awaiting delete confirmation
+  const [pendingDeleteIndex, setPendingDeleteIndex] = useState<number | null>(null);
+
+  // Saved documents carry the server id (set by EditEvaluationDialog)
+  const getDocumentId = (index: number) =>
+    (documentsWatch?.[index] as { id?: string } | undefined)?.id;
+
   const removeDocument = (index: number) => {
+    // Saved documents are deleted on the server after confirmation;
+    // rows added in this session are only removed locally.
+    if (isEdit && getDocumentId(index)) {
+      setPendingDeleteIndex(index);
+      return;
+    }
     remove(index);
+  };
+
+  const confirmDeleteDocument = async () => {
+    if (pendingDeleteIndex === null) return;
+    const documentId = getDocumentId(pendingDeleteIndex);
+    if (!evaluationId || !documentId) return;
+    try {
+      await deleteDocument({ evaluationId, documentId });
+      remove(pendingDeleteIndex);
+      onDocumentDeleted?.();
+      toast.success("Document Removed", "Requested document has been removed");
+    } catch (error) {
+      const err = error as ApiResponseError;
+      toast.error(
+        "Remove Failed",
+        err?.response?.data?.message ?? "Failed to remove requested document"
+      );
+    } finally {
+      setPendingDeleteIndex(null);
+    }
   };
 
   const documentTypeOptions = [
@@ -168,7 +223,7 @@ const Step3Form = ({ control, isEdit = false }: Step3FormProps) => {
             </div>
             
             <div className="flex justify-center">
-             {index !== 0 && !isEdit && <Button
+             {(isEdit ? fields.length > 1 : index !== 0) && <Button
                 type="button"
                 variant="ghost"
                 size="sm"
@@ -193,6 +248,36 @@ const Step3Form = ({ control, isEdit = false }: Step3FormProps) => {
           </Button>
         </div>
       </div>
+
+      <AlertDialog
+        open={pendingDeleteIndex !== null}
+        onOpenChange={(open) => {
+          if (!open && !isDeletingDocument) setPendingDeleteIndex(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove requested document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{pendingDeleteIndex !== null && documentsWatch?.[pendingDeleteIndex]?.title}"
+              will be removed from this evaluation. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingDocument}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 text-white hover:bg-red-700"
+              onClick={(event) => {
+                event.preventDefault();
+                void confirmDeleteDocument();
+              }}
+              disabled={isDeletingDocument}
+            >
+              {isDeletingDocument ? "Removing..." : "Remove"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
