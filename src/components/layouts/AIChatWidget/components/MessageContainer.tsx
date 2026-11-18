@@ -252,7 +252,7 @@ const MessageContainer: React.FC<MessageContainerProps> = memo(({
 
       <div
         className={cn(
-          "max-w-[75%] rounded-2xl px-4 py-3 text-sm shadow-sm",
+          "max-w-[75%] min-w-0 break-words rounded-2xl px-4 py-3 text-sm shadow-sm",
           isUser
             ? "bg-[#07004D] text-white rounded-br-md"
             : "bg-slate-50 border border-slate-200 text-slate-900 rounded-bl-md dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
