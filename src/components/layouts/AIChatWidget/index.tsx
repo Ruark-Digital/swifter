@@ -768,7 +768,11 @@ const AIChatWidget: React.FC<AIChatWidgetProps> = ({
 
                 {/* Messages Area */}
                 {messages.length > 0 && (
-                  <ScrollArea className="flex-1 p-4">
+                  <ScrollArea
+                    // Radix wraps content in a `display: table` div that grows with
+                    // its content; force block so messages wrap to the panel width.
+                    className="flex-1 p-4 [&_[data-radix-scroll-area-viewport]>div]:!block"
+                  >
                     <div className="space-y-6 h-[10rem]">
                       {messages
                         .filter(
