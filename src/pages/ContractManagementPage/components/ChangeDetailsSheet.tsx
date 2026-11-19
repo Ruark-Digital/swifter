@@ -48,6 +48,7 @@ import {
   toContractChangeFileItem,
   type UploadURLs,
 } from "../lib/contractChanges";
+import { getEffectiveClaimStatus } from "../lib/claimStatus";
 import { useChangeLock } from "../hooks/useChangeLock";
 import { formatDate } from "date-fns";
 import Spinner from "@/components/ui/Spinner";
@@ -203,7 +204,11 @@ const ChangeDetailsSheet: React.FC<Props> = ({
     detail?.vendor?.name ?? detail?.vendor?.email ?? detail?.vendor ?? "";
   const changeType = detail?.type ?? "";
   const submittedAt = detail?.submittedAt ?? detail?.createdAt ?? "";
-  const status = detail?.status ?? "";
+  // Claims: derive the status from recorded manager/approver decisions, since
+  // the BE can leave a rejected claim's top-level status at "under review".
+  const status = isClaim
+    ? getEffectiveClaimStatus(detail)
+    : detail?.status ?? "";
   const approverStatus = detail?.approverStatus ?? "";
   const value = detail?.value;
   const files = detail?.files;
