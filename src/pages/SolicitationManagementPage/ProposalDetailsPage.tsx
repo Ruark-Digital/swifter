@@ -26,6 +26,7 @@ import { DataTable } from "@/components/layouts/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
 import { putRequest, getRequest } from "@/lib/axiosInstance";
+import { getBlobErrorMessage } from "@/lib/blobErrorMessage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToastHandler } from "@/hooks/useToaster";
 import { ApiResponse, ApiResponseError } from "@/types";
@@ -316,10 +317,9 @@ const ProposalDetailsPage: React.FC = () => {
         `Proposal exported successfully as ${type.toUpperCase()}`
       );
     } catch (error) {
-      const err = error as ApiResponseError;
       toastHandlers.error(
         "Export",
-        err.response?.data.message ||
+        (await getBlobErrorMessage(error)) ||
           "Failed to export proposal. Please try again."
       );
     }
