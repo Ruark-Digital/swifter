@@ -17,6 +17,7 @@ import {
 import type { ContractClaimDTO } from "../api/contractManagerApi";
 import ChangeDetailsSheet from "./ChangeDetailsSheet";
 import { formatCompactCurrency, formatSecurityType } from "@/lib/utils";
+import { getEffectiveClaimStatus } from "../lib/claimStatus";
 
 const formatImpact = (item: ContractClaimDTO, currency: string) => {
   const hasTime = typeof item.time === "number" && Number.isFinite(item.time);
@@ -121,8 +122,8 @@ const columns: ColumnDef<ContractClaimDTO>[] = [
   {
     accessorKey: "status",
     header: "Status",
-    cell: ({ getValue }) => {
-      const status = getValue<ContractClaimDTO["status"] | undefined>();
+    cell: ({ row }) => {
+      const status = getEffectiveClaimStatus(row.original);
       const label =
         status === "approved"
           ? "Approved"
