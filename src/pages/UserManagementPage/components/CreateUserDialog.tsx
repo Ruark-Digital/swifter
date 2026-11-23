@@ -242,7 +242,7 @@ const CreateUserDialog = () => {
                 <Forger
                   name="middleName"
                   component={TextInput}
-                  label="Middle Name *"
+                  label="Middle Name"
                   placeholder="Enter Middle name"
                   containerClass="space-y-1"
                 />
