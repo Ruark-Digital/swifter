@@ -63,7 +63,7 @@ const schema = yup.object({
   projectManager: yup.string().optional(),
   jobTitle: yup.string().optional(),
   msaId: yup.string().optional(),
-  description: yup.string().optional(),
+  description: yup.string().trim().required("MSA description is required"),
   rating: yup.number().min(1).max(10).required(),
   businessDivision: yup.string().optional(),
   vendor: yup.string().optional(),
@@ -653,7 +653,7 @@ const CreateMSADialog: React.FC<Props> = ({
   const validateStep = async (currentStep: number) => {
     if (currentStep === 1) {
       const ok = await formTrigger(
-        ["name", "type", "currency", "rating"] as any,
+        ["name", "type", "currency", "description", "rating"] as any,
         {
           shouldFocus: true,
         },

@@ -66,6 +66,7 @@ type VendorProposal = {
     | "Under Review"
     | "Accepted"
     | "Rejected"
+    | "Declined"
     | "Pending"
     | "Confirmed";
   proposalValue: number;
@@ -298,6 +299,7 @@ const ProposalStatusBadge = ({
       case "Accepted":
         return "bg-green-100 text-green-800";
       case "Rejected":
+      case "Declined":
         return "bg-red-100 text-red-800";
       case "Pending":
         return "bg-gray-100 text-gray-800";
@@ -605,12 +607,13 @@ export const SolicitationDetailPage = () => {
           | "Under Review"
           | "Accepted"
           | "Rejected"
+          | "Declined"
           | "Pending"
           | "Confirmed"
         > = {
           invited: "Pending",
           confirmed: "Confirmed",
-          declined: "Rejected",
+          declined: "Declined",
         };
         return (
           <ProposalStatusBadge

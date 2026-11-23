@@ -37,6 +37,13 @@ const Step1Form = ({ solicitationOptions, timezoneOptions, solicitationsData, is
     return selectedSolicitation ? new Date(selectedSolicitation.submissionDeadline) : undefined;
   }, [selectedSolicitationId, solicitationsData]);
 
+  // Only surface the hint once a start date is picked that is too early, not
+  // as soon as a solicitation is chosen.
+  const startDateInvalid =
+    !!selectedStartDate &&
+    !!selectedSolicitationCloseDate &&
+    new Date(selectedStartDate) <= selectedSolicitationCloseDate;
+
   return (
     <div className="p-6 space-y-6">
       <div className="space-y-4">
@@ -66,9 +73,11 @@ const Step1Form = ({ solicitationOptions, timezoneOptions, solicitationsData, is
           minDate={selectedSolicitationCloseDate}
         />
         
-        <div className="text-xs text-red-500">
-          Evaluation Start Date & Time must be after the close date and time of solicitations
-        </div>
+        {startDateInvalid && (
+          <div className="text-xs text-red-500">
+            Evaluation Start Date & Time must be after the close date and time of solicitations
+          </div>
+        )}
         
         <Forger
           name="end_date"

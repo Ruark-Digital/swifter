@@ -19,7 +19,7 @@ import EditCompanyDialog from "./components/EditCompanyDialog";
 import { RenewSubscriptionDialog } from "./components/RenewSubscriptionDialog";
 import React, { useState } from "react";
 import { PageLoader } from "@/components/ui/PageLoader";
-import { formatDateTZ } from "@/lib/utils";
+import { formatDateTZ, formatMaxUsers } from "@/lib/utils";
 
 // Normalizes ambiguous truthy/falsy shapes (e.g. a stray `{ enabled: "true" }`
 // or the string "true") coming from portalSettingsData into a real boolean,
@@ -957,7 +957,7 @@ const CompanyDetailPage = () => {
                   Max Users
                 </label>
                 <p className="text-lg font-medium text-gray-900 dark:text-gray-100 font-quicksand">
-                  {seatsUsed ?? "-"}/{seatLimit ?? "-"}
+                  {seatsUsed ?? "-"}/{formatMaxUsers(seatLimit) ?? "-"}
                 </p>
               </div>
             </div>

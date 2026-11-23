@@ -682,3 +682,7 @@ export const parseFileSize = (size: string | number): number => {
   if (unit === "TB") return value * 1024 * 1024 * 1024 * 1024;
   return value;
 };
+
+/** Backend uses Number.MAX_SAFE_INTEGER (or -1) as "unlimited" seats. */
+export const formatMaxUsers = (value?: number | null) =>
+  value === Number.MAX_SAFE_INTEGER || value === -1 ? "Unlimited" : value;

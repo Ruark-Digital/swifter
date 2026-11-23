@@ -571,9 +571,10 @@ const CreateSolicitationDialog = () => {
   };
 
   const getStepTitle = () => {
-    const isPublic = forge.getValues().visibility === "public";
-    const totalSteps = isPublic ? 5 : 6;
-    const displayStep = currentStep === 6 && isPublic ? 5 : currentStep;
+    // Visibility is only chosen in step 2, so the total can't depend on it
+    // without changing mid-flow. Keep a fixed total and the real step number.
+    const totalSteps = 6;
+    const displayStep = currentStep;
     switch (currentStep) {
       case 1:
         return `Step ${displayStep} of ${totalSteps}: Basic Information`;

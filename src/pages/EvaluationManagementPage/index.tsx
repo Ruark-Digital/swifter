@@ -164,7 +164,7 @@ const transformAssignedEvaluationData = (
       name: item.solicitationTitle || item.solicitationName,
       solicitationId: item.solicitationId,
       type: item.solicitationType,
-      evaluationGroup: item.evaluationGroups?.[0]?.name || "No Group Assigned",
+      evaluationGroup: item.evaluationGroups?.[0]?.name || "Withheld until released",
       groupId: item.evaluationGroups?.[0]?._id || "",
       assignedDate: safeFormatDate(
         item.evaluationGroups?.[0]?.assignedOn,
@@ -805,7 +805,7 @@ export const EvaluationManagementPage = () => {
           : [];
         const text = names.length
           ? names.join(", ")
-          : row.original.evaluationGroup || "No Group Assigned";
+          : row.original.evaluationGroup || "Withheld until released";
         return (
           <div
             className="text-sm text-gray-900 dark:text-gray-100 truncate max-w-[280px]"
