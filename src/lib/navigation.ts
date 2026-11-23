@@ -263,14 +263,6 @@ export const getNavigationForRole = (
     view_only: [
       isModuleEnabled(modules?.contractManagement)
         ? {
-            icon: Folder,
-            title: "Projects",
-            to: "/dashboard/project-management",
-            active: currentPath.startsWith("/dashboard/project-management"),
-          }
-        : undefined,
-      isModuleEnabled(modules?.contractManagement)
-        ? {
             icon: FileText,
             title: "Contract Management",
             to: "/dashboard/contract-management",
@@ -293,12 +285,6 @@ export const getNavigationForRole = (
             ],
           }
         : undefined,
-      {
-        icon: Building2,
-        title: "Business Divisions",
-        to: "/dashboard/business-divisions",
-        active: currentPath.startsWith("/dashboard/business-divisions"),
-      },
       {
         icon: User2,
         title: "Profile",
@@ -447,3 +433,12 @@ export const getFirstAccessibleRoute = (
   }
   return "/dashboard"; // Fallback
 };
+
+export const VIEW_ONLY_HOME = "/dashboard/contract-management";
+
+// View Only users have no Dashboard, Projects or Business Divisions; those
+// URLs (e.g. old bookmarks) send them to the Contracts list instead.
+export const isViewOnlyBlockedPath = (path: string): boolean =>
+  path === "/dashboard" ||
+  path.startsWith("/dashboard/project-management") ||
+  path.startsWith("/dashboard/business-divisions");
