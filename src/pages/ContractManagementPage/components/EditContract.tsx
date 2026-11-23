@@ -57,10 +57,10 @@ type Props = {
 };
 
 const STEP_TITLES = [
-  "Step 1 of 8: Basic Information",
-  "Step 2 of 8: Contract Team",
-  "Step 3 of 8: Timeline",
-  "Step 4 of 8: Deliverables",
+  "Step 1 of 9: Basic Information",
+  "Step 2 of 9: Contract Team",
+  "Step 3 of 9: Timeline",
+  "Step 4 of 9: Deliverables",
   "Step 5 of 9: Contract Value & Payments",
   "Step 6 of 9: Compliance & Security",
   "Step 7 of 9: Documents",
