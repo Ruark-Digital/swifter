@@ -19,6 +19,7 @@ import Step8ReviewPublish from "@/pages/ContractManagementPage/components/Step6R
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getRequest, putRequest } from "@/lib/axiosInstance";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
+import { useUserRole } from "@/hooks/useUserRole";
 import { useProjectsList } from "@/pages/ProjectManagementPage/services/useProjectApi";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useWatch } from "react-hook-form";
@@ -229,6 +230,10 @@ const EditContract: React.FC<Props> = ({
 
   const [step, setStep] = React.useState(1);
   const qc = useQueryClient();
+  // These endpoints are manager-only (x-roles: contract_manager, company_admin);
+  // vendors/approvers get 403s if the queries run for them (QA-037).
+  const { isManager, isCompanyAdmin } = useUserRole();
+  const canManageContracts = isManager || isCompanyAdmin;
   const { success, error } = useToastHandler();
   const currentUser = useUser();
   const [lastError, setLastError] = React.useState<ApiResponseError | null>(
@@ -305,6 +310,7 @@ const EditContract: React.FC<Props> = ({
         }[];
       };
     },
+    enabled: canManageContracts,
     staleTime: 60_000,
   });
 
@@ -322,6 +328,7 @@ const EditContract: React.FC<Props> = ({
         };
       };
     },
+    enabled: canManageContracts,
     staleTime: 60_000,
   });
 
@@ -332,7 +339,7 @@ const EditContract: React.FC<Props> = ({
   const { data: contractRes } = useQuery({
     queryKey: useUserQueryKey(["contract-manager-contract-edit", contractId]),
     queryFn: () => contractManagerApi.getContractForEdit(contractId),
-    enabled: !!contractId,
+    enabled: !!contractId && canManageContracts,
     staleTime: 60_000,
   });
 
@@ -741,7 +748,10 @@ const EditContract: React.FC<Props> = ({
         : [],
     [termTypesQuery.data?.data],
   );
-  const { data: projectsData } = useProjectsList({ limit: 50, page: 1 });
+  const { data: projectsData } = useProjectsList(
+    { limit: 50, page: 1 },
+    { enabled: canManageContracts },
+  );
   const projectOptions = React.useMemo(
     () =>
       Array.isArray(projectsData?.data)

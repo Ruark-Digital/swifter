@@ -520,8 +520,10 @@ const ContractDetailPage: React.FC = () => {
   // company_admin (not the broader isAdmin) because super_admin is not in the
   // BE amendment roles. NOTE: the contract amendments endpoint still needs
   // company_admin added server-side (MSA already allows it) — see BE handoff.
+  // A draft contract cannot be amended yet (BE: 400 "Contract cannot be amended").
   const amendmentActionsDisabled =
-    actionsDisabled && !(isCompanyAdmin && contract?.status === "expired");
+    (actionsDisabled && !(isCompanyAdmin && contract?.status === "expired")) ||
+    contract?.status === "draft";
   // Rate Sheets, Vendor's Reports, NCR, and LEM are day-to-day operational
   // actions that should only be reachable once the contract is actually
   // published — unlike `actionsDisabled` above, draft is also gated here.

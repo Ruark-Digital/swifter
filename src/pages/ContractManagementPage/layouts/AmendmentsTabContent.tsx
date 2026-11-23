@@ -3,6 +3,8 @@ import { TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Forge, Forger, useForge } from "@adexdsamson/forge";
+import * as yup from "yup";
+import { yupResolver } from "@hookform/resolvers/yup";
 import {
   TextArea,
   TextFileUploader,
@@ -126,6 +128,10 @@ const CREATE_AMENDMENT_DEFAULT_VALUES: CreateAmendmentFormValues = {
   files: null,
 };
 
+const CREATE_AMENDMENT_SCHEMA = yup.object({
+  amendmentTitle: yup.string().trim().required("Amendment title is required"),
+});
+
 const getCreateAmendmentDefaultValues = (
   initialValues?: Partial<CreateAmendmentFormValues>,
 ): CreateAmendmentFormValues => ({
@@ -194,6 +200,7 @@ export const CreateAmendmentDialog: React.FC<{
   );
 
   const { control, reset, watch } = useForge<CreateAmendmentFormValues>({
+    resolver: yupResolver(CREATE_AMENDMENT_SCHEMA) as any,
     defaultValues: formDefaults,
   });
 
