@@ -1181,6 +1181,7 @@ const EditContract: React.FC<Props> = ({
     ],
     2: [
       "manager",
+      "projectManager",
       "jobTitle",
       "vendor",
       "personnel",
