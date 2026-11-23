@@ -198,6 +198,9 @@ const SubmitProposalPage: React.FC<SubmitProposalPageProps> = () => {
       });
     },
     enabled: !!solicitationId,
+    // A 404 here is a final answer ("criteria not assigned yet"); retrying with
+    // backoff would keep the page on "Loading..." for several seconds.
+    retry: false,
   });
 
   // Submit proposal mutation
