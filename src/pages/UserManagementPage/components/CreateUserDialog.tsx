@@ -125,7 +125,7 @@ const CreateUserDialog = () => {
         lastName: data.lastName,
         email: data.email,
         roles: selectedRoles.map((option) => option.value),
-        companyId: (user?.companyId as unknown as string) ?? "",
+        companyId: user?.companyId?._id ?? "",
       });
     } catch (error) {
       // Error is handled by onError

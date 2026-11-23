@@ -172,7 +172,7 @@ const SubmitProposalPage: React.FC<SubmitProposalPageProps> = () => {
   });
 
   // Fetch solicitation details from API
-  const { data: solicitationData, isLoading } = useQuery<
+  const { data: solicitationData, isLoading, isError: isCriteriaError } = useQuery<
     ApiResponse<{
       solicitation: {
         name: string;
@@ -511,6 +511,28 @@ const SubmitProposalPage: React.FC<SubmitProposalPageProps> = () => {
       },
     },
   ];
+
+  // `view-criteria` 404s ("Criteria have not been assigned") until the
+  // solicitation is set up for proposals — don't hang on "Loading...".
+  if (isCriteriaError) {
+    return (
+      <div
+        className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 text-center"
+        data-testid="proposal-not-open"
+      >
+        <h2 className="text-2xl font-semibold text-slate-700 dark:text-slate-200">
+          This solicitation is not open for proposals yet
+        </h2>
+        <p className="max-w-md text-sm text-slate-500">
+          Evaluation criteria have not been assigned to this solicitation.
+          Please check back later.
+        </p>
+        <Button variant="outline" onClick={() => navigate(-1)}>
+          Go Back
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen ">

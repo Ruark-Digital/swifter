@@ -28,6 +28,7 @@ import Step6ComplianceSecurity from "./Step6ComplianceSecurity";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
+import { useUserRole } from "@/hooks/useUserRole";
 import { useProjectsList } from "@/pages/ProjectManagementPage/services/useProjectApi";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useWatch } from "react-hook-form";
@@ -689,6 +690,10 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
   const clearSession = useClearSession();
   const { success, error } = useToastHandler();
   const currentUser = useUser();
+  // These endpoints are manager-only (x-roles: contract_manager, company_admin);
+  // vendors/approvers get 403s if the queries run for them (QA-037).
+  const { isManager, isCompanyAdmin } = useUserRole();
+  const canManageContracts = isManager || isCompanyAdmin;
 
   const typesQuery = useQuery<ApiListResponse<ContractType>>({
     queryKey: useUserQueryKey(["contract-types"]),
@@ -725,6 +730,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       });
       return res.data as ApiListResponse<AwardedVendorItem>;
     },
+    enabled: canManageContracts,
     staleTime: 60_000,
   });
 
@@ -736,11 +742,15 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       });
       return res.data;
     },
+    enabled: canManageContracts,
     staleTime: 60_000,
   });
 
   // Projects list (reuse existing service)
-  const { data: projectsData } = useProjectsList({ limit: 50, page: 1 });
+  const { data: projectsData } = useProjectsList(
+    { limit: 50, page: 1 },
+    { enabled: canManageContracts },
+  );
 
   const typeOptions = React.useMemo(
     () =>
