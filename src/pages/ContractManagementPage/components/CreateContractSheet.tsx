@@ -68,7 +68,9 @@ export const schema = yup.object({
   category: yup.string().required("Category is required"),
   currency: yup.string().required("Currency is required"),
   manager: yup.string().optional(),
-  projectManager: yup.string().optional(),
+  // A PM must approve a contract first, so one is required to send for approval
+  // / publish. Save as Draft reads form values directly and skips validation.
+  projectManager: yup.string().trim().required("Project Manager is required"),
   jobTitle: yup.string().optional(),
   businessDivision: yup.string().required("Business Division is required"),
   contractId: yup.string().optional(),
