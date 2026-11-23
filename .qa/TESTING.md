@@ -186,12 +186,11 @@ The sidebar uses `getNavigationForRole(role, currentPath, modules)` from `src/li
 
 **View User Navigation:**
 ```
-├── Dashboard
-├── Contract Management
-├── MSA
-├── Business Divisions
+├── Contract Management (Contracts, Master Service Agreements (MSA))
 ├── Profile
 ```
+
+View User has no Dashboard, Projects or Business Divisions; after login it lands on the Contracts list.
 
 > **Note:** A new company has the Contract Management module disabled by default (Super Admin > Companies > row menu > View Company > Modules). With it off, Contract Manager, Approver and View User see a reduced sidebar.
 
@@ -205,17 +204,17 @@ The sidebar uses `getNavigationForRole(role, currentPath, modules)` from `src/li
 
 | Feature / Screen | Roles | Notes |
 |-----------------|-------|-------|
-| Dashboard | All authenticated | Auto-redirect after login |
+| Dashboard | All authenticated except View User | Auto-redirect after login (View User lands on Contracts list) |
 | Companies List | Super Admin only | Accessed via sidebar |
 | Create Company | Super Admin only | From Companies page |
 | Solicitation Management | Procurement, Company Admin, Super Admin | Full access |
-| Contract Management | Varies by role | Contract Manager, Approver, Vendor, Project Manager, Company Admin, Super Admin |
-| MSA | Varies by role | All roles except View User |
+| Contract Management | Varies by role | Contract Manager, Approver, Vendor, Project Manager, View User, Company Admin, Super Admin |
+| MSA | Varies by role | All roles |
 | User Management | Company Admin, Super Admin | Full access |
 | Vendor Management | Company Admin, Procurement Lead | Role-based access |
 | Evaluation | Evaluator, Company Admin, Super Admin | canEvaluate permission |
 | Projects | Contract Manager, Procurement Lead, Project Manager | Role-based access |
-| Business Divisions | Company Admin, Super Admin, Procurement Lead, Contract Manager, View User | Role-based access |
+| Business Divisions | Company Admin, Super Admin, Procurement Lead, Contract Manager | Role-based access |
 | Admin Management | Super Admin only | System administration |
 | Portal Settings | Super Admin only | System configuration |
 | System Log | Super Admin only | Audit logging |
