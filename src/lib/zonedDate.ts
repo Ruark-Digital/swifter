@@ -318,6 +318,40 @@ function contractDateTimeInstant(
   return { instant: real, zone, wallZone: zone };
 }
 
+// The zone's short name from Intl in one locale, if the engine has one.
+function intlShortName(zone: string, instant: Date, locale: string) {
+  try {
+    return new Intl.DateTimeFormat(locale, { timeZone: zone, timeZoneName: "short" })
+      .formatToParts(instant)
+      .find((p) => p.type === "timeZoneName")?.value;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * An unambiguous zone label for `instant`: a real abbreviation when the engine
+ * has one (EST/EDT, PST, BST, CET, UTC), otherwise a GMT offset such as "GMT-11",
+ * "GMT+14" or "GMT+5:30". Never a bare "GMT" next to a non-zero offset, which is
+ * what some engines return for zones without an abbreviation.
+ */
+export function zoneLabel(zone: string, instant: Date): string {
+  const offsetMin = Math.round(offsetAt(zone, instant.getTime()) / 60000);
+  // en-US names the US zones; en-GB names BST/CET and the like.
+  for (const locale of ["en-US", "en-GB"]) {
+    const name = intlShortName(zone, instant, locale);
+    if (name && /^[A-Z]{2,5}$/.test(name) && (offsetMin === 0 || name !== "GMT")) {
+      return name;
+    }
+  }
+  if (offsetMin === 0) return "GMT";
+  const abs = Math.abs(offsetMin);
+  const minutes = abs % 60;
+  return `GMT${offsetMin < 0 ? "-" : "+"}${Math.floor(abs / 60)}${
+    minutes ? `:${pad(minutes)}` : ""
+  }`;
+}
+
 /**
  * Show a contract/MSA effective/end date-time as wall-clock in the record's
  * timezone, e.g. "10 Jan 2027, 09:00 AM". `withZone` appends the zone label
@@ -333,11 +367,8 @@ export function formatContractDateTime(
   const r = contractDateTimeInstant(value, tz, createdAt);
   if (!r) return "N/A";
   const pattern = options.pattern ?? "dd MMM yyyy, hh:mm a";
-  return formatInTimeZone(
-    r.instant,
-    r.wallZone,
-    options.withZone ? `${pattern} zzz` : pattern
-  );
+  const text = formatInTimeZone(r.instant, r.wallZone, pattern);
+  return options.withZone ? `${text} ${zoneLabel(r.wallZone, r.instant)}` : text;
 }
 
 /**
