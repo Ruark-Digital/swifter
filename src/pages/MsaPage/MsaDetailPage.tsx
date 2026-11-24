@@ -61,6 +61,8 @@ import {
   availableLifecycleActions,
   type LifecycleAction,
 } from "@/pages/ContractManagementPage/components/contractLifecycle";
+import { DateTimeZoneProvider } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
 type TabKey = MsaTabKey;
 
@@ -274,19 +276,8 @@ export interface Vendor {
   status?: string;
 }
 
-const formatDate = (iso?: string) => {
-  if (!iso) return "N/A";
-  try {
-    const d = new Date(iso);
-    return d.toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  } catch {
-    return iso;
-  }
-};
+const formatDate = (iso?: string, timeZone?: string) =>
+  iso ? formatInTz(iso, timeZone, "MMMM d, yyyy") : "N/A";
 
 const diffDays = (a?: string, b?: string) => {
   if (!a || !b) return "N/A";
@@ -468,8 +459,8 @@ const MsaDetailPage: React.FC = () => {
         String(it?.vendor?.name ?? it?.company?.name ?? "-"),
       relationship: relationshipLabel(it?.contractRelationship),
       value: formatMoney(it?.contractValue, it?.currency),
-      published: it?.datePublished ? formatDate(it.datePublished) : undefined,
-      endDate: it?.endDate ? formatDate(it.endDate) : undefined,
+      published: it?.datePublished ? formatDate(it.datePublished, it?.timezone) : undefined,
+      endDate: it?.endDate ? formatDate(it.endDate, it?.timezone) : undefined,
       createdAtRaw: it?.createdAt ?? it?.datePublished,
       status: statusLabel(it?.status),
     }));
@@ -699,8 +690,8 @@ const MsaDetailPage: React.FC = () => {
     stages?.execution?.endDate,
   );
   const stageRange = (s?: { startDate?: string; endDate?: string }) => ({
-    start: formatDate(s?.startDate),
-    end: formatDate(s?.endDate),
+    start: formatDate(s?.startDate, msa?.timezone),
+    end: formatDate(s?.endDate, msa?.timezone),
   });
   const formationStages = {
     draft: stageRange(stages?.draft),
@@ -738,6 +729,7 @@ const MsaDetailPage: React.FC = () => {
   const vendorPersonnel = Array.isArray(msa?.personnel) ? msa!.personnel! : [];
 
   return (
+    <DateTimeZoneProvider timeZone={msa?.timezone}>
     <div className="space-y-8 pt-5">
       <SEOWrapper
         title="MSA Details - SwiftPro eProcurement Portal"
@@ -937,9 +929,9 @@ const MsaDetailPage: React.FC = () => {
                   description: msa?.description,
                 }}
                 dates={{
-                  published: formatDate(toISO(msa?.datePublished)),
-                  effective: formatDate(toISO(msa?.startDate)),
-                  end: formatDate(toISO(msa?.endDate)),
+                  published: formatDate(toISO(msa?.datePublished), msa?.timezone),
+                  effective: formatDate(toISO(msa?.startDate), msa?.timezone),
+                  end: formatDate(toISO(msa?.endDate), msa?.timezone),
                 }}
                 durations={{
                   draft: draftDuration,
@@ -1193,6 +1185,7 @@ const MsaDetailPage: React.FC = () => {
         }}
       />
     </div>
+    </DateTimeZoneProvider>
   );
 };
 

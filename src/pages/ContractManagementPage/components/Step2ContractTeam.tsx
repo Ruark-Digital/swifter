@@ -35,6 +35,7 @@ const SingleSelectField = ({
   fallbackLabel,
   onVendorSelect,
   name,
+  error,
 }: {
   value?: string;
   onChange?: (val: string) => void;
@@ -43,6 +44,7 @@ const SingleSelectField = ({
   fallbackLabel?: string;
   onVendorSelect?: (label: string) => void;
   name?: string;
+  error?: string;
 }) => {
   const normalizedValue = typeof value === "string" ? value.trim() : "";
   // A stored id (e.g. the assigned PM) arrives before its option list has
@@ -68,6 +70,7 @@ const SingleSelectField = ({
   return (
     <TextMultiSelect
       name={name ?? ""}
+      error={error}
       options={options}
       placeholder={placeholder}
       maxCount={1}

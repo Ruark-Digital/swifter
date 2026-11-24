@@ -18,8 +18,10 @@ import { getRequest } from "@/lib/axiosInstance";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useToastHandler } from "@/hooks/useToaster";
-import { cn, formatDateTZ } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import type { ApiResponseError } from "@/types";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
 type Props = {
   contractId: string;
@@ -202,6 +204,7 @@ const ApproverDetailsSheet = ({
   row: ApproverRow;
   contractId: string;
 }) => {
+  const timeZone = useDateTimeZone();
   const { isManager, isApprover, isVendor, isProjectManager, isViewOnly } =
     useUserRole();
   // Prefer the approver's own id (matches the detail route param). Fall back to
@@ -335,7 +338,7 @@ const ApproverDetailsSheet = ({
               <LabelRow
                 label="Last Updated"
                 value={
-                  createdAt ? formatDateTZ(createdAt, "MMMM dd, yyyy") : "N/A"
+                  createdAt ? formatInTz(createdAt, timeZone, "MMMM dd, yyyy") : "N/A"
                 }
               />
             </div>

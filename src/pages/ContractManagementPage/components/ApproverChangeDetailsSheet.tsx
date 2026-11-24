@@ -24,12 +24,13 @@ import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useToastHandler } from "@/hooks/useToaster";
 import { DocumentItem, type DocType } from "./DocumentItem";
 import { formatFileSize, getFileIcon, getSimpleFileExtension } from "@/lib/fileUtils";
-import { formatDate } from "date-fns";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { approverApi } from "../api/approverApi";
 import type { ApprovalActionDTO } from "../api/approverApi";
 import { formatCompactCurrency, resolveCurrency } from "@/lib/utils";
 import { useUser } from "@/store/authSlice";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
 type Props = {
   trigger: React.ReactNode;
@@ -74,6 +75,7 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
   basePath,
   currency,
 }) => {
+  const timeZone = useDateTimeZone();
   const currencyCode = resolveCurrency(currency, useUser()?.currency);
   const toast = useToastHandler();
   const qc = useQueryClient();
@@ -285,7 +287,7 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
                         isDetailLoading
                           ? ""
                           : prevDate
-                            ? formatDate(new Date(prevDate), "yyyy MMM dd")
+                            ? formatInTz(prevDate, timeZone, "yyyy MMM dd")
                             : "-"
                       }
                     />
@@ -304,7 +306,7 @@ const ApproverChangeDetailsSheet: React.FC<Props> = ({
                       isDetailLoading
                         ? ""
                         : newDate
-                          ? formatDate(new Date(newDate), "yyyy MMM dd")
+                          ? formatInTz(newDate, timeZone, "yyyy MMM dd")
                           : "-"
                     }
                   />

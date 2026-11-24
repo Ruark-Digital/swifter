@@ -11,7 +11,6 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useToastHandler } from "@/hooks/useToaster";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { cn, formatSecurityType, daysUntilCalendar } from "@/lib/utils";
-import { format } from "date-fns";
 import { Check, Search, Share2, X } from "lucide-react";
 import type { ApiResponseError } from "@/types";
 import type { ContractComplianceDTO } from "@/pages/ContractManagementPage/api/contractManagerApi";
@@ -20,6 +19,8 @@ import SubmitPolicyDialog from "@/pages/ContractManagementPage/components/Submit
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 import { LabelItem } from "../components/LabelItem";
 import { Status, StatusBadge } from "../components/StatusBadge";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
 type Props = {
   contractId: string;
@@ -47,16 +48,6 @@ type SecurityRow = {
   status: string;
 };
 
-const formatDate = (value?: string) => {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-};
 
 // Show the full amount as entered during creation, without decimals — matches
 // the contract-side compliance display (QA #37). No compact "$1.5M" rounding.
@@ -82,6 +73,7 @@ const getStatusTone = (status?: string) => {
 };
 
 const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled, owner }) => {
+  const timeZone = useDateTimeZone();
   const {
     isVendor,
     isProjectManager,
@@ -168,7 +160,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled, ow
     () =>
       (complianceData?.security ?? []).map((security) => {
         const dueDate = security.dueDate
-          ? format(new Date(security.dueDate), "dd MMM yyyy")
+          ? formatInTz(security.dueDate, timeZone, "dd MMM yyyy")
           : "-";
         let dueIn = "-";
         if (security.dueDate) {
@@ -187,7 +179,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled, ow
           status: security.status || "Pending",
         };
       }),
-    [complianceData?.security],
+    [complianceData?.security, timeZone],
   );
 
   const filteredPolicyRows = React.useMemo(() => {
@@ -546,7 +538,7 @@ const Compliance: React.FC<Props> = ({ contractId, isActive, actionsDisabled, ow
 
         <LabelItem
           label="Insurance Expiry Date"
-          value={formatDate(complianceData?.details?.expDate)}
+          value={formatInTz(complianceData?.details?.expDate, timeZone, "MMMM d, yyyy")}
         />
        
         <LabelItem

@@ -43,7 +43,8 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { DocType, DocumentItem } from "./DocumentItem";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
-import { format } from "date-fns";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 // import { useNavigate } from "react-router-dom";
 
 export type AmendmentRow = {
@@ -608,6 +609,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
   approverPoolPath,
   renderManagerRejectedAction,
 }) => {
+  const timeZone = useDateTimeZone();
   const [open, setOpen] = React.useState(false);
   const [acceptOpen, setAcceptOpen] = React.useState(false);
   const [rejectOpen, setRejectOpen] = React.useState(false);
@@ -725,7 +727,7 @@ const AmendmentDetailsSheet: React.FC<AmendmentDetailsSheetProps> = ({
   const fmtDate = (val: string | Date | undefined | null): string => {
     if (!val) return "-";
     try {
-      return format(new Date(val as string), "MMM d, yyyy");
+      return formatInTz(val as string, timeZone, "MMM d, yyyy");
     } catch {
       return String(val);
     }

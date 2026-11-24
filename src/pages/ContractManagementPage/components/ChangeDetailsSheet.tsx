@@ -50,7 +50,6 @@ import {
 } from "../lib/contractChanges";
 import { getEffectiveClaimStatus } from "../lib/claimStatus";
 import { useChangeLock } from "../hooks/useChangeLock";
-import { formatDate } from "date-fns";
 import Spinner from "@/components/ui/Spinner";
 import {
   Dialog,
@@ -59,6 +58,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn, formatSecurityType, formatCurrency, formatCompactCurrency, resolveCurrency } from "@/lib/utils";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
 type Props = {
   trigger?: React.ReactNode;
@@ -117,6 +118,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   currency,
   owner,
 }) => {
+  const timeZone = useDateTimeZone();
   const currencyCode = resolveCurrency(currency, useUser()?.currency);
   const toast = useToastHandler();
   const qc = useQueryClient();
@@ -798,7 +800,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                   )}
                   <LabelRow
                     label="Submission Date"
-                    value={submittedAt ? formatDate(submittedAt, "yyyy MMM dd HH:mm aa") : null}
+                    value={submittedAt ? formatInTz(submittedAt, timeZone, "yyyy MMM dd HH:mm aa") : null}
                   />
                   <LabelRow
                     label="Submitted by"

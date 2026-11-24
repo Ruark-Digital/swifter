@@ -8,7 +8,6 @@ import { Share2, Search, Check, X } from "lucide-react";
 import { cn, formatSecurityType, daysUntilCalendar } from "@/lib/utils";
 import { ContractComplianceDTO } from "../api/contractManagerApi";
 import { useUserRole } from "@/hooks/useUserRole";
-import { format } from "date-fns";
 import ComplianceDetailsSheet from "./ComplianceDetailsSheet";
 import SubmitPolicyDialog from "./SubmitPolicyDialog";
 import { useParams } from "react-router-dom";
@@ -16,6 +15,8 @@ import { postRequest } from "@/lib/axiosInstance";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToastHandler } from "@/hooks/useToaster";
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
 export type PolicyRow = {
   id: string;
@@ -54,6 +55,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
   actionsDisabled,
   owner,
 }) => {
+  const timeZone = useDateTimeZone();
   const { id: contractId } = useParams<{ id: string }>();
   const [search, setSearch] = React.useState("");
   const [activeView, setActiveView] = React.useState<"policy" | "security">(
@@ -419,7 +421,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
     if (!data?.security) return [];
     return data.security.map((s) => {
       const dueDate = s.dueDate
-        ? format(new Date(s.dueDate), "dd MMM yyyy")
+        ? formatInTz(s.dueDate, timeZone, "dd MMM yyyy")
         : "-";
       // Once a security is submitted/approved it can't be "Overdue" — the due
       // countdown only applies while it's still outstanding (QA #259/#260).
@@ -444,7 +446,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
         status: s.status || "Pending",
       };
     });
-  }, [data?.security]);
+  }, [data?.security, timeZone]);
 
   const filteredPolicyRows = useMemo(() => {
     if (!search) return policyRows;
@@ -560,7 +562,7 @@ const ComplianceSecurityTab: React.FC<ComplianceSecurityTabProps> = ({
             </p>
             <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
               {data?.details?.expDate
-                ? format(new Date(data.details.expDate), "dd MMM yyyy")
+                ? formatInTz(data.details.expDate, timeZone, "dd MMM yyyy")
                 : "-"}
             </p>
           </div>

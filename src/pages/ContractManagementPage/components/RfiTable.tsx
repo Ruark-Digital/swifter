@@ -57,7 +57,6 @@ import {
 } from "../api/contractManagerApi";
 import { approverApi } from "../api/approverApi";
 import { vendorApi } from "../api/vendorApi";
-import { formatDateTZ } from "@/lib/utils";
 import { formatFileSize, getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -66,6 +65,9 @@ import { postRequest } from "@/lib/axiosInstance";
 import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
 import { DocumentItem, type DocType } from "./DocumentItem";
 import { IssueRfiDialog } from "../layouts/RfiTabContent";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { toCalendarDate } from "@/lib/zonedDate";
+import { formatInTz } from "@/lib/zonedDate";
 
 // RFI `responder` is a single id (string) or a populated user object/ref —
 // see memory project_rfi_responder_singular. Only that specific user
@@ -194,6 +196,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
   contractId,
   rfi,
 }) => {
+  const timeZone = useDateTimeZone();
   const [isOpen, setIsOpen] = React.useState(false);
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
@@ -430,7 +433,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
   });
 
   const formatDate = (value?: string | Date) =>
-    formatDateTZ(value, "dd MMM yyyy");
+    formatInTz(value, timeZone, "dd MMM yyyy");
 
   const submissionDate = formatDate(rfi?.createdAt);
   const responseDeadline = formatDate(rfiDetail?.deadline ?? rfi?.deadline);
@@ -731,7 +734,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                             ) : null}
                           </div>
                           <div className="text-xs text-[#6B7280] dark:text-slate-400">
-                            {formatDateTZ(comment.createdAt, "dd MMM yyyy")}
+                            {formatInTz(comment.createdAt, timeZone, "dd MMM yyyy")}
                           </div>
                         </div>
                         <div
@@ -826,6 +829,7 @@ const RfiResponseContent: React.FC<{
    *  (QA #113 #1). */
   responder?: { _id?: string; name?: string; email?: string };
 }> = ({ rfiId, contractId, isApprover, thread, responder }) => {
+  const timeZone = useDateTimeZone();
   const hasThread = Array.isArray(thread) && thread.length > 0;
   const { data: respRes } = useQuery({
     queryKey: useUserQueryKey([
@@ -900,7 +904,7 @@ const RfiResponseContent: React.FC<{
                   {author}
                   {msg?.submittedAt ? (
                     <span className="ml-2 text-xs font-normal text-[#6B7280] dark:text-slate-400">
-                      {formatDateTZ(msg.submittedAt, "dd MMM yyyy")}
+                      {formatInTz(msg.submittedAt, timeZone, "dd MMM yyyy")}
                     </span>
                   ) : null}
                 </div>
@@ -1005,14 +1009,14 @@ const RespondToRfiDialog: React.FC<RespondToRfiDialogProps> = ({
   const isContractVendorLike = isVendor || isProjectManager;
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
+  const timeZone = useDateTimeZone();
 
   // Coerce the current deadline to a Date so the read-only picker displays the
   // deadline set for the responder (they cannot change it).
-  const initialDeadline = React.useMemo(() => {
-    if (!rfi?.deadline) return undefined;
-    const d = new Date(rfi.deadline as any);
-    return Number.isFinite(d.getTime()) ? d : undefined;
-  }, [rfi?.deadline]);
+  const initialDeadline = React.useMemo(
+    () => toCalendarDate(rfi?.deadline as any, timeZone),
+    [rfi?.deadline, timeZone],
+  );
 
   const { control, reset, setValue } = useForge({
     defaultValues: {

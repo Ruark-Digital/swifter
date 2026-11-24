@@ -48,6 +48,8 @@ import {
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import CreateProjectDialog from "./CreateProjectDialog";
 import UpdateEacDialog from "./UpdateEacDialog";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz, toCalendarDate } from "@/lib/zonedDate";
 
 type Props = {
   trigger?: React.ReactNode;
@@ -267,6 +269,7 @@ const ChangeDetailsSheet: React.FC<Props> = ({
   onOpenChange,
 }) => {
   const profileCurrency = useUser()?.currency;
+  const userTimeZone = useDateTimeZone();
   // View-only users get a read-only sheet: no export/edit/complete/EAC actions.
   const { isViewOnly } = useUserRole();
   const toast = useToastHandler();
@@ -338,12 +341,12 @@ const ChangeDetailsSheet: React.FC<Props> = ({
             : undefined,
         owner: c.creator?.name ?? "-",
         published: c.startDate
-          ? formatDateTZ(c.startDate, "MMM d, yyyy")
+          ? formatInTz(c.startDate, c.timezone || userTimeZone, "MMM d, yyyy")
           : undefined,
-        endDate: c.endDate ? formatDateTZ(c.endDate, "MMM d, yyyy") : undefined,
+        endDate: c.endDate ? formatInTz(c.endDate, c.timezone || userTimeZone, "MMM d, yyyy") : undefined,
         status: c.status,
       })),
-    [linkedContracts, profileCurrency]
+    [linkedContracts, profileCurrency, userTimeZone]
   );
 
   const completeMutation = useCompleteProject(projectId);
@@ -543,8 +546,9 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                         label="Start Date"
                         value={
                           projectRes?.data?.data?.startDate
-                            ? formatDateTZ(
+                            ? formatInTz(
                                 projectRes.data.data.startDate,
+                                userTimeZone,
                                 "MMM d, yyyy"
                               )
                             : ""
@@ -643,8 +647,9 @@ const ChangeDetailsSheet: React.FC<Props> = ({
                         label="End Date"
                         value={
                           projectRes?.data?.data?.endDate
-                            ? formatDateTZ(
+                            ? formatInTz(
                                 projectRes.data.data.endDate,
+                                userTimeZone,
                                 "MMM d, yyyy"
                               )
                             : ""
@@ -834,8 +839,8 @@ const ChangeDetailsSheet: React.FC<Props> = ({
               category: project?.category,
               description: project?.description,
               budget: project?.budget,
-              startDate: project?.startDate ? new Date(project.startDate) : undefined,
-              endDate: project?.endDate ? new Date(project.endDate) : undefined,
+              startDate: toCalendarDate(project?.startDate, userTimeZone),
+              endDate: toCalendarDate(project?.endDate, userTimeZone),
               allowMultipleContracts: !!project?.allowMultiple,
               businessDivision: project?.businessDivision,
               existingFiles: project?.files ?? [],

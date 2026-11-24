@@ -22,7 +22,8 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useToastHandler } from "@/hooks/useToaster";
 import type { ApiResponseError } from "@/types";
-import { formatDateTZ } from "@/lib/utils";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
 type Props = {
   contractId: string;
@@ -71,6 +72,7 @@ const ReportDetailsSheet = ({
   reportId: string;
   basePath: string;
 }) => {
+  const timeZone = useDateTimeZone();
   const [open, setOpen] = React.useState(false);
 
   const { data, isLoading } = useQuery({
@@ -139,7 +141,7 @@ const ReportDetailsSheet = ({
                 value={
                   isLoading
                     ? "Loading..."
-                    : formatDateTZ(detail?.submissionDate || detail?.createdAt, "MMMM dd, yyyy")
+                    : formatInTz(detail?.submissionDate || detail?.createdAt, timeZone, "MMMM dd, yyyy")
                 }
               />
               <LabelRow
@@ -172,6 +174,7 @@ const ReportDetailsSheet = ({
 };
 
 const Reports: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => {
+  const timeZone = useDateTimeZone();
   const { isApprover, isVendor, isProjectManager, isManager, isAdmin, isViewOnly } =
     useUserRole();
   const toastHandler = useToastHandler();
@@ -261,12 +264,12 @@ const Reports: React.FC<Props> = ({ contractId, isActive, actionsDisabled }) => 
           ? report.submittedBy
           : report?.submittedBy?.name || "Unknown",
       submissionDate: report?.createdAt
-        ? formatDateTZ(report.createdAt, "dd-MM-yyyy")
+        ? formatInTz(report.createdAt, timeZone, "dd-MM-yyyy")
         : report?.submissionDate
-          ? formatDateTZ(report.submissionDate, "dd-MM-yyyy")
+          ? formatInTz(report.submissionDate, timeZone, "dd-MM-yyyy")
           : "-",
     }));
-  }, [reportsRes]);
+  }, [reportsRes, timeZone]);
 
   const allCount = React.useMemo(() => {
     const statsPayload = (statsRes as any)?.data;

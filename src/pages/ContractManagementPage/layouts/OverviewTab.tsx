@@ -5,7 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Share2 } from "lucide-react";
 import EmployeeCardPopover from "../components/EmployeeCardPopover";
 import type { ContractDetail } from "@/types";
-import { cn, formatDateTZ, formatCalendarDate } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 import EditContract from "../components/EditContract";
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -792,6 +794,7 @@ type Props = {
 };
 
 const OverviewTab: React.FC<Props> = ({ contract, status }) => {
+  const timeZone = useDateTimeZone();
   const [editingContractId, setEditingContractId] = React.useState<
     string | null
   >(null);
@@ -881,14 +884,14 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
           : (contract as any).contractRelationship === "msa"
             ? "Linked to MSA"
             : "N/A";
-  // Effective/end dates are calendar dates — render them from the stored date
-  // portion so they don't roll back a day for viewers west of UTC (QA #277).
-  const effectiveDate = formatCalendarDate(contract.startDate, "dd MMM yyyy");
-  const endDate = formatCalendarDate(contract.endDate, "dd MMM yyyy");
-  const publishedDate = formatDateTZ(
+  // Effective/end dates are calendar dates in the contract's timezone, so they
+  // don't shift with the viewer's browser (QA #277, QA-044).
+  const effectiveDate = formatInTz(contract.startDate, timeZone, "dd MMM yyyy");
+  const endDate = formatInTz(contract.endDate, timeZone, "dd MMM yyyy");
+  const publishedDate = formatInTz(
     contract.datePublished,
+    timeZone,
     "dd MMM yyyy",
-    contract.timezone,
   );
 
   const getDuration = (start?: string | Date, end?: string | Date) => {

@@ -30,6 +30,16 @@ export const useToastHandler = () => {
         return;
       }
 
+      // Rate limiter bodies vary (plain text or JSON), so decide on status alone.
+      if (error?.response?.status === 429) {
+        toast({
+          title,
+          description: "Too many attempts. Please wait a minute and try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (error?.response?.data && error.response?.data.message) {
         toast({
           title,

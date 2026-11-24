@@ -26,7 +26,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useToastHandler } from "@/hooks/useToaster";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
-import { cn, formatCompactCurrency, formatDateTZ, resolveCurrency } from "@/lib/utils";
+import { cn, formatCompactCurrency, resolveCurrency } from "@/lib/utils";
 import { useUser } from "@/store/authSlice";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import type { ApiResponseError } from "@/types";
@@ -39,6 +39,8 @@ import { DocumentItem, type DocType } from "@/pages/ContractManagementPage/compo
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import InvoiceStatsCards from "@/pages/ContractManagementPage/components/InvoiceStatsCards";
 import CreateInvoiceDialog from "@/pages/ContractManagementPage/components/CreateInvoiceDialog";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
 type Props = {
   contractId: string;
@@ -89,6 +91,7 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
   invoicesQueryKey,
   currency,
 }) => {
+  const timeZone = useDateTimeZone();
   const currencyCode = resolveCurrency(currency, useUser()?.currency);
   const { isApprover, isManager } = useUserRole();
   const toastHandler = useToastHandler();
@@ -323,7 +326,7 @@ const MsaInvoiceDetailsSheet: React.FC<MsaInvoiceDetailsSheetProps> = ({
                           invoice?.submittedAt ??
                           invoice?.createdAt;
                         return submitted
-                          ? formatDateTZ(submitted, "MMM dd, yyyy")
+                          ? formatInTz(submitted, timeZone, "MMM dd, yyyy")
                           : "-";
                       })()
                 }

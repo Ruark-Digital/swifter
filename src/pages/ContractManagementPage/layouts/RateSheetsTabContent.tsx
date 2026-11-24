@@ -45,10 +45,11 @@ import { DocumentItem, type DocType } from "../components/DocumentItem";
 import { useToastHandler } from "@/hooks/useToaster";
 import type { ApiResponse, ApiResponseError } from "@/types";
 import type { UploadURLs } from "../lib/contractChanges";
-import { formatDate } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import Spinner from "@/components/ui/Spinner";
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
 type Props = {
   contractId: string;
@@ -841,6 +842,7 @@ const RateSheetDetailsSheet: React.FC<{
    *  approve action. */
   owner?: boolean;
 }> = ({ trigger, contractId, row, basePath, owner }) => {
+  const timeZone = useDateTimeZone();
   const [open, setOpen] = React.useState(false);
   const toastHandler = useToastHandler();
   const queryClient = useQueryClient();
@@ -978,7 +980,7 @@ const RateSheetDetailsSheet: React.FC<{
                     <LabelRow
                       label="Submission Date"
                       value={sheet?.createdAt
-                        ? formatDate(sheet?.createdAt, "yyyy MMM dd")
+                        ? formatInTz(sheet?.createdAt, timeZone, "yyyy MMM dd")
                         : "—"}
                     />
                     <LabelRow

@@ -88,7 +88,7 @@ const CreateAdminDialog = () => {
         email: data.email,
         // The onboarding endpoint accepts a `roles` array, not a single `role`.
         roles: [data.role],
-        companyId: data.company ?? user?.companyId,
+        companyId: data.company ?? user?.companyId?._id,
       };
       return await postRequest({
         url: "/onboarding/add-user",

@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { cn, formatDateTZ, resolveCurrency } from "@/lib/utils";
+import { cn, resolveCurrency } from "@/lib/utils";
 import { ArrowLeft, Search, X } from "lucide-react";
 import CreateInvoiceDialog from "./CreateInvoiceDialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -35,6 +35,8 @@ import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import { DocumentItem, type DocType } from "./DocumentItem";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import type { ApiResponseError } from "@/types";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
 /** Display label for an invoice's `type`. The "holdback" type is shown as
  *  "Holdback Release" (matching the create-invoice type selector); every other
@@ -90,6 +92,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
   owner,
   currency,
 }) => {
+  const timeZone = useDateTimeZone();
   const currencyCode = resolveCurrency(currency, useUser()?.currency);
   const { isVendor, isProjectManager, isApprover, isManager, isAdmin, isViewOnly } = useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
@@ -347,7 +350,7 @@ const InvoiceDetailsSheet: React.FC<InvoiceDetailsSheetProps> = ({
                     invoice?.submittedAt ??
                     invoice?.createdAt;
                   return submitted
-                    ? formatDateTZ(submitted, "MMM dd, yyyy")
+                    ? formatInTz(submitted, timeZone, "MMM dd, yyyy")
                     : "-";
                 })()}
               />

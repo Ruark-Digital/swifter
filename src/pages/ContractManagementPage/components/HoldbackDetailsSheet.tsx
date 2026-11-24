@@ -23,9 +23,10 @@ import { getRequest, postRequest, putRequest } from "@/lib/axiosInstance";
 import { useToastHandler } from "@/hooks/useToaster";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
 import { DocumentItem, type DocType } from "./DocumentItem";
-import { formatDate } from "date-fns";
 import { cn, formatCurrency } from "@/lib/utils";
 import { getHoldbackStatusBadgeProps } from "../lib/holdbacks";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
 type Props = {
   trigger: React.ReactNode;
@@ -83,6 +84,7 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
   currency = "USD",
   owner,
 }) => {
+  const timeZone = useDateTimeZone();
   const toast = useToastHandler();
   const [open, setOpen] = React.useState(false);
   const { isVendor, isProjectManager, isApprover, isManager } = useUserRole();
@@ -373,7 +375,7 @@ const HoldbackDetailsSheet: React.FC<Props> = ({
                       Released Date
                     </div>
                     <div className="text-sm font-semibold text-[#0F0F0F] dark:text-slate-100">
-                      {detail?.releasedDate ? formatDate(detail?.releasedDate, "dd MMM yyyy") : "-"}
+                      {detail?.releasedDate ? formatInTz(detail?.releasedDate, timeZone, "dd MMM yyyy") : "-"}
                     </div>
                   </div>
 
