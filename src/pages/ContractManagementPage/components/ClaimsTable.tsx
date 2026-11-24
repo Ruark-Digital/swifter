@@ -1,5 +1,4 @@
 import React from "react";
-import { format } from "date-fns";
 import { DataTable } from "@/components/layouts/DataTable";
 import type {
   CellContext,
@@ -18,6 +17,8 @@ import type { ContractClaimDTO } from "../api/contractManagerApi";
 import ChangeDetailsSheet from "./ChangeDetailsSheet";
 import { formatCompactCurrency, formatSecurityType } from "@/lib/utils";
 import { getEffectiveClaimStatus } from "../lib/claimStatus";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
 const formatImpact = (item: ContractClaimDTO, currency: string) => {
   const hasTime = typeof item.time === "number" && Number.isFinite(item.time);
@@ -78,6 +79,11 @@ function ClaimActionsCell({
   );
 }
 
+const ClaimDate: React.FC<{ value?: string }> = ({ value }) => {
+  const timeZone = useDateTimeZone();
+  return <>{value ? formatInTz(value, timeZone, "dd MMM yyyy") : "-"}</>;
+};
+
 const columns: ColumnDef<ContractClaimDTO>[] = [
   {
     id: "claimId",
@@ -114,10 +120,7 @@ const columns: ColumnDef<ContractClaimDTO>[] = [
   {
     accessorKey: "createdAt",
     header: "Submitted",
-    cell: ({ getValue }) => {
-      const date = getValue<string | undefined>();
-      return date ? format(new Date(date), "dd MMM yyyy") : "-";
-    },
+    cell: ({ getValue }) => <ClaimDate value={getValue<string | undefined>()} />,
   },
   {
     accessorKey: "status",

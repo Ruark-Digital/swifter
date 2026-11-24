@@ -3,11 +3,12 @@ import { TabsContent } from "@/components/ui/tabs";
 import KpiTable, { type KpiRow } from "@/pages/ContractManagementPage/components/KpiTable";
 import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
-import { format } from "date-fns";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useToastHandler } from "@/hooks/useToaster";
 import type { ApiResponseError } from "@/types";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
 type Props = {
   contractId: string;
@@ -15,6 +16,7 @@ type Props = {
 };
 
 const Kpi: React.FC<Props> = ({ contractId, isActive }) => {
+  const timeZone = useDateTimeZone();
   const { isManager, isAdmin, isViewOnly } = useUserRole();
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
@@ -75,13 +77,13 @@ const Kpi: React.FC<Props> = ({ contractId, isActive }) => {
               : `${item.allTimeAvgScore ?? ""}`,
           lastUpdated: (() => {
             if (neverScored || !item.lastUpdated) return "";
-            const parsed = new Date(item.lastUpdated);
-            return isNaN(parsed.getTime()) ? "" : format(parsed, "dd-MM-yyyy");
+            const out = formatInTz(item.lastUpdated, timeZone, "dd-MM-yyyy");
+            return out === "N/A" ? "" : out;
           })(),
           actions: canManageKpi ? ["Update", "View"] : [],
         };
       }),
-    [canManageKpi, data],
+    [canManageKpi, data, timeZone],
   );
 
   return (

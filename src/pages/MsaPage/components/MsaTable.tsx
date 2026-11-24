@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
 import { Link } from "react-router-dom";
 import {
-  format,
   isWithinInterval,
   subDays,
   startOfDay,
@@ -28,6 +27,7 @@ import {
   isEditableStatus,
   availableLifecycleActions,
 } from "@/pages/ContractManagementPage/components/contractLifecycle";
+import { formatInTz } from "@/lib/zonedDate";
 
 export type MsaRow = {
   id: string;
@@ -38,6 +38,7 @@ export type MsaRow = {
   owner: string;
   published?: string;
   endDate?: string;
+  timezone?: string;
   status:
     | "Active"
     | "Draft"
@@ -246,12 +247,12 @@ const columns: ColumnDef<MsaRow>[] = [
       <div className="text-xs text-slate-500 dark:text-slate-400">
         {row.original.published && (
           <div>
-            Published: {format(new Date(row.original.published), "yyyy MMM dd")}
+            Published: {formatInTz(row.original.published, row.original.timezone, "yyyy MMM dd")}
           </div>
         )}
         {row.original.endDate && (
           <div>
-            End Date: {format(new Date(row.original.endDate), "yyyy MMM dd")}
+            End Date: {formatInTz(row.original.endDate, row.original.timezone, "yyyy MMM dd")}
           </div>
         )}
       </div>

@@ -61,6 +61,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { cn, resolveCurrency } from "@/lib/utils";
+import { DateTimeZoneProvider } from "@/hooks/useDateTimeZone";
 
 const formatContractStatus = (status?: ContractDetail["status"]) => {
   if (status === "active")
@@ -545,6 +546,7 @@ const ContractDetailPage: React.FC = () => {
     "data-[state=active]:border-[#2A4467] data-[state=active]:dark:bg-transparent data-[state=active]:dark:text-slate-100 relative rounded-none py-2 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 border-0 border-b-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none flex-none px-3 text-sm";
 
   return (
+    <DateTimeZoneProvider timeZone={contract?.timezone}>
     <div className="space-y-8 pt-5">
       <SEOWrapper
         title="Contract Details - SwiftPro eProcurement Portal"
@@ -949,6 +951,7 @@ const ContractDetailPage: React.FC = () => {
         }}
       />
     </div>
+    </DateTimeZoneProvider>
   );
 };
 

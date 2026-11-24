@@ -27,7 +27,8 @@ import {
 import { useUserRole } from "@/hooks/useUserRole";
 import { getRequest, putRequest } from "@/lib/axiosInstance";
 import { formatFileSize, getSimpleFileExtension } from "@/lib/fileUtils";
-import { toAmendmentDateTimeValue } from "../utils/amendmentDate";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { toCalendarDate, toZonedStartOfDayISO } from "@/lib/zonedDate";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -189,6 +190,7 @@ export const CreateAmendmentDialog: React.FC<{
   successText,
   onSubmitted,
 }) => {
+  const timeZone = useDateTimeZone();
   const [open, setOpen] = React.useState(false);
   const [successOpen, setSuccessOpen] = React.useState(false);
   const queryClient = useQueryClient();
@@ -320,7 +322,7 @@ export const CreateAmendmentDialog: React.FC<{
       if (data.timeImpactDays) {
         changes.push({
           field: "time",
-          value: toAmendmentDateTimeValue(data.timeImpactDays),
+          value: toZonedStartOfDayISO(data.timeImpactDays, timeZone) ?? "",
         });
       }
     }
@@ -342,7 +344,7 @@ export const CreateAmendmentDialog: React.FC<{
       if (data.expiryEnabled && data.newExpiryDate) {
         changes.push({
           field: "time",
-          value: toAmendmentDateTimeValue(data.newExpiryDate),
+          value: toZonedStartOfDayISO(data.newExpiryDate, timeZone) ?? "",
         });
       }
       if (data.costEnabled && data.otherCost) {
@@ -800,15 +802,16 @@ export const CreateAmendmentDialog: React.FC<{
 
 const toAmendmentFormDate = (
   value: string | Date | undefined | null,
+  timeZone: string,
 ): Date | string => {
   if (!value) return "";
   if (value instanceof Date) return value;
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? value : parsed;
+  return toCalendarDate(value, timeZone) ?? value;
 };
 
 const buildEditAmendmentInitialValues = (
   detail: AmendmentDetail,
+  timeZone: string,
 ): Partial<CreateAmendmentFormValues> => {
   const impactType =
     detail.impact === "cost" ||
@@ -830,7 +833,7 @@ const buildEditAmendmentInitialValues = (
   return {
     amendmentTitle: detail.title ?? "",
     impactType,
-    timeImpactDays: toAmendmentFormDate(timeChange?.newValue as any),
+    timeImpactDays: toAmendmentFormDate(timeChange?.newValue as any, timeZone),
     costImpactAmount: costChange?.newValue ? String(costChange.newValue) : "",
     scopeEnabled: Boolean(scopeChange?.newValue),
     expiryEnabled: Boolean(timeChange?.newValue),
@@ -838,7 +841,7 @@ const buildEditAmendmentInitialValues = (
     clauseEnabled: Boolean(clauseValue),
     othersEnabled: Boolean(otherDetails),
     scope: scopeChange?.newValue ? String(scopeChange.newValue) : "",
-    newExpiryDate: toAmendmentFormDate(timeChange?.newValue as any),
+    newExpiryDate: toAmendmentFormDate(timeChange?.newValue as any, timeZone),
     otherCost: costChange?.newValue ? String(costChange.newValue) : "",
     clause: clauseValue,
     otherDetails,
@@ -878,6 +881,7 @@ const AmendmentsTabContent: React.FC<Props> = ({
   const { isApprover, isVendor, isProjectManager, isManager, isAdmin, isCompanyAdmin, isViewOnly } =
     useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
+  const timeZone = useDateTimeZone();
 
   const getBasePath = () => {
     if (isContractVendorLike) return `/contract/vendor/contracts/${contractId}/amendment`;
@@ -1026,7 +1030,7 @@ const AmendmentsTabContent: React.FC<Props> = ({
             contractId={contractId}
             amendmentId={detail._id}
             updatePath={`/contract/manager/contracts/${contractId}/amendments/${detail._id}`}
-            initialValues={buildEditAmendmentInitialValues(detail)}
+            initialValues={buildEditAmendmentInitialValues(detail, timeZone)}
             existingFiles={buildExistingAmendmentFiles(detail)}
             listInvalidateQueryKey={amendmentsQueryKey}
             statsInvalidateQueryKey={statsQueryKey}

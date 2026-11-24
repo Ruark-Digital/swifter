@@ -17,6 +17,8 @@ import MsaUpdateSavingsDialog from "../components/MsaUpdateSavingsDialog";
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 import { resolveCurrency, resolveMilestoneDeliverableName } from "@/lib/utils";
 import { useUser } from "@/store/authSlice";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
 type PaymentSummaryProps = {
   contractId: string;
@@ -79,15 +81,10 @@ type PaymentSavingApi = {
   submittedDate?: string | Date;
 };
 
-const formatShortDate = (value?: string | Date) => {
+const formatShortDate = (value: string | Date | undefined, timeZone: string) => {
   if (!value) return "-";
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleDateString("en-US", {
-    month: "2-digit",
-    day: "2-digit",
-    year: "numeric",
-  });
+  const out = formatInTz(value, timeZone, "MM/dd/yyyy");
+  return out === "N/A" ? "-" : out;
 };
 
 // #82 — Holdback (amount/released/release action + tab) and Payment Structure
@@ -103,6 +100,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
   msa,
   isActive,
 }) => {
+  const timeZone = useDateTimeZone();
   const { isVendor, isProjectManager, isApprover, isViewOnly, isManager } =
     useUserRole();
   const isVendorLike = isVendor || isProjectManager;
@@ -245,9 +243,9 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
         resolveMilestoneDeliverableName(item?.deliverable, deliverableNameById) ||
         "-",
       amount: formatMoney(item?.amount),
-      dueDate: formatShortDate(item?.dueDate),
+      dueDate: formatShortDate(item?.dueDate, timeZone),
     }));
-  }, [deliverableNameById, formatMoney, msa?.milestone]);
+  }, [deliverableNameById, formatMoney, msa?.milestone, timeZone]);
 
   const holdbackRows = React.useMemo<HoldbackReleaseRow[]>(() => {
     const holdbacks = holdbacksResponse?.data ?? [];
@@ -261,9 +259,9 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
             : holdback?.type || "-",
       releasedAmount: formatMoney(holdback?.amount),
       status: holdback?.status ?? "-",
-      dueDate: formatShortDate(holdback?.releasedDate),
+      dueDate: formatShortDate(holdback?.releasedDate, timeZone),
     }));
-  }, [formatMoney, holdbacksResponse?.data]);
+  }, [formatMoney, holdbacksResponse?.data, timeZone]);
 
   const savingRows = React.useMemo<SavingRealizedRow[]>(() => {
     const savings = savingsResponse?.data ?? [];
@@ -272,9 +270,9 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
       savingsTitle: saving?.title ?? "-",
       category: saving?.category ?? "-",
       amount: formatMoney(saving?.amount),
-      dateSubmitted: formatShortDate(saving?.submittedDate),
+      dateSubmitted: formatShortDate(saving?.submittedDate, timeZone),
     }));
-  }, [formatMoney, savingsResponse?.data]);
+  }, [formatMoney, savingsResponse?.data, timeZone]);
 
   const holdbackColumns = React.useMemo<ColumnDef<HoldbackReleaseRow>[]>(
     () => [

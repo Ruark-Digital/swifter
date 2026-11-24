@@ -42,6 +42,8 @@ import {
 } from "@/components/ui/dialog";
 import CreateVendorReportDialog from "../components/CreateVendorReportDialog";
 import { CheckCircle } from "lucide-react";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
 const LabelRow = ({
   label,
@@ -110,6 +112,7 @@ const ReportDetailsSheet: React.FC<{
   contractId: string;
   trigger: React.ReactNode;
 }> = ({ reportId, basePath, contractId, trigger }) => {
+  const timeZone = useDateTimeZone();
   const [open, setOpen] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<
@@ -249,10 +252,7 @@ const ReportDetailsSheet: React.FC<{
                         label="Submission Date"
                         value={
                           reportDetails.createdAt
-                            ? format(
-                                new Date(reportDetails.createdAt),
-                                "dd MMM yyyy",
-                              )
+                            ? formatInTz(reportDetails.createdAt, timeZone, "dd MMM yyyy")
                             : "N/A"
                         }
                       />

@@ -31,7 +31,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { useUser } from "@/store/authSlice";
 import { useUserRole } from "@/hooks/useUserRole";
-import { formatDateTZ } from "@/lib/utils";
 import SubmitCapaDialog from "./SubmitCapaDialog";
 import { getRequest, patchRequest, postRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
@@ -44,6 +43,8 @@ import type {
   ContractCommentDTO,
   ContractChangeCommentDTO,
 } from "../api/contractManagerApi";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
 export type NcrRow = {
   id: string;
@@ -176,6 +177,7 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
   listInvalidateQueryKey,
   statsInvalidateQueryKey,
 }) => {
+  const timeZone = useDateTimeZone();
   const [open, setOpen] = React.useState(false);
   const [viewerOpen, setViewerOpen] = React.useState(false);
   const [selectedDoc, setSelectedDoc] = React.useState<DocType | null>(null);
@@ -273,8 +275,8 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
   const ncrIdentifier = detail?.ncrId ?? detail?._id ?? ncrId;
   const submittedBy = detail?.submittedBy?.name ?? "-";
 
-  const submissionDate = formatDateTZ(detail?.createdAt, "dd MMM yyyy");
-  const responseDeadline = formatDateTZ(detail?.updatedAt, "dd MMM yyyy");
+  const submissionDate = formatInTz(detail?.createdAt, timeZone, "dd MMM yyyy");
+  const responseDeadline = formatInTz(detail?.updatedAt, timeZone, "dd MMM yyyy");
 
   const latestCapa = detail?.capa?.[0];
 
@@ -590,7 +592,7 @@ const NcrDetailsSheet: React.FC<NcrDetailsSheetProps> = ({
                           </div>
                           <div className="text-xs text-[#6B7280] dark:text-slate-400">
                             {comment.createdAt
-                              ? formatDateTZ(comment.createdAt, "dd MMM yyyy, HH:mm")
+                              ? formatInTz(comment.createdAt, timeZone, "dd MMM yyyy, HH:mm")
                               : ""}
                           </div>
                         </div>

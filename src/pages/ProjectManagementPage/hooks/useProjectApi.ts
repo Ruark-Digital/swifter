@@ -65,6 +65,7 @@ type Contract = {
   company: string;
   project: string;
   vendor: { _id?: string; name?: string } | null;
+  timezone?: string;
   creator: { _id?: string; name?: string } | null;
   title: string;
   contractId?: string;

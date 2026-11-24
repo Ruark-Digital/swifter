@@ -34,7 +34,6 @@ import { useToastHandler } from "@/hooks/useToaster";
 import { useWatch } from "react-hook-form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { X, FileText } from "lucide-react";
-import { format } from "date-fns";
 import { useClearSession } from "@/store/solicitationFileSlice";
 import { useUser } from "@/store/authSlice";
 import { pruneEmptyValuesDeep } from "@/lib/pruneEmptyValuesDeep";
@@ -49,6 +48,7 @@ import {
   toIdStringOrUndefined,
   toPersonnelOrUndefined,
 } from "@/lib/contractFormValues";
+import { toZonedStartOfDayISO } from "@/lib/zonedDate";
 
 type Props = {
   trigger: React.ReactNode;
@@ -1051,7 +1051,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         ? (data.milestones ?? []).map((m) => {
             const amount = toNumberOrUndefined(m.amount);
             const dueDate = m.dueDate
-              ? format(m.dueDate, "yyyy-MM-dd'T'HH:mm:ss")
+              ? toZonedStartOfDayISO(m.dueDate, tz)
               : undefined;
             const deliverableName =
               typeof m.deliverable === "string" ? m.deliverable.trim() : "";
@@ -1075,7 +1075,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         (data.deliverables ?? []).map((d) => ({
           name: d.name,
           dueDate: d.dueDate
-            ? format(d.dueDate, "yyyy-MM-dd'T'HH:mm:ss")
+            ? toZonedStartOfDayISO(d.dueDate, tz)
             : undefined,
         })) ?? [];
 
@@ -1113,7 +1113,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       // Insurance Construction
       const mainSecurityAmount = toNumberOrUndefined(data.securityAmount);
       const mainSecurityDueDate = data.securityDueDate
-        ? format(data.securityDueDate, "yyyy-MM-dd'T'HH:mm:ss")
+        ? toZonedStartOfDayISO(data.securityDueDate, tz)
         : undefined;
       const mainSecurity = data.securityType
         ? [
@@ -1132,7 +1132,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
           securityType: s.type,
           ...(amount !== undefined ? { amount } : {}),
           dueDate: s.dueDate
-            ? format(s.dueDate, "yyyy-MM-dd'T'HH:mm:ss")
+            ? toZonedStartOfDayISO(s.dueDate, tz)
             : undefined,
         };
       });
@@ -1141,7 +1141,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         insurance: data.contractSecurity === "yes" ? "Yes" : "No",
         contractSecurity: data.contractSecurity === "yes",
         expiryDate: data.insuranceExpiryDate
-          ? format(data.insuranceExpiryDate, "yyyy-MM-dd'T'HH:mm:ss")
+          ? toZonedStartOfDayISO(data.insuranceExpiryDate, tz)
           : undefined,
         contractSecurityType: [...mainSecurity, ...extraSecurities],
         policy: (data.insurancePolicies || []).map((p) => ({
@@ -1151,8 +1151,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       };
 
       // Dates Construction
-      const formatDate = (d: any) =>
-        d ? format(d, "yyyy-MM-dd'T'HH:mm:ss") : undefined;
+      const formatDate = (d: any) => toZonedStartOfDayISO(d, tz);
 
       const contractFormationStage = {
         draft: {

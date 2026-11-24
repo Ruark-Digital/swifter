@@ -22,10 +22,11 @@ import VendorStatsCards from "./components/VendorStatsCards";
 import VendorContractsTable, {
   VendorContractRow,
 } from "./components/VendorContractsTable";
-import { formatDate } from "date-fns";
 import { resolveCurrency } from "@/lib/utils";
+import { formatInTz } from "@/lib/zonedDate";
 
 type ContractApi = {
+  timezone?: string;
   _id: string;
   contractId: string;
   title: string;
@@ -87,6 +88,7 @@ type ApproverContractListResponse = {
 };
 
 type VendorContractApi = {
+  timezone?: string;
   id: string;
   title: string;
   contractId: string;
@@ -446,9 +448,9 @@ const mapContractsToRows = (contracts?: ContractApi[], profileCurrency?: string)
       ownerId: c.creator?._id,
       isOwner: c.owner,
       published: c.datePublished
-        ? formatDate(c.datePublished, "dd MMM yyyy")
+        ? formatInTz(c.datePublished, c.timezone, "dd MMM yyyy")
         : undefined,
-      endDate: c.endDate ? formatDate(c.endDate, "dd MMM yyyy") : undefined,
+      endDate: c.endDate ? formatInTz(c.endDate, c.timezone, "dd MMM yyyy") : undefined,
       createdAtRaw: c.createdAt,
       status: mapStatusToLabel(c.status),
       category: c.category,
@@ -500,9 +502,9 @@ const mapVendorContractsToRows = (
       contractRelationship: mapContractRelationshipLabel(c.contractRelationship),
       value,
       published: c.datePublished
-        ? formatDate(c.datePublished, "dd MMM yyyy")
+        ? formatInTz(c.datePublished, c.timezone, "dd MMM yyyy")
         : undefined,
-      endDate: c.endDate ? formatDate(c.endDate, "dd MMM yyyy") : undefined,
+      endDate: c.endDate ? formatInTz(c.endDate, c.timezone, "dd MMM yyyy") : undefined,
       status: mapVendorStatusToLabel(c.status),
       isOwner: c.owner,
     };

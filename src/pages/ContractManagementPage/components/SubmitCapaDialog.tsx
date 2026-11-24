@@ -18,6 +18,8 @@ import { postRequest } from "@/lib/axiosInstance";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useFormContext } from "react-hook-form";
 import { formatFileSize } from "@/lib/fileUtils";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { toZonedStartOfDayISO } from "@/lib/zonedDate";
 
 type SubmitCapaDialogProps = {
   trigger: React.ReactNode;
@@ -74,6 +76,7 @@ const SubmitCapaDialog: React.FC<SubmitCapaDialogProps> = ({
   statsInvalidateQueryKey,
 }) => {
   const queryClient = useQueryClient();
+  const timeZone = useDateTimeZone();
   const [open, setOpen] = React.useState(false);
 
   const { control, reset, setValue } = useForge({
@@ -209,8 +212,8 @@ const SubmitCapaDialog: React.FC<SubmitCapaDialogProps> = ({
               submitCapaMutation.mutate({
                 title: d.title,
                 timeline:
-                  d.timeline && typeof d.timeline?.toISOString === "function"
-                    ? d.timeline.toISOString()
+                  d.timeline instanceof Date
+                    ? toZonedStartOfDayISO(d.timeline, timeZone)
                     : d.timeline,
                 description: d.description,
                 files: d.files,
