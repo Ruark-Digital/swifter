@@ -210,6 +210,7 @@ View User has no Dashboard, Projects or Business Divisions; after login it lands
 | Solicitation Management | Procurement, Company Admin, Super Admin | Full access |
 | Contract Management | Varies by role | Contract Manager, Approver, Vendor, Project Manager, View User, Company Admin, Super Admin |
 | MSA | Varies by role | All roles |
+| Create Contract / Create MSA | Contract Manager, Procurement Lead only | Not available to Company Admin, Super Admin, Approver, Evaluator, Vendor, Project Manager or View User |
 | User Management | Company Admin, Super Admin | Full access |
 | Vendor Management | Company Admin, Procurement Lead | Role-based access |
 | Evaluation | Evaluator, Company Admin, Super Admin | canEvaluate permission |
@@ -430,6 +431,14 @@ These are quick sanity checks that role-based navigation and core pages load.
 2. Navigate: Sidebar → Contract Management
 3. Verify contracts list renders
 4. Click to view contract details
+
+### Create Contract / Create MSA (Contract Manager and Procurement Lead only)
+Only Contract Manager and Procurement Lead can create a contract or an MSA.
+1. Login as Contract Manager (Section 2)
+2. Navigate: Sidebar → Contract Management → Contracts → verify the create action is visible and opens the create form
+3. Navigate: Sidebar → Contract Management → MSA → verify the create action is visible and opens the create form
+4. Repeat steps 1-3 as Procurement Lead (when the Contract Management module is enabled)
+5. Negative check: login as each of Company Admin, Super Admin, Approver, Evaluator, Vendor, Project Manager and View User, open the Contracts and MSA lists they can reach, and confirm no create action is visible
 
 ### Solicitation Feature (Procurement Lead)
 1. Login as `adediran.dbs+pl@gmail.com` / `password`
