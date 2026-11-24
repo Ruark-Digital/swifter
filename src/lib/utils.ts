@@ -465,7 +465,7 @@ export function solicitationInstant(
 // meaning: `CST` → US Central (−360, not China +480) and `AST` → Atlantic (−240,
 // not Arabia +180). Unknown/absent abbreviations fall back to viewer-local
 // formatting (see `formatDateInZoneAbbrev`).
-const ZONE_ABBREV_OFFSET_MINUTES: Record<string, number> = {
+export const ZONE_ABBREV_OFFSET_MINUTES: Record<string, number> = {
   UTC: 0, GMT: 0, WET: 0,
   AZOT: -60, CVT: -60,
   BRT: -180, ART: -180,
@@ -498,7 +498,7 @@ const ZONE_ABBREV_OFFSET_MINUTES: Record<string, number> = {
 // hour behind. Both the standard and daylight labels map to the same zone. GMT
 // is intentionally excluded (it is widely used as a fixed UTC alias); UTC/WAT/GST
 // etc. observe no DST and stay on the fixed table above.
-const ZONE_ABBREV_IANA: Record<string, string> = {
+export const ZONE_ABBREV_IANA: Record<string, string> = {
   EST: "America/New_York", EDT: "America/New_York",
   CST: "America/Chicago", CDT: "America/Chicago",
   MST: "America/Denver", MDT: "America/Denver",
