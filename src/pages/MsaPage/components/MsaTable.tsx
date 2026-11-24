@@ -27,7 +27,7 @@ import {
   isEditableStatus,
   availableLifecycleActions,
 } from "@/pages/ContractManagementPage/components/contractLifecycle";
-import { formatInTz } from "@/lib/zonedDate";
+import { formatContractDateTime, formatInTz } from "@/lib/zonedDate";
 
 export type MsaRow = {
   id: string;
@@ -266,7 +266,7 @@ const columns: ColumnDef<MsaRow>[] = [
         )}
         {row.original.endDate && (
           <div>
-            End Date: {formatInTz(row.original.endDate, row.original.timezone, "yyyy MMM dd")}
+            End Date: {formatContractDateTime(row.original.endDate, row.original.timezone, row.original.published, { pattern: "yyyy MMM dd, hh:mm a" })}
           </div>
         )}
       </div>

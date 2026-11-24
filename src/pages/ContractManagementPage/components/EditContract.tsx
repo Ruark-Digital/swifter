@@ -47,7 +47,7 @@ import {
   toIdStringOrUndefined,
   toPersonnelOrUndefined,
 } from "@/lib/contractFormValues";
-import { toZonedStartOfDayISO, toCalendarDate } from "@/lib/zonedDate";
+import { toCalendarDate, toContractDateTimeISO, toContractDateTimeValue, toZonedStartOfDayISO } from "@/lib/zonedDate";
 
 type Props = {
   open: boolean;
@@ -610,10 +610,16 @@ const EditContract: React.FC<Props> = ({
       selectedDeliverable,
       paymentTerm: paymentTermId,
       termType: termTypeId,
-      effectiveDate: contract.startDate
-        ? toCalendarDate(contract.startDate, contract.timezone)
-        : undefined,
-      endDate: contract.endDate ? toCalendarDate(contract.endDate, contract.timezone) : undefined,
+      effectiveDate: toContractDateTimeValue(
+        contract.startDate,
+        contract.timezone,
+        contract.createdAt,
+      ),
+      endDate: toContractDateTimeValue(
+        contract.endDate,
+        contract.timezone,
+        contract.createdAt,
+      ),
       duration: contract.duration ? String(contract.duration) : "",
       deliverables,
       // The form's `documents` field holds NEW uploads only; existing BE
@@ -819,6 +825,7 @@ const EditContract: React.FC<Props> = ({
         contractRes?.data?.data?.timezone ||
         Intl.DateTimeFormat().resolvedOptions().timeZone ||
         "UTC";
+      const contractCreatedAt = contractRes?.data?.data?.createdAt;
       const relationship =
         data.relationship === "msa" || data.relationship === "msa_project"
           ? "msa_project"
@@ -1015,8 +1022,10 @@ const EditContract: React.FC<Props> = ({
         contractPaymentTerm: data.paymentTerm || undefined,
         paymentTerm: paymentTermName || undefined,
         paymentStructure: paymentStructureEnum,
-        startDate: formatDate(data.effectiveDate),
-        endDate: formatDate(data.endDate),
+        // Effective/end carry a time: a wall-clock date-time in the contract tz
+        // (legacy records keep their legacy encoding, see zonedDate).
+        startDate: toContractDateTimeISO(data.effectiveDate, tz, contractCreatedAt),
+        endDate: toContractDateTimeISO(data.endDate, tz, contractCreatedAt),
         duration: data.duration ? Number(data.duration) : undefined,
         contractTermType: data.termType || undefined,
         termType: termTypeName || undefined,
@@ -1061,6 +1070,7 @@ const EditContract: React.FC<Props> = ({
       removedFileKeys,
       typeOptions,
       contractRes?.data?.data?.timezone,
+      contractRes?.data?.data?.createdAt,
     ],
   );
 

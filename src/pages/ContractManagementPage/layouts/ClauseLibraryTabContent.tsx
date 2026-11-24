@@ -4,11 +4,12 @@ import { TabsContent } from "@/components/ui/tabs";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
 import { useParams } from "react-router-dom";
-import { format } from "date-fns";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUserRole } from "@/hooks/useUserRole";
 import type { ApiResponseError } from "@/types";
 import { ContractStatusBadge, type Status } from "@/pages/ContractManagementPage/components/StatusBadge";
+import { formatContractDateTime } from "@/lib/zonedDate";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
 
 type ClauseCardProps = {
   title: string;
@@ -412,13 +413,6 @@ const formatCurrency = (value?: number | string, currency?: string) => {
   }).format(value);
 };
 
-const formatDateShort = (date?: string) => {
-  if (!date) return "—";
-  const parsed = new Date(date);
-  if (Number.isNaN(parsed.getTime())) return String(date);
-  return format(parsed, "dd MMM yyyy");
-};
-
 const riskClassFor = (risk?: string): "low" | "medium" | "high" => {
   const n = (risk || "").toLowerCase();
   if (n === "high") return "high";
@@ -438,6 +432,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({
   vendorName,
   contractType = "Contract",
 }) => {
+  const timeZone = useDateTimeZone();
   const { id = "" } = useParams<{ id: string }>();
   const toastHandler = useToastHandler();
   const { isApprover, isViewOnly } = useUserRole();
@@ -611,7 +606,7 @@ const ClauseLibraryTabContent: React.FC<Props> = ({
             <div className="inline-flex flex-col pl-6">
               <div className="text-xs leading-4 text-[#4B5563] dark:text-slate-400">Duration</div>
               <div className="text-base font-semibold leading-6 text-[#030712] dark:text-slate-100">
-                {`${formatDateShort(contract?.startDate)} to ${formatDateShort(contract?.endDate)}`}
+                {`${formatContractDateTime(contract?.startDate, timeZone, (contract as any)?.createdAt)} to ${formatContractDateTime(contract?.endDate, timeZone, (contract as any)?.createdAt)}`}
               </div>
             </div>
           </div>

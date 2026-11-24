@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
+import { formatInTimeZone } from "date-fns-tz";
 import {
   ZONE_ABBREV_IANA,
   ZONE_ABBREV_OFFSET_MINUTES,
@@ -78,6 +78,83 @@ const ymdOf = (value: Date | string): string | undefined => {
   return /^\d{4}-\d{2}-\d{2}/.exec(value.trim())?.[0];
 };
 
+// Exact UTC offset (ms, east positive) of `zone` at instant `t`, read back from
+// the zone's own formatted wall clock (date-fns-tz's getTimezoneOffset applies a
+// local-time heuristic that is wrong right at a DST switch).
+function offsetAt(zone: string, t: number): number {
+  const [y, mo, d, h, mi, sec] = formatInTimeZone(
+    new Date(t),
+    zone,
+    "yyyy-MM-dd-HH-mm-ss"
+  )
+    .split("-")
+    .map(Number);
+  return Date.UTC(y, mo - 1, d, h, mi, sec) - Math.floor(t / 1000) * 1000;
+}
+
+/**
+ * Resolve a wall-clock date-time in `zone` to a UTC instant (ms), deterministically
+ * across DST changes ("compatible" disambiguation, like Temporal):
+ *  - a time that does not exist (spring-forward gap, e.g. 2027-03-14 02:30 in
+ *    America/Toronto) is moved FORWARD by the gap, to 03:30 EDT;
+ *  - a time that happens twice (fall-back overlap, e.g. 2027-11-07 01:30) takes
+ *    the FIRST occurrence (EDT, the earlier instant).
+ */
+function resolveWallClock(
+  y: number,
+  mo: number,
+  d: number,
+  h: number,
+  mi: number,
+  zone: string
+): number {
+  const wall = Date.UTC(y, mo - 1, d, h, mi, 0, 0);
+  const before = offsetAt(zone, wall - 86_400_000);
+  const after = offsetAt(zone, wall + 86_400_000);
+  const valid = Array.from(new Set([wall - before, wall - after])).filter(
+    (t) => t + offsetAt(zone, t) === wall
+  );
+  return valid.length ? Math.min(...valid) : wall - before;
+}
+
+const ISO_WITH_OFFSET = "yyyy-MM-dd'T'HH:mm:ss.SSSxxx";
+
+/** Local wall-clock parts of a picked `Date` or a naive "yyyy-MM-dd[THH:mm]" string. */
+function wallClockParts(value: Date | string) {
+  if (value instanceof Date) {
+    return isNaN(value.getTime())
+      ? undefined
+      : {
+          ymd: format(value, "yyyy-MM-dd"),
+          h: value.getHours(),
+          mi: value.getMinutes(),
+        };
+  }
+  const m = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}):(\d{2}))?/.exec(value.trim());
+  return m ? { ymd: m[1], h: Number(m[2] ?? 0), mi: Number(m[3] ?? 0) } : undefined;
+}
+
+/**
+ * The picked wall-clock date-time as an instant in `tz`, written with the zone's
+ * real UTC offset: (Jan 10 2027 09:00, Pacific/Pago_Pago) ->
+ * "2027-01-10T09:00:00.000-11:00". Undefined when there is no valid date.
+ */
+export function toZonedDateTimeISO(
+  value: Date | string | null | undefined,
+  tz?: string | null
+): string | undefined {
+  if (!value) return undefined;
+  const p = wallClockParts(value);
+  if (!p) return undefined;
+  const [y, mo, d] = p.ymd.split("-").map(Number);
+  const zone = zoneFor(tz);
+  return formatInTimeZone(
+    new Date(resolveWallClock(y, mo, d, p.h, p.mi, zone)),
+    zone,
+    ISO_WITH_OFFSET
+  );
+}
+
 /**
  * The picked calendar date as the start of that day in `tz`, with the matching
  * UTC offset (DST-correct): ("2027-03-14", "America/Toronto") ->
@@ -89,10 +166,7 @@ export function toZonedStartOfDayISO(
 ): string | undefined {
   if (!value) return undefined;
   const ymd = ymdOf(value);
-  if (!ymd) return undefined;
-  const zone = zoneFor(tz);
-  const instant = fromZonedTime(`${ymd}T00:00:00`, zone);
-  return formatInTimeZone(instant, zone, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
+  return ymd ? toZonedDateTimeISO(ymd, tz) : undefined;
 }
 
 /**
@@ -177,4 +251,110 @@ export function toCalendarDate(
 ): Date | undefined {
   const ymd = calendarYmd(value, tz);
   return ymd ? localDate(ymd) : undefined;
+}
+
+// ---------------------------------------------------------------------------
+// Contract/MSA effective + end DATE-TIMES (QA-044 follow-up)
+//
+// These two fields carry a time. The old code sent the picked wall-clock naively
+// and the BE read it as UTC, so records created before the cutoff store the
+// creator's wall-clock AS IF it were UTC (its meaning: that wall-clock in the
+// record's timezone). Records on/after the cutoff store true instants. The two
+// cannot be told apart by value, so the record's createdAt decides.
+// ---------------------------------------------------------------------------
+
+/**
+ * Interim cutoff: records created BEFORE this instant store the wall-clock of
+ * their effective/end date-times as UTC (legacy); records on/after it store true
+ * instants. This is the merge time of PR #716. Remove once the BE migrates the
+ * legacy values.
+ */
+export const DATETIME_LEGACY_CUTOFF = "2026-11-24T06:34:15Z";
+
+/** True when `createdAt` is a valid time before DATETIME_LEGACY_CUTOFF. */
+export function isLegacyDateTimeRecord(
+  createdAt?: string | Date | null
+): boolean {
+  if (!createdAt) return false;
+  const t = new Date(createdAt).getTime();
+  return !isNaN(t) && t < new Date(DATETIME_LEGACY_CUTOFF).getTime();
+}
+
+const pad = (n: number) => String(n).padStart(2, "0");
+
+/**
+ * Submit value for a contract/MSA effective/end date-time. New records get a true
+ * instant in `tz`; a legacy record (see DATETIME_LEGACY_CUTOFF) keeps its legacy
+ * encoding (wall-clock written as UTC) so the whole record stays one convention.
+ */
+export function toContractDateTimeISO(
+  value: Date | string | null | undefined,
+  tz?: string | null,
+  createdAt?: string | Date | null
+): string | undefined {
+  if (!value) return undefined;
+  if (!isLegacyDateTimeRecord(createdAt)) return toZonedDateTimeISO(value, tz);
+  const p = wallClockParts(value);
+  return p ? `${p.ymd}T${pad(p.h)}:${pad(p.mi)}:00.000Z` : undefined;
+}
+
+// A stored contract/MSA date-time as {wall-clock parts, zone to label with}.
+function contractDateTimeInstant(
+  value: string | Date,
+  tz: string | null | undefined,
+  createdAt: string | Date | null | undefined
+) {
+  const normalized = typeof value === "string" ? ensureUtcInstant(value) : value;
+  const instant =
+    normalized instanceof Date ? normalized : new Date(normalized as string);
+  if (isNaN(instant.getTime())) return undefined;
+  const zone = zoneFor(tz, value);
+  if (!isLegacyDateTimeRecord(createdAt)) return { instant, zone, wallZone: zone };
+  // Legacy: the UTC components ARE the wall-clock; label it with the record's zone.
+  const [y, mo, d, h, mi] = formatInTimeZone(instant, "UTC", "yyyy-MM-dd-HH-mm")
+    .split("-")
+    .map(Number);
+  const real = new Date(resolveWallClock(y, mo, d, h, mi, zone));
+  return { instant: real, zone, wallZone: zone };
+}
+
+/**
+ * Show a contract/MSA effective/end date-time as wall-clock in the record's
+ * timezone, e.g. "10 Jan 2027, 09:00 AM". `withZone` appends the zone label
+ * (detail views only). "N/A" when empty/invalid.
+ */
+export function formatContractDateTime(
+  value: string | Date | null | undefined,
+  tz?: string | null,
+  createdAt?: string | Date | null,
+  options: { pattern?: string; withZone?: boolean } = {}
+): string {
+  if (!value) return "N/A";
+  const r = contractDateTimeInstant(value, tz, createdAt);
+  if (!r) return "N/A";
+  const pattern = options.pattern ?? "dd MMM yyyy, hh:mm a";
+  return formatInTimeZone(
+    r.instant,
+    r.wallZone,
+    options.withZone ? `${pattern} zzz` : pattern
+  );
+}
+
+/**
+ * A stored contract/MSA effective/end date-time as a local `Date` carrying the
+ * same wall-clock, for picker preselection (round-trips with
+ * `toContractDateTimeISO`).
+ */
+export function toContractDateTimeValue(
+  value: string | Date | null | undefined,
+  tz?: string | null,
+  createdAt?: string | Date | null
+): Date | undefined {
+  if (!value) return undefined;
+  const r = contractDateTimeInstant(value, tz, createdAt);
+  if (!r) return undefined;
+  const [y, mo, d, h, mi] = formatInTimeZone(r.instant, r.wallZone, "yyyy-MM-dd-HH-mm")
+    .split("-")
+    .map(Number);
+  return new Date(y, mo - 1, d, h, mi);
 }

@@ -7,7 +7,7 @@ import EmployeeCardPopover from "../components/EmployeeCardPopover";
 import type { ContractDetail } from "@/types";
 import { cn } from "@/lib/utils";
 import { useDateTimeZone } from "@/hooks/useDateTimeZone";
-import { formatInTz } from "@/lib/zonedDate";
+import { formatContractDateTime, formatInTz } from "@/lib/zonedDate";
 import EditContract from "../components/EditContract";
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -886,8 +886,9 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
             : "N/A";
   // Effective/end dates are calendar dates in the contract's timezone, so they
   // don't shift with the viewer's browser (QA #277, QA-044).
-  const effectiveDate = formatInTz(contract.startDate, timeZone, "dd MMM yyyy");
-  const endDate = formatInTz(contract.endDate, timeZone, "dd MMM yyyy");
+  // Effective/end carry a time: shown in the contract's zone, with its label.
+  const effectiveDate = formatContractDateTime(contract.startDate, timeZone, contract.createdAt, { withZone: true });
+  const endDate = formatContractDateTime(contract.endDate, timeZone, contract.createdAt, { withZone: true });
   const publishedDate = formatInTz(
     contract.datePublished,
     timeZone,
