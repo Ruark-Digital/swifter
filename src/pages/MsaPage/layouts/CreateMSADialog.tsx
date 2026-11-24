@@ -56,12 +56,14 @@ type Props = {
   onOpenChange?: (open: boolean) => void;
 };
 
-const schema = yup.object({
+export const schema = yup.object({
   name: yup.string().required("MSA name is required"),
   type: yup.string().required("MSA type is required"),
   currency: yup.string().required("Currency is required"),
   manager: yup.string().optional(),
-  projectManager: yup.string().optional(),
+  // A PM must approve an MSA first, so one is required to send for approval /
+  // publish. Save as Draft reads form values directly and skips validation.
+  projectManager: yup.string().trim().required("Project Manager is required"),
   jobTitle: yup.string().optional(),
   msaId: yup.string().optional(),
   description: yup.string().trim().required("MSA description is required"),
@@ -193,6 +195,12 @@ const defaultValues: CreateMsaFormData = {
   approvalGroupSelection: "",
   assignedApprovers: [],
   approvalGroups: [{ name: "", approvers: [], approvalLevel: "0", amount: "" }],
+};
+
+// Fields validated before Continue moves past a step (create and edit share it).
+export const MSA_STEP_VALIDATION_FIELDS: Record<number, string[]> = {
+  1: ["name", "type", "currency", "description", "rating"],
+  2: ["projectManager"],
 };
 
 const STEP_TITLES = [
@@ -652,14 +660,9 @@ const CreateMSADialog: React.FC<Props> = ({
   });
 
   const validateStep = async (currentStep: number) => {
-    if (currentStep === 1) {
-      const ok = await formTrigger(
-        ["name", "type", "currency", "description", "rating"] as any,
-        {
-          shouldFocus: true,
-        },
-      );
-      return ok;
+    const fields = MSA_STEP_VALIDATION_FIELDS[currentStep];
+    if (fields) {
+      return formTrigger(fields as any, { shouldFocus: true });
     }
     return true;
   };
