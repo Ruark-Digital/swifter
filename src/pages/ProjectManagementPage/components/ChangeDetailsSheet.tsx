@@ -49,7 +49,7 @@ import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import CreateProjectDialog from "./CreateProjectDialog";
 import UpdateEacDialog from "./UpdateEacDialog";
 import { useDateTimeZone } from "@/hooks/useDateTimeZone";
-import { formatInTz, toCalendarDate } from "@/lib/zonedDate";
+import { formatContractDateTime, formatInTz, toCalendarDate } from "@/lib/zonedDate";
 
 type Props = {
   trigger?: React.ReactNode;
@@ -341,9 +341,9 @@ const ChangeDetailsSheet: React.FC<Props> = ({
             : undefined,
         owner: c.creator?.name ?? "-",
         published: c.startDate
-          ? formatInTz(c.startDate, c.timezone || userTimeZone, "MMM d, yyyy")
+          ? formatContractDateTime(c.startDate, c.timezone || userTimeZone, c.createdAt, { pattern: "MMM d, yyyy" })
           : undefined,
-        endDate: c.endDate ? formatInTz(c.endDate, c.timezone || userTimeZone, "MMM d, yyyy") : undefined,
+        endDate: c.endDate ? formatContractDateTime(c.endDate, c.timezone || userTimeZone, c.createdAt, { pattern: "MMM d, yyyy" }) : undefined,
         status: c.status,
       })),
     [linkedContracts, profileCurrency, userTimeZone]

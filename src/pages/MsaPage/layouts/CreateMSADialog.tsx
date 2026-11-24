@@ -39,7 +39,7 @@ import Step6ComplianceSecurity from "../components/Step6ComplianceSecurity";
 import Step4Form from "@/pages/SolicitationManagementPage/components/Step4Form";
 import Step8ApprovalLevel from "../components/Step8ApprovalLevel";
 import Step9ReviewPublish from "../components/Step9ReviewPublish";
-import { toCalendarDate, toZonedStartOfDayISO } from "@/lib/zonedDate";
+import { toCalendarDate, toContractDateTimeISO, toContractDateTimeValue, toZonedStartOfDayISO } from "@/lib/zonedDate";
 
 type Props = {
   /** Trigger node for the self-managed (Create) flow. Omit when driving the
@@ -492,8 +492,8 @@ const CreateMSADialog: React.FC<Props> = ({
       internalTeam: internalTeamArr.length
         ? internalTeamArr
         : defaultValues.internalTeam,
-      effectiveDate: iv.startDate ? toCalendarDate(iv.startDate, iv.timezone) : undefined,
-      endDate: iv.endDate ? toCalendarDate(iv.endDate, iv.timezone) : undefined,
+      effectiveDate: toContractDateTimeValue(iv.startDate, iv.timezone, iv.createdAt),
+      endDate: toContractDateTimeValue(iv.endDate, iv.timezone, iv.createdAt),
       duration:
         typeof iv.duration === "number" ? String(iv.duration) : iv.duration ?? "",
       // Stored as `contractTerm` on the record (the term-type ref). Step 3's
@@ -704,6 +704,10 @@ const CreateMSADialog: React.FC<Props> = ({
         (editingMsaId
           ? editDetailQuery.data?.data?.timezone ?? initialValues?.timezone
           : undefined) || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+      const msaCreatedAt = editingMsaId
+        ? (editDetailQuery.data?.data?.createdAt ?? initialValues?.createdAt)
+        : undefined;
 
       const toNumberOrUndefined = (value: any) => {
         if (value === null || value === undefined) return undefined;
@@ -934,10 +938,10 @@ const CreateMSADialog: React.FC<Props> = ({
             : toNumberOrUndefined(data.holdback),
         paymentStructure,
         paymentTerm: data.paymentTerm || undefined,
-        startDate: data.effectiveDate
-          ? formatDate(data.effectiveDate)
-          : undefined,
-        endDate: data.endDate ? formatDate(data.endDate) : undefined,
+        // Effective/end carry a time: a wall-clock date-time in the MSA tz
+        // (legacy records keep their legacy encoding, see zonedDate).
+        startDate: toContractDateTimeISO(data.effectiveDate, tz, msaCreatedAt),
+        endDate: toContractDateTimeISO(data.endDate, tz, msaCreatedAt),
         duration: data.duration
           ? Number(String(data.duration).replace(/[^0-9.]/g, ""))
           : undefined,
@@ -961,6 +965,7 @@ const CreateMSADialog: React.FC<Props> = ({
       initialValues,
       editingMsaId,
       editDetailQuery.data?.data?.timezone,
+      editDetailQuery.data?.data?.createdAt,
       editDetailQuery.data?.data?.files,
       detailFilesQuery.data?.data?.files,
     ],

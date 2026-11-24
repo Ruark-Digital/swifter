@@ -48,7 +48,7 @@ import {
   toIdStringOrUndefined,
   toPersonnelOrUndefined,
 } from "@/lib/contractFormValues";
-import { toZonedStartOfDayISO } from "@/lib/zonedDate";
+import { toContractDateTimeISO, toZonedStartOfDayISO } from "@/lib/zonedDate";
 
 type Props = {
   trigger: React.ReactNode;
@@ -1229,8 +1229,9 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         contractPaymentTerm: data.paymentTerm || undefined,
         paymentTerm: paymentTermName || undefined,
         paymentStructure: paymentStructureEnum,
-        startDate: formatDate(data.effectiveDate),
-        endDate: formatDate(data.endDate),
+        // Effective/end carry a time: a wall-clock date-time in the contract tz.
+        startDate: toContractDateTimeISO(data.effectiveDate, tz),
+        endDate: toContractDateTimeISO(data.endDate, tz),
         duration: data.duration ? Number(data.duration) : undefined,
         contractTermType: data.termType || undefined,
         termType: termTypeName || undefined,

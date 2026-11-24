@@ -62,7 +62,7 @@ import {
   type LifecycleAction,
 } from "@/pages/ContractManagementPage/components/contractLifecycle";
 import { DateTimeZoneProvider } from "@/hooks/useDateTimeZone";
-import { formatInTz } from "@/lib/zonedDate";
+import { formatContractDateTime, formatInTz } from "@/lib/zonedDate";
 
 type TabKey = MsaTabKey;
 
@@ -279,6 +279,22 @@ export interface Vendor {
 const formatDate = (iso?: string, timeZone?: string) =>
   iso ? formatInTz(iso, timeZone, "MMMM d, yyyy") : "N/A";
 
+// Effective/end carry a time; `withZone` adds the zone label (header only).
+// Table cells pass a date-only `pattern`.
+const formatDateTime = (
+  iso: string | undefined,
+  timeZone: string | undefined,
+  createdAt: string | undefined,
+  withZone = false,
+  pattern = "MMMM d, yyyy, hh:mm a",
+) =>
+  iso
+    ? formatContractDateTime(iso, timeZone, createdAt, {
+        pattern,
+        withZone,
+      })
+    : "N/A";
+
 const diffDays = (a?: string, b?: string) => {
   if (!a || !b) return "N/A";
   const da = new Date(a).getTime();
@@ -460,7 +476,7 @@ const MsaDetailPage: React.FC = () => {
       relationship: relationshipLabel(it?.contractRelationship),
       value: formatMoney(it?.contractValue, it?.currency),
       published: it?.datePublished ? formatDate(it.datePublished, it?.timezone) : undefined,
-      endDate: it?.endDate ? formatDate(it.endDate, it?.timezone) : undefined,
+      endDate: it?.endDate ? formatDateTime(it.endDate, it?.timezone, it?.createdAt, false, "MMMM d, yyyy") : undefined,
       createdAtRaw: it?.createdAt ?? it?.datePublished,
       status: statusLabel(it?.status),
     }));
@@ -930,8 +946,8 @@ const MsaDetailPage: React.FC = () => {
                 }}
                 dates={{
                   published: formatDate(toISO(msa?.datePublished), msa?.timezone),
-                  effective: formatDate(toISO(msa?.startDate), msa?.timezone),
-                  end: formatDate(toISO(msa?.endDate), msa?.timezone),
+                  effective: formatDateTime(toISO(msa?.startDate), msa?.timezone, toISO(msa?.createdAt), true),
+                  end: formatDateTime(toISO(msa?.endDate), msa?.timezone, toISO(msa?.createdAt), true),
                 }}
                 durations={{
                   draft: draftDuration,
