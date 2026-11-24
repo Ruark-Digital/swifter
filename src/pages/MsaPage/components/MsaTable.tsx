@@ -54,13 +54,27 @@ export type MsaRow = {
   isOwner?: boolean;
 };
 
+// Shared "which row's action menu is open" state, read via context instead of
+// being threaded through the memoized column defs: a column `cell` that closes
+// over it gets a new identity on every menu open/close, which remounts every
+// row's MsaActionsCell and wipes its editOpen/lifecycle state before the dialog
+// opens (Edit MSA silently did nothing, QA-047). Same fix as ContractsTable.
+const OpenRowMenuContext = React.createContext<{
+  openRowId: string | null;
+  setOpenRowId: (id: string | null) => void;
+}>({ openRowId: null, setOpenRowId: () => {} });
+
 const MsaActionsCell: React.FC<{
   row: MsaRow;
-  menuOpen: boolean;
-  onMenuOpenChange: (open: boolean) => void;
   enableTakeOver?: boolean;
   onOpenTakeOver?: (id: string) => void;
-}> = ({ row, menuOpen, onMenuOpenChange, enableTakeOver, onOpenTakeOver }) => {
+}> = ({ row, enableTakeOver, onOpenTakeOver }) => {
+  const { openRowId, setOpenRowId } = React.useContext(OpenRowMenuContext);
+  const menuOpen = openRowId === row.id;
+  const onMenuOpenChange = React.useCallback(
+    (open: boolean) => setOpenRowId(open ? row.id : null),
+    [row.id, setOpenRowId],
+  );
   const { isManager } = useUserRole();
   const currentUserId = useUser()?._id;
   const [editOpen, setEditOpen] = React.useState(false);
@@ -346,6 +360,10 @@ const MsaTable: React.FC<MsaTableProps> = ({
 }) => {
   const [search, setSearch] = React.useState("");
   const [openMenuRowId, setOpenMenuRowId] = React.useState<string | null>(null);
+  const openRowMenuContextValue = React.useMemo(
+    () => ({ openRowId: openMenuRowId, setOpenRowId: setOpenMenuRowId }),
+    [openMenuRowId],
+  );
   const [takeOverId, setTakeOverId] = React.useState<string | null>(null);
 
   // Close the take-over dialog once the parent's mutation settles (loading
@@ -367,8 +385,8 @@ const MsaTable: React.FC<MsaTableProps> = ({
   const setPagination = setPaginationProp ?? setLocalPagination;
   const data = React.useMemo(() => rows ?? [], [rows]);
 
-  // Inject the lifted open-menu state into the actions column so only one
-  // row's 3-dot menu is open at a time.
+  // The open-menu state is shared through OpenRowMenuContext (not captured
+  // here) so this column def stays stable and rows don't remount.
   const tableColumns = React.useMemo<ColumnDef<MsaRow>[]>(
     () =>
       columns.map((column) => {
@@ -378,17 +396,13 @@ const MsaTable: React.FC<MsaTableProps> = ({
           cell: ({ row }: { row: { original: MsaRow } }) => (
             <MsaActionsCell
               row={row.original}
-              menuOpen={openMenuRowId === row.original.id}
-              onMenuOpenChange={(open) => {
-                setOpenMenuRowId(open ? row.original.id : null);
-              }}
               enableTakeOver={enableTakeOver}
               onOpenTakeOver={setTakeOverId}
             />
           ),
         } as ColumnDef<MsaRow>;
       }),
-    [openMenuRowId, enableTakeOver],
+    [enableTakeOver],
   );
 
   const normalizeStatus = React.useCallback((value?: string) => {
@@ -557,6 +571,7 @@ const MsaTable: React.FC<MsaTableProps> = ({
         </div>
       </div>
 
+      <OpenRowMenuContext.Provider value={openRowMenuContextValue}>
       <DataTable<MsaRow>
         data={filteredRows}
         columns={tableColumns}
@@ -578,6 +593,7 @@ const MsaTable: React.FC<MsaTableProps> = ({
           tCell: "px-6 py-4 text-sm text-slate-700 dark:text-slate-200 align-top",
         }}
       />
+      </OpenRowMenuContext.Provider>
 
       <ConfirmAlert
         open={Boolean(takeOverId)}

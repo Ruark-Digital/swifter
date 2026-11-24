@@ -118,3 +118,46 @@ describe("round trip: select -> submit -> reload -> same calendar date", () => {
     }
   }
 });
+
+describe("legacy rule works on the parsed instant, whatever offset the API uses", () => {
+  // The same stored instant, 2027-01-25T00:00:00.000Z, written in other offsets.
+  const legacyForms = [
+    "2027-01-25T00:00:00.000Z",
+    "2027-01-25T00:00:00+00:00",
+    "2027-01-24T16:00:00.000-08:00",
+    "2027-01-25T13:00:00.000+13:00",
+    "2027-01-24T19:00:00.000-05:00",
+    "2027-01-25T05:30:00.000+05:30",
+  ];
+  const zones = ["UTC", "America/Toronto", "Pacific/Pago_Pago", "Pacific/Kiritimati", "Asia/Kolkata", undefined];
+  for (const form of legacyForms) {
+    it(`${form} is legacy and shows 25 Jan 2027 in every zone`, () => {
+      expect(isLegacyUtcMidnight(form)).toBe(true);
+      expect(isLegacyUtcMidnight(new Date(form))).toBe(true);
+      for (const tz of zones) {
+        expect(formatInTz(form, tz, "dd MMM yyyy")).toBe("25 Jan 2027");
+        expect(formatInTz(form, tz, "yyyy-MM-dd")).toBe("2027-01-25");
+        expect(toCalendarDate(form, tz)).toEqual(new Date(2027, 0, 25));
+      }
+    });
+  }
+
+  it("a real timed instant in an offset form is not legacy", () => {
+    expect(isLegacyUtcMidnight("2027-01-24T16:30:00.000-08:00")).toBe(false);
+    expect(isLegacyUtcMidnight("2027-01-25T00:00:00.000-11:00")).toBe(false);
+    expect(isLegacyUtcMidnight("2027-01-25")).toBe(false);
+  });
+});
+
+describe("rows without a timezone (list API) use the string's own offset, not the browser's", () => {
+  it("renders the wall-clock date the API wrote, in any browser zone", () => {
+    expect(formatInTz("2027-07-19T03:00:00.000-07:00", undefined, "dd MMM yyyy")).toBe("19 Jul 2027");
+    expect(formatInTz("2027-07-20T00:00:00.000+14:00", undefined, "dd MMM yyyy")).toBe("20 Jul 2027");
+    expect(formatInTz("2027-07-20T00:00:00.000+14:00", "", "dd MMM yyyy")).toBe("20 Jul 2027");
+    expect(toCalendarDate("2027-07-20T00:00:00.000+05:30", null)).toEqual(new Date(2027, 6, 20));
+  });
+
+  it("a known record timezone still wins over the string's offset", () => {
+    expect(formatInTz("2027-07-19T10:00:00.000Z", "Pacific/Kiritimati", "dd MMM yyyy")).toBe("20 Jul 2027");
+  });
+});

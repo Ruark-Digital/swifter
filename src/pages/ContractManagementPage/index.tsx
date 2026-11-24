@@ -424,7 +424,7 @@ const mapStatusToLabel = (
   return "Suspended";
 };
 
-const mapContractsToRows = (contracts?: ContractApi[], profileCurrency?: string): ContractRow[] => {
+export const mapContractsToRows = (contracts?: ContractApi[], profileCurrency?: string): ContractRow[] => {
   if (!contracts) return [];
 
   return contracts.map((c) => {
@@ -478,7 +478,7 @@ const mapVendorStatusToLabel = (
   return "Closed";
 };
 
-const mapVendorContractsToRows = (
+export const mapVendorContractsToRows = (
   contracts?: VendorContractApi[],
   profileCurrency?: string,
 ): VendorContractRow[] => {

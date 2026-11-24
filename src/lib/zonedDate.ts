@@ -17,8 +17,6 @@ import {
 
 const DEFAULT_PATTERN = "dd MMM yyyy";
 
-// Legacy date-only values were stored as exactly UTC midnight.
-const LEGACY_UTC_MIDNIGHT = /^\d{4}-\d{2}-\d{2}T00:00:00(\.0+)?(Z|\+00:00)$/i;
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
 export const browserTimeZone = (): string =>
@@ -54,8 +52,23 @@ export function resolveTimeZone(tz?: string | null): string | undefined {
   }
 }
 
-const zoneOrBrowser = (tz?: string | null) =>
-  resolveTimeZone(tz) ?? browserTimeZone();
+// A trailing UTC offset on an ISO string, e.g. "-08:00" (Z is "+00:00").
+const embeddedOffset = (value: string | Date | null | undefined) => {
+  if (typeof value !== "string") return undefined;
+  const m = /(?:T|\s)\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/i.exec(
+    value.trim()
+  );
+  if (!m) return undefined;
+  if (m[1].toUpperCase() === "Z") return "+00:00";
+  const d = m[1].replace(":", "");
+  return `${d[0]}${d.slice(1, 3)}:${d.slice(3, 5)}`;
+};
+
+// Zone to render in: the record's, else (for values the BE already rendered in
+// the requesting user's zone, e.g. list rows with no timezone) the string's own
+// offset, else the browser's. The browser is only the last resort.
+const zoneFor = (tz?: string | null, value?: string | Date | null) =>
+  resolveTimeZone(tz) ?? embeddedOffset(value) ?? browserTimeZone();
 
 /** Calendar date (yyyy-MM-dd) of a picked `Date` (local parts) or ISO/date string. */
 const ymdOf = (value: Date | string): string | undefined => {
@@ -77,16 +90,23 @@ export function toZonedStartOfDayISO(
   if (!value) return undefined;
   const ymd = ymdOf(value);
   if (!ymd) return undefined;
-  const zone = zoneOrBrowser(tz);
+  const zone = zoneFor(tz);
   const instant = fromZonedTime(`${ymd}T00:00:00`, zone);
   return formatInTimeZone(instant, zone, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
 }
 
-/** True for a value stored as exactly UTC midnight (a legacy date-only value). */
-export const isLegacyUtcMidnight = (value: string | Date): boolean =>
-  value instanceof Date
-    ? !isNaN(value.getTime()) && value.getTime() % 86_400_000 === 0
-    : LEGACY_UTC_MIDNIGHT.test(value.trim());
+/**
+ * True when the value's INSTANT is exactly UTC midnight, whatever offset the
+ * string is written in (legacy date-only values; the API may return them as
+ * "2027-01-24T16:00:00.000-08:00"). `yyyy-MM-dd` strings are not instants.
+ */
+export const isLegacyUtcMidnight = (value: string | Date): boolean => {
+  if (typeof value === "string" && DATE_ONLY.test(value.trim())) return false;
+  const normalized = typeof value === "string" ? ensureUtcInstant(value) : value;
+  const instant =
+    normalized instanceof Date ? normalized : new Date(normalized as string);
+  return !isNaN(instant.getTime()) && instant.getTime() % 86_400_000 === 0;
+};
 
 // A local-midnight Date for a calendar date, so date-fns `format` echoes it.
 const localDate = (ymd: string): Date => {
@@ -104,14 +124,17 @@ function calendarYmd(
     return value.trim();
   }
   if (isLegacyUtcMidnight(value)) {
-    const iso = value instanceof Date ? value.toISOString() : value.trim();
-    return iso.slice(0, 10);
+    const normalized =
+      typeof value === "string" ? ensureUtcInstant(value) : value;
+    const instant =
+      normalized instanceof Date ? normalized : new Date(normalized as string);
+    return instant.toISOString().slice(0, 10);
   }
   const normalized = typeof value === "string" ? ensureUtcInstant(value) : value;
   const instant =
     normalized instanceof Date ? normalized : new Date(normalized as string);
   if (isNaN(instant.getTime())) return undefined;
-  return formatInTimeZone(instant, zoneOrBrowser(tz), "yyyy-MM-dd");
+  return formatInTimeZone(instant, zoneFor(tz, value), "yyyy-MM-dd");
 }
 
 /**
@@ -138,7 +161,7 @@ export function formatInTz(
     const instant =
       normalized instanceof Date ? normalized : new Date(normalized as string);
     if (isNaN(instant.getTime())) return "N/A";
-    return formatInTimeZone(instant, zoneOrBrowser(tz), pattern);
+    return formatInTimeZone(instant, zoneFor(tz, value), pattern);
   } catch {
     return "N/A";
   }
