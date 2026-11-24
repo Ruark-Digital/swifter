@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import {
   DATETIME_LEGACY_CUTOFF,
   formatContractDateTime,
@@ -7,6 +7,7 @@ import {
   toContractDateTimeISO,
   toContractDateTimeValue,
   toZonedDateTimeISO,
+  zoneLabel,
   isLegacyUtcMidnight,
   resolveTimeZone,
   toCalendarDate,
@@ -263,5 +264,54 @@ describe("legacy cutoff (records created before DATETIME_LEGACY_CUTOFF store wal
 
   it("offset-written legacy values use the instant's UTC parts", () => {
     expect(formatContractDateTime("2027-01-09T22:00:00.000-11:00", "Pacific/Pago_Pago", OLD)).toBe("10 Jan 2027, 09:00 AM");
+  });
+});
+
+describe("zone label on detail views (never a bare GMT next to a non-zero offset)", () => {
+  afterEach(() => vi.restoreAllMocks());
+  const winter = new Date("2027-01-10T15:00:00Z");
+  const summer = new Date("2027-07-10T15:00:00Z");
+
+  it.each([
+    ["Pacific/Pago_Pago", winter, "GMT-11"],
+    ["Pacific/Kiritimati", winter, "GMT+14"],
+    ["Asia/Kolkata", winter, "GMT+5:30"],
+    ["America/Toronto", winter, "EST"],
+    ["America/Toronto", summer, "EDT"],
+    ["UTC", winter, "UTC"],
+    ["Europe/London", winter, "GMT"],
+    ["Europe/London", summer, "BST"],
+  ] as const)("%s %s -> %s", (zone, at, expected) => {
+    expect(zoneLabel(zone, at)).toBe(expected);
+  });
+
+  it("falls back to a GMT offset when the engine only ever says plain GMT", () => {
+    // Some engines/ICU builds name every abbreviation-less zone just "GMT".
+    const original = Intl.DateTimeFormat.prototype.formatToParts;
+    vi.spyOn(Intl.DateTimeFormat.prototype, "formatToParts").mockImplementation(function (
+      this: Intl.DateTimeFormat,
+      ...args: [Date?]
+    ) {
+      return original
+        .apply(this, args)
+        .map((p) => (p.type === "timeZoneName" ? { ...p, value: "GMT" } : p));
+    });
+    expect(zoneLabel("Pacific/Pago_Pago", winter)).toBe("GMT-11");
+    expect(zoneLabel("Pacific/Kiritimati", winter)).toBe("GMT+14");
+    expect(zoneLabel("Asia/Kolkata", winter)).toBe("GMT+5:30");
+    expect(zoneLabel("America/Toronto", summer)).toBe("GMT-4");
+    // A real zero offset keeps GMT.
+    expect(zoneLabel("Europe/London", winter)).toBe("GMT");
+    expect(
+      formatContractDateTime("2027-01-10T09:00:00.000Z", "Asia/Kolkata", "2026-12-01T00:00:00Z", { withZone: true })
+    ).toBe("10 Jan 2027, 02:30 PM GMT+5:30");
+  });
+
+  it("is appended only when asked, using the record's zone", () => {
+    const stored = "2027-01-09T20:00:00.000Z"; // 09:00 on 9 Jan in Pago_Pago
+    expect(formatContractDateTime(stored, "Pacific/Pago_Pago", "2026-12-01T00:00:00Z")).toBe("09 Jan 2027, 09:00 AM");
+    expect(formatContractDateTime(stored, "Pacific/Pago_Pago", "2026-12-01T00:00:00Z", { withZone: true })).toBe(
+      "09 Jan 2027, 09:00 AM GMT-11"
+    );
   });
 });
