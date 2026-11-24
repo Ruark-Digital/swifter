@@ -341,9 +341,9 @@ const ChangeDetailsSheet: React.FC<Props> = ({
             : undefined,
         owner: c.creator?.name ?? "-",
         published: c.startDate
-          ? formatContractDateTime(c.startDate, c.timezone || userTimeZone, c.createdAt, { pattern: "MMM d, yyyy, hh:mm a" })
+          ? formatContractDateTime(c.startDate, c.timezone || userTimeZone, c.createdAt, { pattern: "MMM d, yyyy" })
           : undefined,
-        endDate: c.endDate ? formatContractDateTime(c.endDate, c.timezone || userTimeZone, c.createdAt, { pattern: "MMM d, yyyy, hh:mm a" }) : undefined,
+        endDate: c.endDate ? formatContractDateTime(c.endDate, c.timezone || userTimeZone, c.createdAt, { pattern: "MMM d, yyyy" }) : undefined,
         status: c.status,
       })),
     [linkedContracts, profileCurrency, userTimeZone]

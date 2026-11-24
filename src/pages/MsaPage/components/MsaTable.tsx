@@ -266,7 +266,7 @@ const columns: ColumnDef<MsaRow>[] = [
         )}
         {row.original.endDate && (
           <div>
-            End Date: {formatContractDateTime(row.original.endDate, row.original.timezone, row.original.published, { pattern: "yyyy MMM dd, hh:mm a" })}
+            End Date: {formatContractDateTime(row.original.endDate, row.original.timezone, row.original.published, { pattern: "yyyy MMM dd" })}
           </div>
         )}
       </div>

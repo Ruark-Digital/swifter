@@ -450,7 +450,7 @@ export const mapContractsToRows = (contracts?: ContractApi[], profileCurrency?: 
       published: c.datePublished
         ? formatInTz(c.datePublished, c.timezone, "dd MMM yyyy")
         : undefined,
-      endDate: c.endDate ? formatContractDateTime(c.endDate, c.timezone, c.createdAt) : undefined,
+      endDate: c.endDate ? formatContractDateTime(c.endDate, c.timezone, c.createdAt, { pattern: "dd MMM yyyy" }) : undefined,
       createdAtRaw: c.createdAt,
       status: mapStatusToLabel(c.status),
       category: c.category,
@@ -504,7 +504,7 @@ export const mapVendorContractsToRows = (
       published: c.datePublished
         ? formatInTz(c.datePublished, c.timezone, "dd MMM yyyy")
         : undefined,
-      endDate: c.endDate ? formatContractDateTime(c.endDate, c.timezone, c.createdAt) : undefined,
+      endDate: c.endDate ? formatContractDateTime(c.endDate, c.timezone, c.createdAt, { pattern: "dd MMM yyyy" }) : undefined,
       status: mapVendorStatusToLabel(c.status),
       isOwner: c.owner,
     };

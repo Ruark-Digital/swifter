@@ -280,15 +280,17 @@ const formatDate = (iso?: string, timeZone?: string) =>
   iso ? formatInTz(iso, timeZone, "MMMM d, yyyy") : "N/A";
 
 // Effective/end carry a time; `withZone` adds the zone label (header only).
+// Table cells pass a date-only `pattern`.
 const formatDateTime = (
   iso: string | undefined,
   timeZone: string | undefined,
   createdAt: string | undefined,
   withZone = false,
+  pattern = "MMMM d, yyyy, hh:mm a",
 ) =>
   iso
     ? formatContractDateTime(iso, timeZone, createdAt, {
-        pattern: "MMMM d, yyyy, hh:mm a",
+        pattern,
         withZone,
       })
     : "N/A";
@@ -474,7 +476,7 @@ const MsaDetailPage: React.FC = () => {
       relationship: relationshipLabel(it?.contractRelationship),
       value: formatMoney(it?.contractValue, it?.currency),
       published: it?.datePublished ? formatDate(it.datePublished, it?.timezone) : undefined,
-      endDate: it?.endDate ? formatDateTime(it.endDate, it?.timezone, it?.createdAt) : undefined,
+      endDate: it?.endDate ? formatDateTime(it.endDate, it?.timezone, it?.createdAt, false, "MMMM d, yyyy") : undefined,
       createdAtRaw: it?.createdAt ?? it?.datePublished,
       status: statusLabel(it?.status),
     }));
