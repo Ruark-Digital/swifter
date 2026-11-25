@@ -88,7 +88,7 @@ const Step2Form: React.FC<Step2FormProps> = ({
         name="visibility"
         component={TextSelect}
         label="Visibility"
-        placeholder="Invite-only, Public"
+        placeholder="Select visibility"
         options={visibilityOptions}
         containerClass="space-y-2"
       />
