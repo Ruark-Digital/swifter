@@ -1138,7 +1138,7 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
                   <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                     {group.groupName}
                   </h3>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {isOwner && (
                       <ConfirmAlert
                         type="delete"

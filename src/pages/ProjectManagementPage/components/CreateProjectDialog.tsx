@@ -95,7 +95,7 @@ function UploadElement() {
           Drag &amp; Drop or Click to choose files
         </p>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
+          Supported formats: DOC, PDF, XLS, XLSX, ZIP, PNG, JPEG
         </p>
       </div>
     </div>

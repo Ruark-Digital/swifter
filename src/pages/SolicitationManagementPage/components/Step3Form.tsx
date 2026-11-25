@@ -11,6 +11,7 @@ import {
 } from "@/components/layouts/FormInputs/TextInput";
 import { CreateSolicitationFormData } from "./CreateSolicitationDialog";
 import { ForgeControl } from "@adexdsamson/forge";
+import { todayInZone } from "@/lib/todayInZone";
 
 interface Step3FormProps {
   control: ForgeControl<CreateSolicitationFormData>;
@@ -28,6 +29,8 @@ const Step3Form = ({
   } as any);
 
   const submissionDeadlineDate = useWatch({ name: "submissionDeadlineDate", control });
+  const timezone = useWatch({ name: "timezone", control });
+  const minDate = todayInZone(timezone);
   const maxDate = submissionDeadlineDate ? new Date(submissionDeadlineDate) : undefined;
 
   // Custom remove handler to ensure proper cleanup of nested fields
@@ -59,6 +62,7 @@ const Step3Form = ({
             eventOptions,
             onRemove: handleRemove,
             totalFields: fields.length,
+            minDate,
             maxDate,
           }}
         />
@@ -94,6 +98,7 @@ type FormInputProps = {
   onRemove: (index: number) => void;
   totalFields: number;
   eventOptions: Step3FormProps["eventOptions"];
+  minDate?: Date;
   maxDate?: Date;
 };
 
@@ -102,6 +107,7 @@ const FormInput = ({
   onRemove,
   totalFields,
   eventOptions,
+  minDate,
   maxDate,
 }: FormInputProps) => {
   return (
@@ -148,7 +154,7 @@ const FormInput = ({
           name={`event.${index}.date`}
           label="Date"
           component={TextDatePicker}
-          minDate={new Date()}
+          minDate={minDate}
           maxDate={maxDate}
         />
 

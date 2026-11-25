@@ -133,7 +133,7 @@ const RateSheetUploadElement = () => {
           Drag &amp; Drop or Click to choose files
         </div>
         <div className="text-xs font-medium text-[#9CA3AF] dark:text-slate-500">
-          Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
+          Supported formats: DOC, PDF, XLS, XLSX, ZIP, PNG, JPEG
         </div>
       </div>
     </div>

@@ -683,6 +683,7 @@ const CreateSolicitationDialog = () => {
               </Button>
             )}
             <div className="flex gap-3">
+              {currentStep > 1 && (
               <Button
                 type="button"
                 variant="outline"
@@ -691,6 +692,7 @@ const CreateSolicitationDialog = () => {
               >
                 Back
               </Button>
+              )}
               {/* Always type="button". Letting the type flip to "submit" on the
                   final step hands the browser control of when the form fires,
                   so simply arriving at step 6 could publish the solicitation

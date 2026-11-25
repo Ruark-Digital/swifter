@@ -2,8 +2,8 @@ import { Forger } from "@adexdsamson/forge";
 import { TextCombo } from "@/components/layouts/FormInputs/TextCombo";
 import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
 import { TextDatePicker } from "@/components/layouts/FormInputs/TextInput";
-import { useWatch } from "react-hook-form";
-import { useMemo } from "react";
+import { useFormContext, useFormState, useWatch } from "react-hook-form";
+import { useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 
 interface Step1FormProps {
@@ -16,6 +16,7 @@ interface Step1FormProps {
     submissionDeadline: string;
     questionDeadline: string;
     bidIntentDeadline: string;
+    timezone?: string;
   }[];
 }
 
@@ -37,9 +38,26 @@ const Step1Form = ({ solicitationOptions, timezoneOptions, solicitationsData, is
     return selectedSolicitation ? new Date(selectedSolicitation.submissionDeadline) : undefined;
   }, [selectedSolicitationId, solicitationsData]);
 
-  // Only surface the hint once a start date is picked that is too early, not
-  // as soon as a solicitation is chosen.
+  // Inherit the timezone from the selected solicitation (create flow only).
+  const { setValue } = useFormContext();
+  const selectedSolicitationTimezone = useMemo(
+    () =>
+      solicitationsData?.find((s) => s._id === selectedSolicitationId)?.timezone,
+    [selectedSolicitationId, solicitationsData]
+  );
+  useEffect(() => {
+    if (isEdit || !selectedSolicitationTimezone) return;
+    if (timezoneOptions.some((t) => t.value === selectedSolicitationTimezone)) {
+      setValue("timezone", selectedSolicitationTimezone, { shouldValidate: false });
+    }
+  }, [isEdit, selectedSolicitationTimezone, timezoneOptions, setValue]);
+
+  // Only surface the hint once the user has edited the start date (a value
+  // prefilled from a draft must not show an error before any input) and it is
+  // too early.
+  const { dirtyFields } = useFormState({ name: "start_date" });
   const startDateInvalid =
+    !!dirtyFields.start_date &&
     !!selectedStartDate &&
     !!selectedSolicitationCloseDate &&
     new Date(selectedStartDate) <= selectedSolicitationCloseDate;
