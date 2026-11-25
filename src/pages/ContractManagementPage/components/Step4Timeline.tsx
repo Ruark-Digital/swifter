@@ -6,7 +6,8 @@ import { CreateContractFormData } from "./CreateContractSheet";
 import { useWatch } from "react-hook-form";
 import { formatDateTZ } from "@/lib/utils";
 import { differenceInCalendarDays } from "date-fns";
-import timezones from "@/assets/timezones.json";
+import { TextSelectWithSearch } from "@/components/layouts/FormInputs";
+import { buildTimezoneOptions } from "../lib/contractTimezone";
 
 
 
@@ -23,10 +24,7 @@ const Step4Timeline: React.FC<Props> = ({
   defaultTimezone,
 }) => {
   const timezoneOptions = React.useMemo(
-    () =>
-      defaultTimezone && !timezones.some((t) => t.value === defaultTimezone)
-        ? [{ label: defaultTimezone, value: defaultTimezone }, ...timezones]
-        : timezones,
+    () => buildTimezoneOptions(defaultTimezone),
     [defaultTimezone],
   );
   // Past dates are intentionally allowed across every stage — contracts
@@ -68,7 +66,9 @@ const Step4Timeline: React.FC<Props> = ({
           name="timezone"
           label="Contract Timezone"
           placeholder="Select Timezone"
-          component={TextSelect}
+          searchPlaceholder="Search timezone..."
+          emptyMessage="No timezone found."
+          component={TextSelectWithSearch}
           options={timezoneOptions}
           data-testid="contract-timezone-select"
         />

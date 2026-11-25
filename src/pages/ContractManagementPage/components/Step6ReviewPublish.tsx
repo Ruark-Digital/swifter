@@ -43,6 +43,9 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
     | Date
     | undefined;
   const endDate = useWatch({ control, name: "endDate" }) as Date | undefined;
+  const timezone = useWatch({ control, name: "timezone" }) as string | undefined;
+  // Every contract date is in the contract's timezone: say which.
+  const zoneSuffix = timezone ? ` (${timezone})` : "";
   const deliverables = useWatch({ control, name: "deliverables" }) as
     | { name?: string | null; dueDate?: Date | null }[]
     | undefined;
@@ -119,12 +122,12 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
 
   const formatDate = (value?: Date | null) => {
     if (!value) return "Not specified";
-    return format(value, "dd MMM yyyy");
+    return `${format(value, "dd MMM yyyy")}${zoneSuffix}`;
   };
   // Effective/end dates carry a time (wall clock in the contract's timezone).
   const formatDateTime = (value?: Date | null) => {
     if (!value) return "Not specified";
-    return format(value, "dd MMM yyyy, hh:mm a");
+    return `${format(value, "dd MMM yyyy, hh:mm a")}${zoneSuffix}`;
   };
 
   const formatAmount = (value: unknown) => {

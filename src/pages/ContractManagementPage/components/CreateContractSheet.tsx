@@ -53,6 +53,7 @@ import {
   toContractDateTimeISO,
   toZonedStartOfDayISO,
 } from "@/lib/zonedDate";
+import { defaultContractTimezone } from "../lib/contractTimezone";
 import {
   isValidContactValue,
   validateApprovalGroups,
@@ -425,6 +426,23 @@ const SendForApprovalDialog = React.memo(
       [approvalGroups],
     );
 
+    // Pre-select a group when the dialog opens (the first one that has
+    // approvers), and drop a stale selection whose group no longer exists, so
+    // the approver table is populated instead of empty until re-selected.
+    React.useEffect(() => {
+      if (!open) return;
+      const groups = approvalGroups ?? [];
+      const current =
+        selectedApprovalGroup === "" ? -1 : Number(selectedApprovalGroup);
+      if (current >= 0 && current < groups.length) return;
+      const firstWithApprovers = groups.findIndex(
+        (g) => (g?.approvers?.length ?? 0) > 0,
+      );
+      setSelectedApprovalGroup(
+        firstWithApprovers >= 0 ? String(firstWithApprovers) : "",
+      );
+    }, [open, approvalGroups, selectedApprovalGroup]);
+
     const selectedGroupIndex =
       selectedApprovalGroup === "" ? -1 : Number(selectedApprovalGroup);
     const selectedGroup =
@@ -710,7 +728,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
   const clearSession = useClearSession();
   const { success, error } = useToastHandler();
   const currentUser = useUser();
-  const currentUserTimezone = currentUser?.timezone || browserTimeZone();
+  const currentUserTimezone = defaultContractTimezone(currentUser?.timezone);
   // Default the contract timezone to the creator's own; they can change it in
   // step 3. Re-applied whenever the wizard opens with the field empty (reset).
   React.useEffect(() => {

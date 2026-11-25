@@ -672,17 +672,20 @@ const CollaborationToolPage: React.FC = () => {
       // (keyed by redlineId) instead of labelling every suggestion an
       // insertion. Falls back to "insertion" only when the redline mark is
       // no longer present in the document.
-      const kindById = new Map(
+      const liveById = new Map(
         (editorAdapterRef.current?.extractRedlines() ?? []).map(
-          (r) => [r.redlineId, r.kind] as const,
+          (r) => [r.redlineId, r] as const,
         ),
       );
       setAiItems(
         persisted.suggestions.map((s) => ({
           redline: {
             redlineId: s.redlineId,
-            kind: kindById.get(s.redlineId) ?? ("insertion" as const),
+            kind: liveById.get(s.redlineId)?.kind ?? ("insertion" as const),
             text: s.sourceText ?? "",
+            // A replacement keeps its removed/inserted parts for Original / New.
+            deletedText: liveById.get(s.redlineId)?.deletedText,
+            insertedText: liveById.get(s.redlineId)?.insertedText,
           },
           suggestion: s,
           state: resolutionToState(s.resolution?.action),

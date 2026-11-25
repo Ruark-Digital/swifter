@@ -93,16 +93,21 @@ interface AiSuggestionsPanelProps {
   inlineError?: string;
 }
 
-const KindPill: React.FC<{ kind: RedlineSpan["kind"] }> = ({ kind }) => (
+const KindPill: React.FC<{ kind: RedlineSpan["kind"]; replacement?: boolean }> = ({
+  kind,
+  replacement,
+}) => (
   <span
     className={cn(
       "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-      kind === "insertion"
-        ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
-        : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+      replacement
+        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+        : kind === "insertion"
+          ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
+          : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
     )}
   >
-    {kind}
+    {replacement ? "replacement" : kind}
   </span>
 );
 
@@ -199,6 +204,11 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
   const hasReplacement = Boolean(replacementPreview);
 
   const focusable = Boolean(onFocus);
+  // A delete + insert pair (e.g. Senior -> Principal) is ONE replacement card:
+  // Original is the removed text, New is the inserted text.
+  const isReplacement = Boolean(
+    item.redline.deletedText && item.redline.insertedText,
+  );
 
   return (
     <div
@@ -226,7 +236,7 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
       )}
     >
       <div className="mb-2 flex flex-wrap items-center gap-2">
-        <KindPill kind={item.redline.kind} />
+        <KindPill kind={item.redline.kind} replacement={isReplacement} />
         {suggestion && <RiskPill risk={suggestion.riskLevel} />}
         {suggestion?.acceptability && (
           <span
@@ -334,7 +344,17 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
         <div className="font-semibold text-slate-500 dark:text-slate-400">
           Original
         </div>
-        <div className="mt-1 line-clamp-3">{item.redline.text}</div>
+        <div className="mt-1 line-clamp-3">
+          {isReplacement ? item.redline.deletedText : item.redline.text}
+        </div>
+        {isReplacement && (
+          <>
+            <div className="mt-2 font-semibold text-slate-500 dark:text-slate-400">
+              New
+            </div>
+            <div className="mt-1 line-clamp-3">{item.redline.insertedText}</div>
+          </>
+        )}
       </div>
 
       {suggestion ? (

@@ -335,7 +335,7 @@ const Step1BasicInfo: React.FC<Props> = ({
       <Forger
         name="relationship"
         label="Contract Relationship"
-        placeholder="Enter Contract Relationship"
+        placeholder="Select contract relationship"
         component={TextSelect}
         options={[
           { label: "Stand-Alone Contract", value: "standalone" },

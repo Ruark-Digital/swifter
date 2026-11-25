@@ -167,10 +167,14 @@ const chunkRedlines = (redlines: RedlineSpan[], size: number): RedlineSpan[][] =
  * before chunking so positions stay global across batches.
  */
 export const withDocumentPositions = (redlines: RedlineSpan[]): RedlineSpan[] =>
-  redlines.map((r, index) => ({
-    ...r,
-    documentPosition: r.documentPosition ?? index,
-  }));
+  redlines.map((span, index) => {
+    // deletedText/insertedText are display-only (replacement cards); the BE
+    // request keeps its original span shape.
+    const r = { ...span };
+    delete r.deletedText;
+    delete r.insertedText;
+    return { ...r, documentPosition: r.documentPosition ?? index };
+  });
 
 /** Parse one BE response body into an `AiRedlineAnalysis`. */
 const parseAnalysisBody = (body: ApiResponseBody): AiRedlineAnalysis => {
