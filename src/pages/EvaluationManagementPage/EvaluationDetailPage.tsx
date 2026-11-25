@@ -25,7 +25,8 @@ import {
 import { useParams } from "react-router-dom";
 import { DataTable } from "@/components/layouts/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useIsFutureTime } from "@/hooks/useIsFutureTime";
 import { useMutation } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
 import EvaluationScorecardSheet from "./components/EvaluationScorecardSheet";
@@ -174,29 +175,10 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
   const evaluationStartDate = evaluation?.startDate
     ? new Date(evaluation.startDate)
     : undefined;
-  const evaluationStartMs = evaluationStartDate?.getTime();
-  // Re-render at the start instant so "Release Group" enables without a reload.
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (evaluationStartMs === undefined || Number.isNaN(evaluationStartMs)) {
-      return;
-    }
-    const remaining = evaluationStartMs - Date.now();
-    if (remaining <= 0) {
-      setNow(Date.now());
-      return;
-    }
-    // setTimeout caps at ~24.8 days; re-check periodically for far-off starts.
-    const timer = setTimeout(
-      () => setNow(Date.now()),
-      Math.min(remaining, 2 ** 31 - 1) + 50
-    );
-    return () => clearTimeout(timer);
-  }, [evaluationStartMs, now]);
-  const isEvaluationStartInFuture =
-    evaluationStartMs !== undefined &&
-    !Number.isNaN(evaluationStartMs) &&
-    evaluationStartMs > now;
+  // Re-renders at the start instant so "Release Group" enables without a reload.
+  const isEvaluationStartInFuture = useIsFutureTime(
+    evaluationStartDate?.getTime()
+  );
   const { data: evaluatorsResponse } = useEvaluationEvaluators(id);
 
   // State for dialog management
