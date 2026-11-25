@@ -20,6 +20,8 @@ import type { ApiResponse, ApiResponseError } from "@/types";
 import type { UploadURLs } from "../lib/contractChanges";
 import { formatFileSize, getSimpleFileExtension } from "@/lib/fileUtils";
 import { useFormContext } from "react-hook-form";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { toZonedStartOfDayISO } from "@/lib/zonedDate";
 
 interface SubmitPolicyDialogProps {
   trigger: React.ReactNode;
@@ -93,6 +95,7 @@ const SubmitPolicyDialog: React.FC<SubmitPolicyDialogProps> = ({
   title,
   onSuccess,
 }) => {
+  const timeZone = useDateTimeZone();
   const [open, setOpen] = React.useState(false);
   const toast = useToastHandler();
   const queryClient = useQueryClient();
@@ -187,7 +190,7 @@ const SubmitPolicyDialog: React.FC<SubmitPolicyDialogProps> = ({
       // Only policy renewals carry an expiry date (BE ignores it for security,
       // which uses the per-item endpoint). Omit when blank.
       ...(type === "policy" && data.expiryDate
-        ? { expiryDate: data.expiryDate }
+        ? { expiryDate: toZonedStartOfDayISO(data.expiryDate, timeZone) }
         : {}),
       files: filesPayload.length > 0 ? filesPayload : undefined,
     };

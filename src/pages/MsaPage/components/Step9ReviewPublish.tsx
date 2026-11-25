@@ -97,6 +97,11 @@ const Step9ReviewPublish: React.FC<Props> = ({ control }) => {
     if (!value) return "Not specified";
     return value.toLocaleDateString();
   };
+  // Effective/end dates carry a time (wall clock in the MSA's timezone).
+  const formatDateTime = (value?: Date | null) => {
+    if (!value) return "Not specified";
+    return `${value.toLocaleDateString()} ${value.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  };
 
   const formatAmount = (value: unknown) => {
     if (value == null || value === "") return "Not specified";
@@ -235,11 +240,11 @@ const Step9ReviewPublish: React.FC<Props> = ({ control }) => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-slate-500 dark:text-slate-400">Effective Date</p>
-                    <p className="text-slate-800 dark:text-slate-200">{formatDate(effectiveDate)}</p>
+                    <p className="text-slate-800 dark:text-slate-200">{formatDateTime(effectiveDate)}</p>
                   </div>
                   <div>
                     <p className="text-slate-500 dark:text-slate-400">End Date</p>
-                    <p className="text-slate-800 dark:text-slate-200">{formatDate(endDate)}</p>
+                    <p className="text-slate-800 dark:text-slate-200">{formatDateTime(endDate)}</p>
                   </div>
                 </div>
               ) : (

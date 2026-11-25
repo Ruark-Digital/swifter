@@ -68,6 +68,8 @@ export type User = {
   isDeleted: boolean;
   contactEmail: string;
   projectmanagerId?: string;
+  // Abbreviation (e.g. "EST") or IANA name; used as the date timezone fallback.
+  timezone?: string;
 };
 
 export type ApiError = {

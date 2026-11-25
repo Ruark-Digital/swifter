@@ -40,6 +40,8 @@ import {
 import { useWatch } from "react-hook-form";
 import { useUserRole } from "@/hooks/useUserRole";
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { toCalendarDate, toZonedStartOfDayISO } from "@/lib/zonedDate";
 
 type IssueRfiDialogProps = {
   trigger: React.ReactNode;
@@ -126,12 +128,12 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
   const toastHandler = useToastHandler();
   const { isViewOnly, isVendor, isProjectManager, isApprover } = useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
+  const timeZone = useDateTimeZone();
   const [open, setOpen] = React.useState(false);
-  const initialDeadline = React.useMemo(() => {
-    if (!initialRfi?.deadline) return undefined;
-    const d = new Date(initialRfi.deadline as any);
-    return Number.isFinite(d.getTime()) ? d : undefined;
-  }, [initialRfi?.deadline]);
+  const initialDeadline = React.useMemo(
+    () => toCalendarDate(initialRfi?.deadline as any, timeZone),
+    [initialRfi?.deadline, timeZone],
+  );
   const { control, reset } = useForge({
     resolver: yupResolver(issueRfiSchema) as any,
     defaultValues: {
@@ -301,9 +303,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
       title: data.rfiTitle,
       description: data.question,
       responder: data.responder || undefined,
-      deadline: data.responseDeadline
-        ? data.responseDeadline.toISOString()
-        : undefined,
+      deadline: toZonedStartOfDayISO(data.responseDeadline, timeZone),
     };
 
     let uploadedFiles: Array<{

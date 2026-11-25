@@ -20,6 +20,8 @@ import Spinner from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/button";
 import { useToastHandler } from "@/hooks/useToaster";
 import { formatSecurityType } from "@/lib/utils";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
 type PolicyItem = NonNullable<ContractComplianceDTO["policy"]>[number];
 type SecurityItem = NonNullable<ContractComplianceDTO["security"]>[number];
@@ -105,6 +107,7 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
   actionsDisabled,
   canApprove,
 }) => {
+  const timeZone = useDateTimeZone();
   const detailQueryKey = useUserQueryKey([
     "contract-compliance-detail",
     contractId,
@@ -289,10 +292,10 @@ const ComplianceDetailsSheet: React.FC<ComplianceDetailsSheetProps> = ({
                             "dd MMM yyyy",
                           )
                         : detail?.createdAt
-                          ? format(new Date(detail.createdAt), "dd MMM yyyy")
+                          ? formatInTz(detail.createdAt, timeZone, "dd MMM yyyy")
                           : "—"
                       : detail?.dueDate
-                        ? format(new Date(detail.dueDate), "dd MMM yyyy")
+                        ? formatInTz(detail.dueDate, timeZone, "dd MMM yyyy")
                         : "—"
                   }
                 />

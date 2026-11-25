@@ -45,6 +45,7 @@ export interface Contract {
   contractValue: number;
   startDate?: string;
   endDate?: string;
+  timezone?: string;
   status: string;
   createdAt: string;
   vendor: Vendor;
@@ -210,6 +211,7 @@ const MsaPage: React.FC = () => {
       isOwner: typeof it?.owner === "boolean" ? it.owner : undefined,
       published: it?.createdAt || undefined,
       endDate: it?.endDate || undefined,
+      timezone: it?.timezone || undefined,
       status: String(it?.status ?? "Draft") as MsaRow["status"],
       category: it?.category,
     }));

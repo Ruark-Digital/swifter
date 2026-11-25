@@ -25,6 +25,8 @@ import {
   type PendingApproval,
   type RfiAlert,
 } from "../lib/contractAlerts";
+import { formatContractDateTime } from "@/lib/zonedDate";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
 
 type DashboardTier = "high" | "medium" | "good" | "critical" | "low" | string;
 
@@ -267,13 +269,6 @@ const formatMoney = (value?: number, currency?: string) => {
   }).format(value);
 };
 
-const formatIsoDate = (value?: string) => {
-  if (!value) return "--";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "--";
-  return d.toISOString().slice(0, 10);
-};
-
 const AnalyticsTab: React.FC<Props> = ({
   contract,
   overview,
@@ -290,6 +285,7 @@ const AnalyticsTab: React.FC<Props> = ({
   clauseLegalAnalysis,
   isMsaAnalytics = false,
 }) => {
+  const timeZone = useDateTimeZone();
   const activitiesRanges: Array<{ label: string; value: AnalyticsRange }> = [
     { label: "YTD", value: "YTD" },
     { label: "90 days", value: 90 },
@@ -658,13 +654,13 @@ const AnalyticsTab: React.FC<Props> = ({
           <div>
             <p className="text-blue-200 text-xs mb-1">Start Date</p>
             <p className="text-sm font-medium">
-              {formatIsoDate(contract?.startDate)}
+              {formatContractDateTime(contract?.startDate, timeZone, contract?.createdAt, { pattern: "yyyy-MM-dd hh:mm a" })}
             </p>
           </div>
           <div>
             <p className="text-blue-200 text-xs mb-1">End Date</p>
             <p className="text-sm font-medium">
-              {formatIsoDate(contract?.endDate)}
+              {formatContractDateTime(contract?.endDate, timeZone, contract?.createdAt, { pattern: "yyyy-MM-dd hh:mm a" })}
             </p>
           </div>
           <div>

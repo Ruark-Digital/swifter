@@ -35,7 +35,6 @@ import { useToastHandler } from "@/hooks/useToaster";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUser } from "@/store/authSlice";
-import { formatDate } from "date-fns";
 import { DocumentItem, type DocType } from "./DocumentItem";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
 import { getFileExtension } from "@/lib/fileUtils";
@@ -50,11 +49,15 @@ import type {
 import { deriveLemRateSheetComparison } from "../api/contractManagerApi";
 import { canResubmitLem } from "../lib/lemStatus";
 
-const formatDateValue = (value: unknown) => {
+const LemDate: React.FC<{ value: unknown }> = ({ value }) => {
+  const timeZone = useDateTimeZone();
+  return <>{formatDateValue(value, timeZone)}</>;
+};
+
+const formatDateValue = (value: unknown, timeZone?: string) => {
   if (!value) return "—";
-  const d = value instanceof Date ? value : new Date(value as any);
-  if (Number.isNaN(d.getTime())) return "—";
-  return formatDate(d, "yyyy-MMM-dd");
+  const out = formatInTz(value as string | Date, timeZone, "yyyy-MMM-dd");
+  return out === "N/A" ? "—" : out;
 };
 
 const getLemStatusColor = (status?: string) => {
@@ -315,6 +318,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
   currency,
   owner,
 }) => {
+  const timeZone = useDateTimeZone();
   const currencyCode = resolveCurrency(currency, useUser()?.currency);
   const { isVendor, isProjectManager, isApprover, isManager, isAdmin, isViewOnly } =
     useUserRole();
@@ -577,7 +581,7 @@ const LemDetailsSheet: React.FC<LemDetailsSheetProps> = ({
                   <LabelRow
                     label="Submission Date"
                     value={
-                      detailLoading ? "Loading..." : formatDateValue(lemDetail?.createdAt)
+                      detailLoading ? "Loading..." : formatDateValue(lemDetail?.createdAt, timeZone)
                     }
                   />
                 </div>
@@ -820,7 +824,7 @@ const createColumns = (
     header: "Submission Date",
     cell: ({ getValue }) => (
       <span className="text-sm text-slate-700 dark:text-slate-200">
-        {formatDateValue(getValue<string>())}
+        <LemDate value={getValue<string>()} />
       </span>
     ),
   },
@@ -944,6 +948,8 @@ const LemTable: React.FC<{
 export default LemTable;
 
 import Spinner from "@/components/ui/Spinner";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
 const RejectLemForm: React.FC<{
   contractId: string;

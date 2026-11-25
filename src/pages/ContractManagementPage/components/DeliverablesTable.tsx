@@ -55,10 +55,11 @@ import { useWatch, useFormContext } from "react-hook-form";
 import Spinner from "@/components/ui/Spinner";
 import { DocumentItem } from "@/pages/ContractManagementPage/components/DocumentItem";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
-import { formatDate, isValid } from "date-fns";
 import { vendorApi } from "@/pages/ContractManagementPage/api/vendorApi";
 import { Option } from "@/components/ui/multiselect";
 import { cn } from "@/lib/utils";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
 type UploadedFilePayload = {
   name: string;
@@ -115,10 +116,19 @@ const getStatusTone = (status?: string) => {
 
 // Guard against malformed/unparseable date strings from the backend.
 // date-fns formatDate throws "RangeError: Invalid time value" on invalid dates.
-const safeFormatDate = (value: string | undefined | null, fmt: string) => {
+const DeliverableDueDate: React.FC<{ value?: string | null }> = ({ value }) => {
+  const timeZone = useDateTimeZone();
+  return <>{safeFormatDate(value, "yyyy MMM dd", timeZone)}</>;
+};
+
+const safeFormatDate = (
+  value: string | undefined | null,
+  fmt: string,
+  timeZone?: string,
+) => {
   if (!value) return "-";
-  const parsed = new Date(value);
-  return isValid(parsed) ? formatDate(parsed, fmt) : "-";
+  const out = formatInTz(value, timeZone, fmt);
+  return out === "N/A" ? "-" : out;
 };
 
 const excludedDeliverableResponderRoles = new Set(["vendor"]);
@@ -590,6 +600,7 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
   statsInvalidateQueryKey,
   personnelPath,
 }) => {
+  const timeZone = useDateTimeZone();
   const [open, setOpen] = React.useState(false);
   const [viewerOpen, setViewerOpen] = React.useState(false);
   const [selectedDoc, setSelectedDoc] = React.useState<{
@@ -871,11 +882,11 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
                     />
                     <LabelRow
                       label="Due Date"
-                      value={safeFormatDate(detail?.dueDate, "dd MMM yyyy")}
+                      value={safeFormatDate(detail?.dueDate, "dd MMM yyyy", timeZone)}
                     />
                     <LabelRow
                       label="Submission Date"
-                      value={safeFormatDate(detail?.submissionDate, "dd MMM yyyy")}
+                      value={safeFormatDate(detail?.submissionDate, "dd MMM yyyy", timeZone)}
                     />
                   </div>
                 )}
@@ -966,7 +977,7 @@ const DeliverableDetailsSheet: React.FC<DeliverableDetailsSheetProps> = ({
                         </div>
                         <div className="text-xs text-[#6B7280] dark:text-slate-400">
                           {comment.createdAt
-                            ? safeFormatDate(comment.createdAt, "dd MMM yyyy, HH:mm")
+                            ? safeFormatDate(comment.createdAt, "dd MMM yyyy, HH:mm", timeZone)
                             : ""}
                         </div>
                       </div>
@@ -1146,7 +1157,7 @@ const columns: ColumnDef<DeliverableRow>[] = [
         <p>
           <span className="text-slate-500 dark:text-slate-400">Due Date:&nbsp;</span>
           <span className="text-slate-900 dark:text-slate-100">
-            {safeFormatDate(row.original.dueDate, "yyyy MMM dd")}
+            <DeliverableDueDate value={row.original.dueDate} />
           </span>
         </p>
         {/* {row.original.submissionDate && <p>

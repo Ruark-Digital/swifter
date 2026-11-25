@@ -109,7 +109,7 @@ export const ContractsTabView: React.FC<ContractsTabViewProps> = ({
         }
         className="w-full"
       >
-        <TabsList className="bg-slate-100 rounded-full p-1.5 gap-3 mb-3 h-12">
+        <TabsList className="bg-slate-100 rounded-full p-1.5 gap-3 mb-3 h-12 max-w-full overflow-x-auto justify-start">
           <TabsTrigger
             value="overview"
             className={cn(

@@ -19,6 +19,7 @@ import Step8ReviewPublish from "@/pages/ContractManagementPage/components/Step6R
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getRequest, putRequest } from "@/lib/axiosInstance";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
+import { useUserRole } from "@/hooks/useUserRole";
 import { useProjectsList } from "@/pages/ProjectManagementPage/services/useProjectApi";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useWatch } from "react-hook-form";
@@ -34,7 +35,6 @@ import {
   findCombinationTypeId,
   resolveContractTypePayload,
 } from "@/pages/ContractManagementPage/lib/contractType";
-import { format } from "date-fns";
 import { X, FileText } from "lucide-react";
 import { useClearSession } from "@/store/solicitationFileSlice";
 import {
@@ -47,6 +47,7 @@ import {
   toIdStringOrUndefined,
   toPersonnelOrUndefined,
 } from "@/lib/contractFormValues";
+import { toCalendarDate, toContractDateTimeISO, toContractDateTimeValue, toZonedStartOfDayISO } from "@/lib/zonedDate";
 
 type Props = {
   open: boolean;
@@ -56,10 +57,10 @@ type Props = {
 };
 
 const STEP_TITLES = [
-  "Step 1 of 8: Basic Information",
-  "Step 2 of 8: Contract Team",
-  "Step 3 of 8: Timeline",
-  "Step 4 of 8: Deliverables",
+  "Step 1 of 9: Basic Information",
+  "Step 2 of 9: Contract Team",
+  "Step 3 of 9: Timeline",
+  "Step 4 of 9: Deliverables",
   "Step 5 of 9: Contract Value & Payments",
   "Step 6 of 9: Compliance & Security",
   "Step 7 of 9: Documents",
@@ -229,6 +230,10 @@ const EditContract: React.FC<Props> = ({
 
   const [step, setStep] = React.useState(1);
   const qc = useQueryClient();
+  // These endpoints are manager-only (x-roles: contract_manager, company_admin);
+  // vendors/approvers get 403s if the queries run for them (QA-037).
+  const { isManager, isCompanyAdmin } = useUserRole();
+  const canManageContracts = isManager || isCompanyAdmin;
   const { success, error } = useToastHandler();
   const currentUser = useUser();
   const [lastError, setLastError] = React.useState<ApiResponseError | null>(
@@ -305,6 +310,7 @@ const EditContract: React.FC<Props> = ({
         }[];
       };
     },
+    enabled: canManageContracts,
     staleTime: 60_000,
   });
 
@@ -322,6 +328,7 @@ const EditContract: React.FC<Props> = ({
         };
       };
     },
+    enabled: canManageContracts,
     staleTime: 60_000,
   });
 
@@ -332,7 +339,7 @@ const EditContract: React.FC<Props> = ({
   const { data: contractRes } = useQuery({
     queryKey: useUserQueryKey(["contract-manager-contract-edit", contractId]),
     queryFn: () => contractManagerApi.getContractForEdit(contractId),
-    enabled: !!contractId,
+    enabled: !!contractId && canManageContracts,
     staleTime: 60_000,
   });
 
@@ -382,7 +389,7 @@ const EditContract: React.FC<Props> = ({
     const deliverables =
       (contract.deliverables ?? []).map((d) => ({
         name: d.name,
-        dueDate: d.dueDate ? new Date(d.dueDate) : undefined,
+        dueDate: d.dueDate ? toCalendarDate(d.dueDate, contract.timezone) : undefined,
       })) ?? [];
     // Do NOT auto-pick the first deliverable. "Select Deliverable" is an
     // optional field for non-milestone payment structures and must stay empty
@@ -420,7 +427,7 @@ const EditContract: React.FC<Props> = ({
         return {
           name: m?.name ?? m?.milestoneName ?? "",
           amount: m?.amount ?? m?.milestoneAmount ?? "",
-          dueDate: m?.dueDate ? new Date(m.dueDate) : undefined,
+          dueDate: m?.dueDate ? toCalendarDate(m.dueDate, contract.timezone) : undefined,
           deliverable,
         };
       }) ?? [];
@@ -463,16 +470,17 @@ const EditContract: React.FC<Props> = ({
       contract.insurance?.contractSecurityType?.[0]?.amount ?? "";
     const securityDueDate = contract.insurance?.contractSecurityType?.[0]
       ?.dueDate
-      ? new Date(
+      ? toCalendarDate(
           contract.insurance.contractSecurityType[0]
             .dueDate as unknown as string,
+          contract.timezone,
         )
       : undefined;
     const securities =
       (contract.insurance?.contractSecurityType ?? []).slice(1).map((s) => ({
         type: s.securityType,
         amount: s.amount,
-        dueDate: s.dueDate ? new Date(s.dueDate) : undefined,
+        dueDate: s.dueDate ? toCalendarDate(s.dueDate, contract.timezone) : undefined,
       })) ?? [];
 
     const payload = {
@@ -602,10 +610,16 @@ const EditContract: React.FC<Props> = ({
       selectedDeliverable,
       paymentTerm: paymentTermId,
       termType: termTypeId,
-      effectiveDate: contract.startDate
-        ? new Date(contract.startDate)
-        : undefined,
-      endDate: contract.endDate ? new Date(contract.endDate) : undefined,
+      effectiveDate: toContractDateTimeValue(
+        contract.startDate,
+        contract.timezone,
+        contract.createdAt,
+      ),
+      endDate: toContractDateTimeValue(
+        contract.endDate,
+        contract.timezone,
+        contract.createdAt,
+      ),
       duration: contract.duration ? String(contract.duration) : "",
       deliverables,
       // The form's `documents` field holds NEW uploads only; existing BE
@@ -613,32 +627,32 @@ const EditContract: React.FC<Props> = ({
       documents: [],
       milestones,
       draftStartDate: contract.contractFormationStage?.draft?.startDate
-        ? new Date(contract.contractFormationStage.draft.startDate)
+        ? toCalendarDate(contract.contractFormationStage.draft.startDate, contract.timezone)
         : undefined,
       draftEndDate: contract.contractFormationStage?.draft?.endDate
-        ? new Date(contract.contractFormationStage.draft.endDate)
+        ? toCalendarDate(contract.contractFormationStage.draft.endDate, contract.timezone)
         : undefined,
       reviewStartDate: contract.contractFormationStage?.review?.startDate
-        ? new Date(contract.contractFormationStage.review.startDate)
+        ? toCalendarDate(contract.contractFormationStage.review.startDate, contract.timezone)
         : undefined,
       reviewEndDate: contract.contractFormationStage?.review?.endDate
-        ? new Date(contract.contractFormationStage.review.endDate)
+        ? toCalendarDate(contract.contractFormationStage.review.endDate, contract.timezone)
         : undefined,
       approvalStartDate: contract.contractFormationStage?.approval?.startDate
-        ? new Date(contract.contractFormationStage.approval.startDate)
+        ? toCalendarDate(contract.contractFormationStage.approval.startDate, contract.timezone)
         : undefined,
       approvalEndDate: contract.contractFormationStage?.approval?.endDate
-        ? new Date(contract.contractFormationStage.approval.endDate)
+        ? toCalendarDate(contract.contractFormationStage.approval.endDate, contract.timezone)
         : undefined,
       executionStartDate: contract.contractFormationStage?.execution?.startDate
-        ? new Date(contract.contractFormationStage.execution.startDate)
+        ? toCalendarDate(contract.contractFormationStage.execution.startDate, contract.timezone)
         : undefined,
       executionEndDate: contract.contractFormationStage?.execution?.endDate
-        ? new Date(contract.contractFormationStage.execution.endDate)
+        ? toCalendarDate(contract.contractFormationStage.execution.endDate, contract.timezone)
         : undefined,
       approvalGroups,
       insuranceExpiryDate: contract.insurance?.expiryDate
-        ? new Date(contract.insurance.expiryDate)
+        ? toCalendarDate(contract.insurance.expiryDate, contract.timezone)
         : undefined,
       contractSecurity: contract.insurance?.contractSecurity ? "yes" : "no",
       securityType,
@@ -741,7 +755,10 @@ const EditContract: React.FC<Props> = ({
         : [],
     [termTypesQuery.data?.data],
   );
-  const { data: projectsData } = useProjectsList({ limit: 50, page: 1 });
+  const { data: projectsData } = useProjectsList(
+    { limit: 50, page: 1 },
+    { enabled: canManageContracts },
+  );
   const projectOptions = React.useMemo(
     () =>
       Array.isArray(projectsData?.data)
@@ -803,7 +820,12 @@ const EditContract: React.FC<Props> = ({
 
   const buildPayload = React.useCallback(
     (data: yup.InferType<typeof createSchema>, status: "draft" | "pending_approval") => {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+      // The contract's timezone is fixed at creation; dates are in that zone.
+      const tz =
+        contractRes?.data?.data?.timezone ||
+        Intl.DateTimeFormat().resolvedOptions().timeZone ||
+        "UTC";
+      const contractCreatedAt = contractRes?.data?.data?.createdAt;
       const relationship =
         data.relationship === "msa" || data.relationship === "msa_project"
           ? "msa_project"
@@ -833,7 +855,7 @@ const EditContract: React.FC<Props> = ({
           ? (data.milestones ?? []).map((m) => {
               const amount = toNumberOrUndefined(m.amount);
               const dueDate = m.dueDate
-                ? format(m.dueDate, "yyyy-MM-dd'T'HH:mm:ss")
+                ? toZonedStartOfDayISO(m.dueDate, tz)
                 : undefined;
               const deliverableName =
                 typeof m.deliverable === "string" ? m.deliverable.trim() : "";
@@ -857,7 +879,7 @@ const EditContract: React.FC<Props> = ({
         (data.deliverables ?? []).map((d) => ({
           name: d.name,
           dueDate: d.dueDate
-            ? format(d.dueDate, "yyyy-MM-dd'T'HH:mm:ss")
+            ? toZonedStartOfDayISO(d.dueDate, tz)
             : undefined,
         })) ?? [];
 
@@ -878,8 +900,7 @@ const EditContract: React.FC<Props> = ({
         data.documents as any[] | null | undefined,
       );
 
-      const formatDate = (d: any) =>
-        d ? format(d, "yyyy-MM-dd'T'HH:mm:ss") : undefined;
+      const formatDate = (d: any) => toZonedStartOfDayISO(d, tz);
 
       const mainSecurityAmount = toNumberOrUndefined(data.securityAmount);
       const mainSecurityDueDate = data.securityDueDate
@@ -1001,8 +1022,10 @@ const EditContract: React.FC<Props> = ({
         contractPaymentTerm: data.paymentTerm || undefined,
         paymentTerm: paymentTermName || undefined,
         paymentStructure: paymentStructureEnum,
-        startDate: formatDate(data.effectiveDate),
-        endDate: formatDate(data.endDate),
+        // Effective/end carry a time: a wall-clock date-time in the contract tz
+        // (legacy records keep their legacy encoding, see zonedDate).
+        startDate: toContractDateTimeISO(data.effectiveDate, tz, contractCreatedAt),
+        endDate: toContractDateTimeISO(data.endDate, tz, contractCreatedAt),
         duration: data.duration ? Number(data.duration) : undefined,
         contractTermType: data.termType || undefined,
         termType: termTypeName || undefined,
@@ -1046,6 +1069,8 @@ const EditContract: React.FC<Props> = ({
       existingFiles,
       removedFileKeys,
       typeOptions,
+      contractRes?.data?.data?.timezone,
+      contractRes?.data?.data?.createdAt,
     ],
   );
 
@@ -1171,6 +1196,7 @@ const EditContract: React.FC<Props> = ({
     ],
     2: [
       "manager",
+      "projectManager",
       "jobTitle",
       "vendor",
       "personnel",

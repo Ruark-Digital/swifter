@@ -21,11 +21,13 @@ import {
   TextDatePicker,
 } from "@/components/layouts/FormInputs";
 import { CloudUpload, FileText, X } from "lucide-react";
-import { format, startOfDay } from "date-fns";
+import { startOfDay } from "date-fns";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { truncate } from "lodash";
 import { businessDivisionApi } from "@/pages/BusinessDivisionsPage/api/businessDivisionApi";
 import { formatFileSize } from "@/lib/fileUtils";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { toZonedStartOfDayISO } from "@/lib/zonedDate";
 
 type UploadedFile = {
   name: string;
@@ -248,6 +250,7 @@ const CreateProjectDialog: React.FC<Props> = ({
   onSubmit,
   isSubmitting,
 }) => {
+  const userTimeZone = useDateTimeZone();
   const [fileUploadStateByKey, setFileUploadStateByKey] = React.useState<
     Record<string, FileUploadState>
   >({});
@@ -435,12 +438,15 @@ const CreateProjectDialog: React.FC<Props> = ({
       name: data.name,
       category: data.category,
       description: data.description,
+      // Projects have no timezone of their own: dates are in the user's zone.
       startDate:
         data.startDate instanceof Date
-          ? format(data.startDate, "yyyy-MM-dd")
+          ? toZonedStartOfDayISO(data.startDate, userTimeZone)
           : undefined,
       endDate:
-        data.endDate instanceof Date ? format(data.endDate, "yyyy-MM-dd") : undefined,
+        data.endDate instanceof Date
+          ? toZonedStartOfDayISO(data.endDate, userTimeZone)
+          : undefined,
       budget: typeof data.budget === "number" ? data.budget : undefined,
       allowMultipleContracts: !!data.allowMultipleContracts,
       files: [...retainedExistingFiles, ...uploadedFiles],

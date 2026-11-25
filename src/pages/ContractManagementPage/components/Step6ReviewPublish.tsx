@@ -121,6 +121,11 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
     if (!value) return "Not specified";
     return format(value, "dd MMM yyyy");
   };
+  // Effective/end dates carry a time (wall clock in the contract's timezone).
+  const formatDateTime = (value?: Date | null) => {
+    if (!value) return "Not specified";
+    return format(value, "dd MMM yyyy, hh:mm a");
+  };
 
   const formatAmount = (value: unknown) => {
     if (value == null || value === "") return "Not specified";
@@ -294,12 +299,12 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
                   <div>
                     <p className="text-slate-500 dark:text-slate-400">Effective Date</p>
                     <p className="text-slate-800 dark:text-slate-200">
-                      {formatDate(effectiveDate)}
+                      {formatDateTime(effectiveDate)}
                     </p>
                   </div>
                   <div>
                     <p className="text-slate-500 dark:text-slate-400">End Date</p>
-                    <p className="text-slate-800 dark:text-slate-200">{formatDate(endDate)}</p>
+                    <p className="text-slate-800 dark:text-slate-200">{formatDateTime(endDate)}</p>
                   </div>
                 </div>
               ) : (

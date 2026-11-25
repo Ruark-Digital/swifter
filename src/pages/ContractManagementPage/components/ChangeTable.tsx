@@ -21,7 +21,8 @@ import { formatCurrency, resolveCurrency } from "@/lib/utils";
 import { useUser } from "@/store/authSlice";
 
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
 type ChangeTableProps = {
   contractId: string;
@@ -108,6 +109,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
   currency,
   owner,
 }) => {
+  const timeZone = useDateTimeZone();
   const [search, setSearch] = React.useState("");
   const currencyCode = resolveCurrency(currency, useUser()?.currency);
 
@@ -153,7 +155,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
         header: "Submitted",
         cell: ({ getValue }) => {
           const date = getValue<string | undefined>();
-          return date ? format(new Date(date), "dd MMM yyyy") : "-";
+          return date ? formatInTz(date, timeZone, "dd MMM yyyy") : "-";
         },
       },
       {
@@ -204,7 +206,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
         },
       },
     ],
-    [contractId, basePath, currencyCode],
+    [contractId, basePath, currencyCode, timeZone],
   );
 
   // CM/PL adopt the approver's column layout — Value / Submitted / Status
@@ -252,7 +254,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
         header: "Submitted",
         cell: ({ getValue }) => {
           const date = getValue<string | undefined>();
-          return date ? format(new Date(date), "dd MMM yyyy") : "-";
+          return date ? formatInTz(date, timeZone, "dd MMM yyyy") : "-";
         },
       },
       {
@@ -292,7 +294,7 @@ const ChangeTable: React.FC<ChangeTableProps> = ({
         ),
       },
     ],
-    [contractId, basePath, currencyCode],
+    [contractId, basePath, currencyCode, timeZone],
   );
 
   const filteredRows = React.useMemo(() => {

@@ -38,8 +38,9 @@ const EmptyState: React.FC<EmptyStateProps> = ({ isReadOnly }) => {
           No Contracts Yet
         </p>
         <p className="text-sm text-slate-500 max-w-md">
-          You don’t have any active contracts at the moment. Click the button
-          below to create your first one and start receiving proposals.
+          {isReadOnly
+            ? "There are no contracts to show at the moment."
+            : "You don’t have any active contracts at the moment. Click the button below to create your first one and start receiving proposals."}
         </p>
       </div>
       {!isReadOnly && (

@@ -126,8 +126,10 @@ type CriteriaScorePayload = {
 
 // Form validation schema
 const criteriaScoreSchema = yup.object({
-  comment: yup.string().required("Comment is required"),
-  score: yup.mixed().required("Score is required"),
+  comment: yup.string().trim().required("Comment is required"),
+  score: yup
+    .mixed()
+    .test("score-required", "Please select a score", (v) => v !== "" && v != null),
   type: yup.string().oneOf(["pass_fail", "weight"]).required(),
 });
 
@@ -397,7 +399,13 @@ const SubmittedDocumentPage: React.FC = () => {
   >({});
 
   // Forge form setup for criteria scoring
-  const { handleSubmit, reset, watch, setValue } =
+  const {
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    formState: { errors: scoreErrors },
+  } =
     useForge<CriteriaScorePayload>({
       defaultValues: {
         comment: "",
@@ -448,6 +456,11 @@ const SubmittedDocumentPage: React.FC = () => {
   });
 
   // Form submission handler
+  const onInvalidScore = (errs: Record<string, any>) => {
+    const messages = [errs.score?.message, errs.comment?.message].filter(Boolean);
+    toast.error("Incomplete score", messages.join(". "));
+  };
+
   const onSubmitScore = async (data: CriteriaScorePayload) => {
     if (!activeCriteriaId || !id || !vendorId) return;
 
@@ -881,7 +894,7 @@ const SubmittedDocumentPage: React.FC = () => {
                             </h4>
 
                             {activeCriteriaId === criteriaItem._id && (
-                              <form onSubmit={handleSubmit(onSubmitScore)}>
+                              <form onSubmit={handleSubmit(onSubmitScore, onInvalidScore)}>
                                 {watch("type") === "pass_fail" ? (
                                   <div className="flex items-center">
                                     <RadioGroup
@@ -990,6 +1003,11 @@ const SubmittedDocumentPage: React.FC = () => {
                                     </div>
                                   </div>
                                 )}
+                                {scoreErrors.score?.message && (
+                                  <p className="mt-1 text-xs text-red-600">
+                                    {String(scoreErrors.score.message)}
+                                  </p>
+                                )}
                               </form>
                             )}
                           </div>
@@ -1077,6 +1095,11 @@ const SubmittedDocumentPage: React.FC = () => {
                                 rows={3}
                                 placeholder="Enter your comments here..."
                               />
+                              {scoreErrors.comment?.message && (
+                                <p className="mt-1 text-xs text-red-600">
+                                  {String(scoreErrors.comment.message)}
+                                </p>
+                              )}
                             </div>
 
                             {!isEvaluationSubmitted ? (
@@ -1094,7 +1117,7 @@ const SubmittedDocumentPage: React.FC = () => {
                                   </Button>
                                   <Button
                                     className="text-white px-4"
-                                    onClick={handleSubmit(onSubmitScore)}
+                                    onClick={handleSubmit(onSubmitScore, onInvalidScore)}
                                     disabled={submitScoreMutation.isPending}
                                   >
                                     {submitScoreMutation.isPending
@@ -1118,7 +1141,7 @@ const SubmittedDocumentPage: React.FC = () => {
                                     </Button>
                                     <Button
                                       className="text-white px-4"
-                                      onClick={handleSubmit(onSubmitScore)}
+                                      onClick={handleSubmit(onSubmitScore, onInvalidScore)}
                                       disabled={submitScoreMutation.isPending}
                                     >
                                       {submitScoreMutation.isPending
@@ -1171,7 +1194,7 @@ const SubmittedDocumentPage: React.FC = () => {
                                   </Button>
                                   <Button
                                     className="text-white px-4"
-                                    onClick={handleSubmit(onSubmitScore)}
+                                    onClick={handleSubmit(onSubmitScore, onInvalidScore)}
                                     disabled={revisitScoreMutation.isPending}
                                   >
                                     {revisitScoreMutation.isPending ? "Resubmitting..." : "Revise Score"}

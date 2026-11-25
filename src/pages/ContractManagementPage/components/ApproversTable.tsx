@@ -31,12 +31,13 @@ import { ArrowLeft, X } from "lucide-react";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import type { ApiResponseError } from "@/types";
-import { formatDateTZ } from "@/lib/utils";
 import {
   contractManagerApi,
   type ContractApproverItem,
   type ContractApproverItemsByCategory,
 } from "../api/contractManagerApi";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
 export type ApproverRow = {
   id: string;
@@ -146,6 +147,7 @@ const ApproverDetailsSheet: React.FC<ApproverDetailsSheetProps> = ({
   approverId,
   summary,
 }) => {
+  const timeZone = useDateTimeZone();
   const [open, setOpen] = React.useState(false);
   const toastHandler = useToastHandler();
   const toastErrorRef = React.useRef(toastHandler.error);
@@ -189,7 +191,7 @@ const ApproverDetailsSheet: React.FC<ApproverDetailsSheetProps> = ({
     approver?.email?.trim() || (summary.email !== "-" ? summary.email : "");
 
   const submissionDateLabel = detail?.submissionDate
-    ? formatDateTZ(detail.submissionDate, "dd MMM yyyy")
+    ? formatInTz(detail.submissionDate, timeZone, "dd MMM yyyy")
     : "N/A";
 
   const assignedApprovalLabel =
@@ -358,9 +360,9 @@ const ApproverDetailsSheet: React.FC<ApproverDetailsSheetProps> = ({
                         : undefined);
                     const amountLabel = formatAmount(item.amount);
                     const actionedAtLabel = item.actionedAt
-                      ? formatDateTZ(item.actionedAt, "dd MMM yyyy")
+                      ? formatInTz(item.actionedAt, timeZone, "dd MMM yyyy")
                       : item.completedAt
-                        ? formatDateTZ(item.completedAt, "dd MMM yyyy")
+                        ? formatInTz(item.completedAt, timeZone, "dd MMM yyyy")
                         : null;
                     return (
                       <AccordionItem

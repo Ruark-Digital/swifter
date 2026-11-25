@@ -28,12 +28,12 @@ import Step6ComplianceSecurity from "./Step6ComplianceSecurity";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
+import { useUserRole } from "@/hooks/useUserRole";
 import { useProjectsList } from "@/pages/ProjectManagementPage/services/useProjectApi";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useWatch } from "react-hook-form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { X, FileText } from "lucide-react";
-import { format } from "date-fns";
 import { useClearSession } from "@/store/solicitationFileSlice";
 import { useUser } from "@/store/authSlice";
 import { pruneEmptyValuesDeep } from "@/lib/pruneEmptyValuesDeep";
@@ -48,6 +48,7 @@ import {
   toIdStringOrUndefined,
   toPersonnelOrUndefined,
 } from "@/lib/contractFormValues";
+import { toContractDateTimeISO, toZonedStartOfDayISO } from "@/lib/zonedDate";
 
 type Props = {
   trigger: React.ReactNode;
@@ -67,7 +68,9 @@ export const schema = yup.object({
   category: yup.string().required("Category is required"),
   currency: yup.string().required("Currency is required"),
   manager: yup.string().optional(),
-  projectManager: yup.string().optional(),
+  // A PM must approve a contract first, so one is required to send for approval
+  // / publish. Save as Draft reads form values directly and skips validation.
+  projectManager: yup.string().trim().required("Project Manager is required"),
   jobTitle: yup.string().optional(),
   businessDivision: yup.string().required("Business Division is required"),
   contractId: yup.string().optional(),
@@ -689,6 +692,10 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
   const clearSession = useClearSession();
   const { success, error } = useToastHandler();
   const currentUser = useUser();
+  // These endpoints are manager-only (x-roles: contract_manager, company_admin);
+  // vendors/approvers get 403s if the queries run for them (QA-037).
+  const { isManager, isCompanyAdmin } = useUserRole();
+  const canManageContracts = isManager || isCompanyAdmin;
 
   const typesQuery = useQuery<ApiListResponse<ContractType>>({
     queryKey: useUserQueryKey(["contract-types"]),
@@ -725,6 +732,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       });
       return res.data as ApiListResponse<AwardedVendorItem>;
     },
+    enabled: canManageContracts,
     staleTime: 60_000,
   });
 
@@ -736,11 +744,15 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       });
       return res.data;
     },
+    enabled: canManageContracts,
     staleTime: 60_000,
   });
 
   // Projects list (reuse existing service)
-  const { data: projectsData } = useProjectsList({ limit: 50, page: 1 });
+  const { data: projectsData } = useProjectsList(
+    { limit: 50, page: 1 },
+    { enabled: canManageContracts },
+  );
 
   const typeOptions = React.useMemo(
     () =>
@@ -1039,7 +1051,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         ? (data.milestones ?? []).map((m) => {
             const amount = toNumberOrUndefined(m.amount);
             const dueDate = m.dueDate
-              ? format(m.dueDate, "yyyy-MM-dd'T'HH:mm:ss")
+              ? toZonedStartOfDayISO(m.dueDate, tz)
               : undefined;
             const deliverableName =
               typeof m.deliverable === "string" ? m.deliverable.trim() : "";
@@ -1063,7 +1075,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         (data.deliverables ?? []).map((d) => ({
           name: d.name,
           dueDate: d.dueDate
-            ? format(d.dueDate, "yyyy-MM-dd'T'HH:mm:ss")
+            ? toZonedStartOfDayISO(d.dueDate, tz)
             : undefined,
         })) ?? [];
 
@@ -1101,7 +1113,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       // Insurance Construction
       const mainSecurityAmount = toNumberOrUndefined(data.securityAmount);
       const mainSecurityDueDate = data.securityDueDate
-        ? format(data.securityDueDate, "yyyy-MM-dd'T'HH:mm:ss")
+        ? toZonedStartOfDayISO(data.securityDueDate, tz)
         : undefined;
       const mainSecurity = data.securityType
         ? [
@@ -1120,7 +1132,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
           securityType: s.type,
           ...(amount !== undefined ? { amount } : {}),
           dueDate: s.dueDate
-            ? format(s.dueDate, "yyyy-MM-dd'T'HH:mm:ss")
+            ? toZonedStartOfDayISO(s.dueDate, tz)
             : undefined,
         };
       });
@@ -1129,7 +1141,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         insurance: data.contractSecurity === "yes" ? "Yes" : "No",
         contractSecurity: data.contractSecurity === "yes",
         expiryDate: data.insuranceExpiryDate
-          ? format(data.insuranceExpiryDate, "yyyy-MM-dd'T'HH:mm:ss")
+          ? toZonedStartOfDayISO(data.insuranceExpiryDate, tz)
           : undefined,
         contractSecurityType: [...mainSecurity, ...extraSecurities],
         policy: (data.insurancePolicies || []).map((p) => ({
@@ -1139,8 +1151,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       };
 
       // Dates Construction
-      const formatDate = (d: any) =>
-        d ? format(d, "yyyy-MM-dd'T'HH:mm:ss") : undefined;
+      const formatDate = (d: any) => toZonedStartOfDayISO(d, tz);
 
       const contractFormationStage = {
         draft: {
@@ -1218,8 +1229,9 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         contractPaymentTerm: data.paymentTerm || undefined,
         paymentTerm: paymentTermName || undefined,
         paymentStructure: paymentStructureEnum,
-        startDate: formatDate(data.effectiveDate),
-        endDate: formatDate(data.endDate),
+        // Effective/end carry a time: a wall-clock date-time in the contract tz.
+        startDate: toContractDateTimeISO(data.effectiveDate, tz),
+        endDate: toContractDateTimeISO(data.endDate, tz),
         duration: data.duration ? Number(data.duration) : undefined,
         contractTermType: data.termType || undefined,
         termType: termTypeName || undefined,
