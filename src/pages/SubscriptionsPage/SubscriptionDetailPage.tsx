@@ -12,7 +12,7 @@ import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
 import { useToastHandler } from "@/hooks/useToaster";
 import { useState } from "react";
 import { PageLoader } from "@/components/ui/PageLoader";
-import { formatDateTZ } from "@/lib/utils";
+import { formatDateTZ, formatMaxUsers } from "@/lib/utils";
 
 // Subscription type definition
 export interface Subscription {
@@ -399,7 +399,7 @@ const SubscriptionDetailPage = () => {
                       Users (Used/Maxed)
                     </p>
                     <p className="font-medium text-gray-900 dark:text-gray-100">
-                      {subscription.maxUsers ||
+                      {formatMaxUsers(subscription.maxUsers) ||
                         `${subscription.usersUsed}/${subscription.maxUsers}`}
                     </p>
                   </div>

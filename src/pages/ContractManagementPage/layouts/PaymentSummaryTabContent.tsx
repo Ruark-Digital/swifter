@@ -21,7 +21,6 @@ import { useToastHandler } from "@/hooks/useToaster";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { contractManagerApi } from "../api/contractManagerApi";
 import {
-  formatDateTZ,
   resolveCurrency,
   resolveMilestoneDeliverableName,
 } from "@/lib/utils";
@@ -38,6 +37,8 @@ import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 import Spinner from "@/components/ui/Spinner";
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
 function SavingsFileListItem({ file }: { file: File }) {
   const { setValue, getValues } = useFormContext();
@@ -576,6 +577,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
   contract,
   isActive,
 }) => {
+  const timeZone = useDateTimeZone();
   const { isVendor, isProjectManager, isManager, isApprover, isViewOnly, isAdmin } =
     useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
@@ -734,9 +736,9 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
             : "-",
       releasedAmount: formatMoney(holdback.amount),
       status: holdback?.status ?? "-",
-      dueDate: formatDateTZ(holdback?.releasedDate, "dd MMM yyyy") ?? "-",
+      dueDate: formatInTz(holdback?.releasedDate, timeZone, "dd MMM yyyy") ?? "-",
     }));
-  }, [formatMoney, holdbacksResponse?.data, currency]);
+  }, [formatMoney, holdbacksResponse?.data, currency, timeZone]);
 
   const savingsRows = React.useMemo<SavingsRealizedRow[]>(() => {
     const savings = savingsResponse?.data ?? [];
@@ -746,9 +748,9 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
       category: saving.category ?? "-",
       amount: formatMoney(saving.amount),
       currency,
-      dateSubmitted: formatDateTZ(saving?.submittedDate, "dd MMM yyyy") ?? "-",
+      dateSubmitted: formatInTz(saving?.submittedDate, timeZone, "dd MMM yyyy") ?? "-",
     }));
-  }, [formatMoney, savingsResponse?.data, currency]);
+  }, [formatMoney, savingsResponse?.data, currency, timeZone]);
 
   const holdbackReleaseColumns = React.useMemo(
     () => buildHoldbackReleaseColumns(contractId, "Contract", contract?.owner),
@@ -783,7 +785,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
       : [];
     return milestones.map((milestone: any, index: number) => {
       const dueDate = milestone?.dueDate
-        ? formatDateTZ(milestone?.dueDate, "dd MMM yyyy")
+        ? formatInTz(milestone?.dueDate, timeZone, "dd MMM yyyy")
         : "-";
       return {
         milestoneId: milestone?.milestoneId ?? `milestone-${index + 1}`,
@@ -797,7 +799,7 @@ const PaymentSummaryTabContent: React.FC<Props> = ({
         dueDate,
       };
     });
-  }, [contract?.milestone, deliverableNameById, formatMoney]);
+  }, [contract?.milestone, deliverableNameById, formatMoney, timeZone]);
 
   const contractValue = formatMoney(contract?.contractValue);
   // Holdback Amount + Holdback Released render to 2 decimal places.

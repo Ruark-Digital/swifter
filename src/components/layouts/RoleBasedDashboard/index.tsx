@@ -1030,7 +1030,7 @@ export const RoleBasedDashboard: React.FC = () => {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center gap-4">
+      <div className="flex flex-wrap justify-between items-center gap-4">
         <h1 className="text-2xl font-medium text-gray-900 dark:text-gray-100">
           Dashboard
         </h1>
@@ -1041,7 +1041,7 @@ export const RoleBasedDashboard: React.FC = () => {
             value={activeLandingTab}
             onValueChange={(v) => setActiveLandingTab(v as LandingTabId)}
           >
-            <TabsList className="bg-slate-100 rounded-full p-1.5 gap-3 h-12">
+            <TabsList className="bg-slate-100 rounded-full p-1.5 gap-3 h-12 max-w-full overflow-x-auto justify-start">
               {landingTabs.map((t) => (
                 <TabsTrigger
                   key={t.id}

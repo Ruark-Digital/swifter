@@ -414,7 +414,7 @@ const Step1BasicInfo: React.FC<Props> = ({
         <Forger
           name="type"
           label="Contract Type"
-          placeholder="Fixed Price/Lump Sum"
+          placeholder="Select contract type"
           component={TextSelect}
           options={typeOptions}
           data-testid="contract-type-select"
@@ -422,7 +422,7 @@ const Step1BasicInfo: React.FC<Props> = ({
         <Forger
           name="category"
           label="Category"
-          placeholder="Legal"
+          placeholder="Select category"
           component={TextSelectWithSearch}
           options={categoryOptions}
           data-testid="contract-category-select"

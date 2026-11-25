@@ -39,6 +39,7 @@ import Step6ComplianceSecurity from "../components/Step6ComplianceSecurity";
 import Step4Form from "@/pages/SolicitationManagementPage/components/Step4Form";
 import Step8ApprovalLevel from "../components/Step8ApprovalLevel";
 import Step9ReviewPublish from "../components/Step9ReviewPublish";
+import { toCalendarDate, toContractDateTimeISO, toContractDateTimeValue, toZonedStartOfDayISO } from "@/lib/zonedDate";
 
 type Props = {
   /** Trigger node for the self-managed (Create) flow. Omit when driving the
@@ -55,15 +56,17 @@ type Props = {
   onOpenChange?: (open: boolean) => void;
 };
 
-const schema = yup.object({
+export const schema = yup.object({
   name: yup.string().required("MSA name is required"),
   type: yup.string().required("MSA type is required"),
   currency: yup.string().required("Currency is required"),
   manager: yup.string().optional(),
-  projectManager: yup.string().optional(),
+  // A PM must approve an MSA first, so one is required to send for approval /
+  // publish. Save as Draft reads form values directly and skips validation.
+  projectManager: yup.string().trim().required("Project Manager is required"),
   jobTitle: yup.string().optional(),
   msaId: yup.string().optional(),
-  description: yup.string().optional(),
+  description: yup.string().trim().required("MSA description is required"),
   rating: yup.number().min(1).max(10).required(),
   businessDivision: yup.string().optional(),
   vendor: yup.string().optional(),
@@ -192,6 +195,12 @@ const defaultValues: CreateMsaFormData = {
   approvalGroupSelection: "",
   assignedApprovers: [],
   approvalGroups: [{ name: "", approvers: [], approvalLevel: "0", amount: "" }],
+};
+
+// Fields validated before Continue moves past a step (create and edit share it).
+export const MSA_STEP_VALIDATION_FIELDS: Record<number, string[]> = {
+  1: ["name", "type", "currency", "description", "rating"],
+  2: ["projectManager"],
 };
 
 const STEP_TITLES = [
@@ -380,7 +389,7 @@ const CreateMSADialog: React.FC<Props> = ({
     const securities = securitiesSrc.map((s: any) => ({
       type: s?.securityType ?? "",
       amount: s?.amount ?? "",
-      dueDate: s?.dueDate ? new Date(s.dueDate) : undefined,
+      dueDate: s?.dueDate ? toCalendarDate(s.dueDate, iv.timezone) : undefined,
     }));
 
     // Step 8 approval groups: BE returns `approvers: [{user: [{user, userRef,
@@ -483,8 +492,8 @@ const CreateMSADialog: React.FC<Props> = ({
       internalTeam: internalTeamArr.length
         ? internalTeamArr
         : defaultValues.internalTeam,
-      effectiveDate: iv.startDate ? new Date(iv.startDate) : undefined,
-      endDate: iv.endDate ? new Date(iv.endDate) : undefined,
+      effectiveDate: toContractDateTimeValue(iv.startDate, iv.timezone, iv.createdAt),
+      endDate: toContractDateTimeValue(iv.endDate, iv.timezone, iv.createdAt),
       duration:
         typeof iv.duration === "number" ? String(iv.duration) : iv.duration ?? "",
       // Stored as `contractTerm` on the record (the term-type ref). Step 3's
@@ -492,28 +501,28 @@ const CreateMSADialog: React.FC<Props> = ({
       // convention as `type`/`msaType` in Step 1.
       termType: idOf(iv.contractTerm ?? iv.termType),
       draftStartDate: stage.draft?.startDate
-        ? new Date(stage.draft.startDate)
+        ? toCalendarDate(stage.draft.startDate, iv.timezone)
         : undefined,
       draftEndDate: stage.draft?.endDate
-        ? new Date(stage.draft.endDate)
+        ? toCalendarDate(stage.draft.endDate, iv.timezone)
         : undefined,
       reviewStartDate: stage.review?.startDate
-        ? new Date(stage.review.startDate)
+        ? toCalendarDate(stage.review.startDate, iv.timezone)
         : undefined,
       reviewEndDate: stage.review?.endDate
-        ? new Date(stage.review.endDate)
+        ? toCalendarDate(stage.review.endDate, iv.timezone)
         : undefined,
       approvalStartDate: stage.approval?.startDate
-        ? new Date(stage.approval.startDate)
+        ? toCalendarDate(stage.approval.startDate, iv.timezone)
         : undefined,
       approvalEndDate: stage.approval?.endDate
-        ? new Date(stage.approval.endDate)
+        ? toCalendarDate(stage.approval.endDate, iv.timezone)
         : undefined,
       executionStartDate: stage.execution?.startDate
-        ? new Date(stage.execution.startDate)
+        ? toCalendarDate(stage.execution.startDate, iv.timezone)
         : undefined,
       executionEndDate: stage.execution?.endDate
-        ? new Date(stage.execution.endDate)
+        ? toCalendarDate(stage.execution.endDate, iv.timezone)
         : undefined,
       contractValue: iv.contractValue ?? defaultValues.contractValue,
       contingency:
@@ -544,7 +553,7 @@ const CreateMSADialog: React.FC<Props> = ({
           ? iv.milestone.map((m: any, i: number) => ({
               name: m?.name ?? "",
               amount: m?.amount ?? "",
-              dueDate: m?.dueDate ? new Date(m.dueDate) : undefined,
+              dueDate: m?.dueDate ? toCalendarDate(m.dueDate, iv.timezone) : undefined,
               deliverable: milestoneDeliverableName(m?.deliverable, i),
             }))
           : defaultValues.milestones,
@@ -555,7 +564,7 @@ const CreateMSADialog: React.FC<Props> = ({
                 ? { name: d, dueDate: undefined }
                 : {
                     name: d?.name ?? "",
-                    dueDate: d?.dueDate ? new Date(d.dueDate) : undefined,
+                    dueDate: d?.dueDate ? toCalendarDate(d.dueDate, iv.timezone) : undefined,
                   },
             )
           : defaultValues.deliverables,
@@ -583,7 +592,7 @@ const CreateMSADialog: React.FC<Props> = ({
           : ins.contractSecurity === false
             ? "no"
             : defaultValues.contractSecurity,
-      insuranceExpiryDate: ins.expiryDate ? new Date(ins.expiryDate) : undefined,
+      insuranceExpiryDate: ins.expiryDate ? toCalendarDate(ins.expiryDate, iv.timezone) : undefined,
       insurancePolicies,
       securities,
       approvalGroups,
@@ -651,14 +660,9 @@ const CreateMSADialog: React.FC<Props> = ({
   });
 
   const validateStep = async (currentStep: number) => {
-    if (currentStep === 1) {
-      const ok = await formTrigger(
-        ["name", "type", "currency", "rating"] as any,
-        {
-          shouldFocus: true,
-        },
-      );
-      return ok;
+    const fields = MSA_STEP_VALIDATION_FIELDS[currentStep];
+    if (fields) {
+      return formTrigger(fields as any, { shouldFocus: true });
     }
     return true;
   };
@@ -695,7 +699,15 @@ const CreateMSADialog: React.FC<Props> = ({
 
   const buildPayload = React.useCallback(
     async (data: CreateMsaFormData, status: "draft" | "publish") => {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      // An MSA's timezone is fixed at creation; dates are in that zone.
+      const tz =
+        (editingMsaId
+          ? editDetailQuery.data?.data?.timezone ?? initialValues?.timezone
+          : undefined) || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+      const msaCreatedAt = editingMsaId
+        ? (editDetailQuery.data?.data?.createdAt ?? initialValues?.createdAt)
+        : undefined;
 
       const toNumberOrUndefined = (value: any) => {
         if (value === null || value === undefined) return undefined;
@@ -763,7 +775,7 @@ const CreateMSADialog: React.FC<Props> = ({
                   ? Number(String(m.amount).replace(/[^0-9.]/g, ""))
                   : undefined,
                 dueDate: m.dueDate
-                  ? format(m.dueDate, "yyyy-MM-dd'T'HH:mm:ss'Z'")
+                  ? toZonedStartOfDayISO(m.dueDate, tz)
                   : undefined,
                 name: m.name,
                 deliverable: m.deliverable
@@ -798,8 +810,7 @@ const CreateMSADialog: React.FC<Props> = ({
             .filter(Boolean)
         : undefined;
 
-      const formatDate = (d: any) =>
-        d ? format(d, "yyyy-MM-dd'T'HH:mm:ss") : undefined;
+      const formatDate = (d: any) => toZonedStartOfDayISO(d, tz);
 
       const contractSecurityType =
         data.contractSecurity === "yes"
@@ -927,10 +938,10 @@ const CreateMSADialog: React.FC<Props> = ({
             : toNumberOrUndefined(data.holdback),
         paymentStructure,
         paymentTerm: data.paymentTerm || undefined,
-        startDate: data.effectiveDate
-          ? formatDate(data.effectiveDate)
-          : undefined,
-        endDate: data.endDate ? formatDate(data.endDate) : undefined,
+        // Effective/end carry a time: a wall-clock date-time in the MSA tz
+        // (legacy records keep their legacy encoding, see zonedDate).
+        startDate: toContractDateTimeISO(data.effectiveDate, tz, msaCreatedAt),
+        endDate: toContractDateTimeISO(data.endDate, tz, msaCreatedAt),
         duration: data.duration
           ? Number(String(data.duration).replace(/[^0-9.]/g, ""))
           : undefined,
@@ -952,6 +963,9 @@ const CreateMSADialog: React.FC<Props> = ({
     [
       signatories,
       initialValues,
+      editingMsaId,
+      editDetailQuery.data?.data?.timezone,
+      editDetailQuery.data?.data?.createdAt,
       editDetailQuery.data?.data?.files,
       detailFilesQuery.data?.data?.files,
     ],

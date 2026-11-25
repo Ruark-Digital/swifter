@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useInactivityLogout } from "@/hooks/useInactivityLogout";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useEffect } from "react";
+import { VIEW_ONLY_HOME, isViewOnlyBlockedPath } from "@/lib/navigation";
 
 export const Dashboard = () => {
   // Enable inactivity logout for authenticated users in dashboard
@@ -18,8 +19,18 @@ export const Dashboard = () => {
   const routerLocation = useLocation();
   const navigate = useNavigate();
 
+  const viewOnlyBlocked =
+    userRole === "view_only" && isViewOnlyBlockedPath(routerLocation.pathname);
+
   useEffect(() => {
     const path = routerLocation.pathname;
+
+    if (userRole === "view_only") {
+      if (isViewOnlyBlockedPath(path)) {
+        navigate(VIEW_ONLY_HOME, { replace: true });
+      }
+      return;
+    }
 
     if (
       userRole === "procurement" &&
@@ -59,7 +70,8 @@ export const Dashboard = () => {
         <Header />
         <ScrollArea>
           <div className="flex-1 overflow-auto h-[calc(100vh-160px)] flex flex-col min-w-0 bg-white dark:bg-gray-900 px-4 sm:px-8 transition-colors">
-            <Outlet />
+            {/* Don't mount blocked pages, so they never fire their API calls. */}
+            {!viewOnlyBlocked && <Outlet />}
           </div>
         </ScrollArea>
         <Footer />

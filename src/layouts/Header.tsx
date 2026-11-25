@@ -23,44 +23,40 @@ import { useUserRole } from "@/hooks/useUserRole";
 export const Header = () => {
   const location = useLocation();
 
-  const getPageTitle = () => {
-    switch (location.pathname) {
-      case "/dashboard/solicitation":
-        return "Solicitation Management";
-      case "/dashboard/vendor":
-        return "Vendor Management";
-      case "/dashboard/evaluation":
-        return "Evaluation Management";
-      case "/dashboard/profile":
-        return "Profile";
-      case "/dashboard/user-management":
-        return "User Management";
-      case "/dashboard/business-divisions":
-        return "Business Divisions";
-      case "/dashboard/subscription":
-        return "Subscription Management";
-      case "/dashboard/companies":
-        return "Company Management";
-      case "/dashboard/project-management":
-        return "Project Management";
-      case "/dashboard/contract-management":
-        return "Contract Management";
-      case "/dashboard/admin-management":
-        return "Admin Management";
-      case "/dashboard/system-log":
-        return "System Log";
-      case "/dashboard/portal-settings":
-        return "Portal Settings";
-      case "/dashboard/invitations":
-        return "Invitations";
-      case "/dashboard/settings":
-        return "Settings";
-      case "/dashboard/demo":
-        return "Demo";
+  const { userRole } = useUserRole();
 
-      default:
-        return "Dashboard";
-    }
+  // Longest-prefix match so nested routes (detail pages) inherit the title of
+  // their section instead of falling back to "Dashboard".
+  const getPageTitle = () => {
+    const path = location.pathname;
+    const sections: [string, string][] = [
+      ["/dashboard/solicitation", "Solicitation Management"],
+      ["/dashboard/solicitations", "Solicitation Management"],
+      ["/dashboard/vendor", "Vendor Management"],
+      [
+        "/dashboard/evaluation",
+        userRole === "evaluator" ? "My Evaluation" : "Evaluation Management",
+      ],
+      ["/dashboard/profile", "Profile"],
+      ["/dashboard/user-management", "User Management"],
+      ["/dashboard/business-divisions", "Business Divisions"],
+      ["/dashboard/subscription", "Subscription Management"],
+      ["/dashboard/companies", "Company Management"],
+      ["/dashboard/company", "Company Management"],
+      ["/dashboard/project-management", "Project Management"],
+      ["/dashboard/contract-management", "Contract Management"],
+      ["/dashboard/msa", "MSA Management"],
+      ["/dashboard/admin-management", "Admin Management"],
+      ["/dashboard/system-log", "System Log"],
+      ["/dashboard/portal-settings", "Portal Settings"],
+      ["/dashboard/invitations", "Invitations"],
+      ["/dashboard/settings", "Settings"],
+      ["/dashboard/demo", "Demo"],
+    ];
+    const match = sections.find(
+      ([prefix]) => path === prefix || path.startsWith(`${prefix}/`),
+    );
+    return match ? match[1] : "Dashboard";
   };
 
   return (

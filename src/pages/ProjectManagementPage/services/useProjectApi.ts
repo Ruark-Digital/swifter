@@ -74,9 +74,10 @@ export const useProjectsList = (params?: {
   status?: "active" | "completed" | "cancelled";
   limit?: number;
   page?: number;
-}) => {
+}, options?: { enabled?: boolean }) => {
   const base = useProjectsBasePath();
   return useQuery<ProjectsListResponse>({
+    enabled: options?.enabled ?? true,
     queryKey: useUserQueryKey(["projects-list", params]),
     queryFn: async () => {
       const search = new URLSearchParams();

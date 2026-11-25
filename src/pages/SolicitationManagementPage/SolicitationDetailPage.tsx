@@ -66,6 +66,7 @@ type VendorProposal = {
     | "Under Review"
     | "Accepted"
     | "Rejected"
+    | "Declined"
     | "Pending"
     | "Confirmed";
   proposalValue: number;
@@ -298,6 +299,7 @@ const ProposalStatusBadge = ({
       case "Accepted":
         return "bg-green-100 text-green-800";
       case "Rejected":
+      case "Declined":
         return "bg-red-100 text-red-800";
       case "Pending":
         return "bg-gray-100 text-gray-800";
@@ -371,7 +373,7 @@ export const InvitedVendorCard = ({
 export const SolicitationDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isVendor, isCompanyAdmin } = useUserRole();
+  const { isVendor, isCompanyAdmin, isProcurement } = useUserRole();
   const queryClient = useQueryClient();
   const toastHandlers = useToastHandler();
   const [searchQuery, setSearchQuery] = useState("");
@@ -419,14 +421,19 @@ export const SolicitationDetailPage = () => {
   });
 
   // Fetch evaluators data from API
-  const { data: evaluatorsData, isLoading: isLoadingEvaluators } = useQuery<
-    ApiResponse<Evaluator>,
-    ApiResponseError
-  >({
+  // Vendors have no evaluator view (procurement endpoint), so skip the call.
+  // The BE answers 400 "Evaluation have not been created" until an evaluation
+  // exists — don't retry that; the tab shows an empty state instead.
+  const {
+    data: evaluatorsData,
+    isLoading: isLoadingEvaluators,
+    isError: isEvaluatorsError,
+  } = useQuery<ApiResponse<Evaluator>, ApiResponseError>({
     queryKey: ["evaluators", id],
     queryFn: async () =>
       await getRequest({ url: `/procurement/solicitations/${id}/evaluators` }),
-    enabled: !!id,
+    enabled: !!id && !isVendor,
+    retry: false,
   });
 
   // Remind evaluator mutation
@@ -605,12 +612,13 @@ export const SolicitationDetailPage = () => {
           | "Under Review"
           | "Accepted"
           | "Rejected"
+          | "Declined"
           | "Pending"
           | "Confirmed"
         > = {
           invited: "Pending",
           confirmed: "Confirmed",
-          declined: "Rejected",
+          declined: "Declined",
         };
         return (
           <ProposalStatusBadge
@@ -1596,6 +1604,27 @@ export const SolicitationDetailPage = () => {
         </TabsContent>
 
         <TabsContent value="evaluation">
+          {isEvaluatorsError ? (
+            <div
+              className="flex flex-col items-center justify-center py-16 px-4"
+              data-testid="no-evaluation-state"
+            >
+              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center mb-6">
+                <Users className="h-8 w-8 text-gray-400 dark:text-gray-500" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-200 mb-2">
+                No evaluation created yet
+              </h3>
+              <p className="text-gray-500 dark:text-gray-400 text-center max-w-md mb-4">
+                An evaluation has not been created for this solicitation.
+              </p>
+              {isProcurement && (
+                <Button onClick={() => navigate("/dashboard/evaluation")}>
+                  Create Evaluation
+                </Button>
+              )}
+            </div>
+          ) : (
           <div className="space-y-6 pt-4">
             {/* Evaluation Progress Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1680,6 +1709,7 @@ export const SolicitationDetailPage = () => {
               }
             />
           </div>
+          )}
         </TabsContent>
 
         <TabsContent value="requested-documents">

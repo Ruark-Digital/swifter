@@ -10,8 +10,9 @@ import { useToastHandler } from "@/hooks/useToaster";
 import { getRequest } from "@/lib/axiosInstance";
 import { DocumentItem, type DocType } from "./DocumentItem";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils";
-import { format } from "date-fns";
 import { formatCurrency } from "@/lib/utils";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
 type Props = {
   trigger: React.ReactNode;
@@ -39,6 +40,7 @@ type SavingsDetailDTO = {
 };
 
 const SavingsDetailsSheet: React.FC<Props> = ({ trigger, savingId, contractId, basePath, currency = "USD" }) => {
+  const timeZone = useDateTimeZone();
   const [open, setOpen] = React.useState(false);
   const { isApprover, isManager } = useUserRole();
   const toast = useToastHandler();
@@ -111,7 +113,7 @@ const SavingsDetailsSheet: React.FC<Props> = ({ trigger, savingId, contractId, b
   const formatDate = (value?: string | Date) => {
     if (!value) return "-";
     try {
-      return format(new Date(value), "dd MMM yyyy");
+      return formatInTz(value, timeZone, "dd MMM yyyy");
     } catch {
       return "-";
     }

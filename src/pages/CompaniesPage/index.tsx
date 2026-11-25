@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/dialog";
 import { IconMap } from "@/components/layouts/RoleBasedDashboard/components/StatsCard";
 import { Calendar } from "@/components/ui/calendar";
-import { formatDateTZ } from "@/lib/utils";
+import { formatDateTZ, formatMaxUsers } from "@/lib/utils";
 
 // Dashboard statistics type - Note: /companies/dashboard endpoint not found in API docs
 // This might need to be implemented or derived from companies list
@@ -689,7 +689,7 @@ const CompaniesPage = () => {
       header: "Users",
       cell: ({ row }) => (
         <span className="text-xs text-gray-700 dark:text-gray-300">
-          {row.getValue("maxUsers")}
+          {formatMaxUsers(row.getValue("maxUsers"))}
         </span>
       ),
     },

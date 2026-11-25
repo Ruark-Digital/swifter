@@ -13,12 +13,15 @@ import {
   useProjectsStats,
   useCreateProject,
 } from "./services/useProjectApi";
-import { formatDateTZ, resolveCurrency } from "@/lib/utils";
+import { resolveCurrency } from "@/lib/utils";
 import { useUser } from "@/store/authSlice";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
 const ProjectManagementPage: React.FC = () => {
   const { isViewOnly } = useUserRole();
+  const userTimeZone = useDateTimeZone();
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -68,8 +71,8 @@ const ProjectManagementPage: React.FC = () => {
     totalSpend:
       typeof p.totalSpend === "number" ? formatAmount(p.totalSpend) : undefined,
     eac: typeof p.eac === "number" ? formatAmount(p.eac) : undefined,
-    startDate: p.startDate ? formatDateTZ(p.startDate, "yyyy-MM-dd") : undefined,
-    endDate: p.endDate ? formatDateTZ(p.endDate, "yyyy-MM-dd") : undefined,
+    startDate: p.startDate ? formatInTz(p.startDate, userTimeZone, "yyyy-MM-dd") : undefined,
+    endDate: p.endDate ? formatInTz(p.endDate, userTimeZone, "yyyy-MM-dd") : undefined,
     status: p.status,
   }));
 

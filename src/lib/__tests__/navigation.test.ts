@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { getNavigationForRole, getFirstAccessibleRoute } from "@/lib/navigation";
+import {
+  getNavigationForRole,
+  getFirstAccessibleRoute,
+  isViewOnlyBlockedPath,
+  VIEW_ONLY_HOME,
+} from "@/lib/navigation";
 import type { Modules } from "@/types";
 
 const allModules: Modules = {
@@ -132,5 +137,37 @@ describe("getFirstAccessibleRoute", () => {
         contractManagement: false,
       }),
     ).toBe("/dashboard/profile");
+  });
+});
+
+describe("view_only navigation", () => {
+  it("shows exactly Contract Management (Contracts, MSA) and Profile", () => {
+    const items = getNavigationForRole("view_only", "/dashboard/contract-management", allModules)
+      .filter(Boolean);
+    expect(items.map((i) => i!.title)).toEqual(["Contract Management", "Profile"]);
+    expect(items[0]!.children?.map((c) => c.to)).toEqual([
+      "/dashboard/contract-management",
+      "/dashboard/msa",
+    ]);
+  });
+
+  it("lands on the Contracts list", () => {
+    expect(getFirstAccessibleRoute("view_only", allModules)).toBe(VIEW_ONLY_HOME);
+  });
+
+  it("blocks Dashboard, Projects and Business Divisions URLs only", () => {
+    expect(isViewOnlyBlockedPath("/dashboard")).toBe(true);
+    expect(isViewOnlyBlockedPath("/dashboard/project-management")).toBe(true);
+    expect(isViewOnlyBlockedPath("/dashboard/business-divisions")).toBe(true);
+    expect(isViewOnlyBlockedPath("/dashboard/contract-management")).toBe(false);
+    expect(isViewOnlyBlockedPath("/dashboard/msa")).toBe(false);
+    expect(isViewOnlyBlockedPath("/dashboard/profile")).toBe(false);
+  });
+
+  it("leaves other roles' Business Divisions and Projects untouched", () => {
+    for (const role of ["procurement", "contract_manager", "company_admin"] as const) {
+      const titles = getNavigationForRole(role, "/dashboard", allModules).map((i) => i?.title);
+      expect(titles).toContain("Business Divisions");
+    }
   });
 });

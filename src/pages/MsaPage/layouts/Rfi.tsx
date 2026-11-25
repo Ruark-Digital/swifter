@@ -46,7 +46,7 @@ import {
   getFileIcon,
   getSimpleFileExtension,
 } from "@/lib/fileUtils";
-import { cn, formatDateTZ } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import type { ApiResponse, ApiResponseError, ContractRfis } from "@/types";
 import type {
   ContractRfiDTO,
@@ -64,6 +64,9 @@ import {
 import MessageComposer from "@/pages/SolicitationManagementPage/components/MessageComposer";
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { toCalendarDate, toZonedStartOfDayISO } from "@/lib/zonedDate";
+import { formatInTz } from "@/lib/zonedDate";
 
 type Props = {
   contractId: string;
@@ -129,8 +132,6 @@ const LabelRow = ({
     <div className="text-sm font-medium text-[#111827] dark:text-slate-100">{value}</div>
   </div>
 );
-
-const formatDate = (value?: string | Date) => formatDateTZ(value, "MMMM dd, yyyy");
 
 const statusTone = (status?: string) => {
   const normalized = status?.toLowerCase();
@@ -272,12 +273,12 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
     isAdmin,
     isViewOnly,
   } = useUserRole();
+  const timeZone = useDateTimeZone();
   const [open, setOpen] = React.useState(false);
-  const initialDeadline = React.useMemo(() => {
-    if (!initialRfi?.deadline) return undefined;
-    const d = new Date(initialRfi.deadline as any);
-    return Number.isFinite(d.getTime()) ? d : undefined;
-  }, [initialRfi?.deadline]);
+  const initialDeadline = React.useMemo(
+    () => toCalendarDate(initialRfi?.deadline as any, timeZone),
+    [initialRfi?.deadline, timeZone],
+  );
   const { control, reset } = useForge({
     defaultValues: {
       rfiTitle: initialRfi?.title ?? "",
@@ -452,7 +453,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
       // option's `_id`, not the display label.
       // See memory project_rfi_responder_singular.
       responder: data.responder || undefined,
-      deadline: data.responseDeadline ? data.responseDeadline.toISOString() : undefined,
+      deadline: toZonedStartOfDayISO(data.responseDeadline, timeZone),
     };
 
     let uploadedFiles: Array<{
@@ -729,6 +730,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
   fallback,
   invalidateQueryKey,
 }) => {
+  const timeZone = useDateTimeZone();
   const [open, setOpen] = React.useState(false);
   const queryClient = useQueryClient();
   const toastHandler = useToastHandler();
@@ -1012,11 +1014,11 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                   <LabelRow label="Type" value={isLoading ? "Loading..." : detail?.type || "-"} />
                   <LabelRow
                     label="Submission Date"
-                    value={isLoading ? "Loading..." : formatDate(detail?.createdAt)}
+                    value={isLoading ? "Loading..." : formatInTz(detail?.createdAt, timeZone, "MMMM dd, yyyy")}
                   />
                   <LabelRow
                     label="Response Deadline"
-                    value={isLoading ? "Loading..." : formatDate(detail?.deadline)}
+                    value={isLoading ? "Loading..." : formatInTz(detail?.deadline, timeZone, "MMMM dd, yyyy")}
                   />
                   <LabelRow
                     label="Responder"
@@ -1112,7 +1114,7 @@ const RfiDetailsSheet: React.FC<RfiDetailsSheetProps> = ({
                             ) : null}
                           </div>
                           <div className="text-xs text-[#6B7280] dark:text-slate-400">
-                            {formatDateTZ(comment.createdAt, "dd MMM yyyy")}
+                            {formatInTz(comment.createdAt, timeZone, "dd MMM yyyy")}
                           </div>
                         </div>
                         <div
@@ -1180,6 +1182,7 @@ const RfiResponseContent: React.FC<{
   responseAuthor?: string;
   responseAt?: string;
 }> = ({ contractId, rfiId, basePath, response, responseAuthor, responseAt }) => {
+  const timeZone = useDateTimeZone();
   const { data: respRes } = useQuery({
     queryKey: useUserQueryKey([
       "msa-rfi-response",
@@ -1227,7 +1230,7 @@ const RfiResponseContent: React.FC<{
             {responseAuthor}
             {responseAt ? (
               <span className="ml-2 text-xs font-normal text-[#6B7280] dark:text-slate-400">
-                {formatDateTZ(responseAt, "dd MMM yyyy")}
+                {formatInTz(responseAt, timeZone, "dd MMM yyyy")}
               </span>
             ) : null}
           </div>

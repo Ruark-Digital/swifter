@@ -19,13 +19,14 @@ import { Forge, Forger, useForge } from "@adexdsamson/forge";
 import { postRequest } from "@/lib/axiosInstance";
 import { Button } from "@/components/ui/button";
 import { useToastHandler } from "@/hooks/useToaster";
-import { format } from "date-fns";
 import type { ApiResponseError } from "@/types";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
-const formatSubmissionDate = (value?: string) => {
+const formatSubmissionDate = (value: string | undefined, timeZone: string) => {
   if (!value) return "N/A";
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? value : format(parsed, "dd MMM yyyy");
+  const out = formatInTz(value, timeZone, "dd MMM yyyy");
+  return out === "N/A" ? value : out;
 };
 
 export type KpiRow = {
@@ -51,6 +52,7 @@ const KpiDetailSheet: React.FC<{
   basePath: string;
   canUpdate: boolean;
 }> = ({ contractId, kpiId, basePath, canUpdate }) => {
+  const timeZone = useDateTimeZone();
   const { data, isLoading, error } = useQuery({
     queryKey: ["contract-kpi-detail", contractId, basePath, kpiId],
     queryFn: async () => {
@@ -144,7 +146,7 @@ const KpiDetailSheet: React.FC<{
               <div className="space-y-1">
                 <span className="text-slate-500 dark:text-slate-400">Submission Date</span>
                 <span className="block font-semibold text-[#0F0F0F] dark:text-slate-100">
-                  {formatSubmissionDate(data.submissionDate as string)}
+                  {formatSubmissionDate(data.submissionDate as string, timeZone)}
                 </span>
               </div>
               {metricList.map((metric) => (

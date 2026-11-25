@@ -12,7 +12,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { contractManagerApi } from "../api/contractManagerApi";
 import { useParams } from "react-router-dom";
-import { formatDateTZ, formatModuleLabel } from "@/lib/utils";
+import { formatModuleLabel } from "@/lib/utils";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 // import { ContractStatusBadge } from "./StatusBadge";
 
 type ActionLogItem = {
@@ -85,6 +87,7 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
   onClose,
   action,
 }) => {
+  const timeZone = useDateTimeZone();
   const { id, contractId: contractIdParam } = useParams<{
     id: string;
     contractId: string;
@@ -124,7 +127,7 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
     const submissionDate =
       submissionDateValue &&
       !Number.isNaN(new Date(submissionDateValue).getTime())
-        ? formatDateTZ(submissionDateValue, "dd MMM yyyy")
+        ? formatInTz(submissionDateValue, timeZone, "dd MMM yyyy")
         : `${action?.dateLine1 || ""} ${action?.dateLine2 || ""}`.trim() || "-";
 
     // const statusText =
@@ -162,7 +165,7 @@ const ActionLogDetailsSheet: React.FC<Props> = ({
                   label="Response Deadline"
                   value={
                     anyData.updatedAt
-                      ? formatDateTZ(anyData.updatedAt, "dd MMM yyyy")
+                      ? formatInTz(anyData.updatedAt, timeZone, "dd MMM yyyy")
                       : "-"
                   }
                 />

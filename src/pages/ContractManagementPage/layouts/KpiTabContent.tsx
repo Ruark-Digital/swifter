@@ -3,9 +3,10 @@ import { TabsContent } from "@/components/ui/tabs";
 import KpiTable, { type KpiRow } from "../components/KpiTable";
 import { useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
-import { format } from "date-fns";
 import { ExportReportSheet } from "@/components/layouts/ExportReportSheet";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useDateTimeZone } from "@/hooks/useDateTimeZone";
+import { formatInTz } from "@/lib/zonedDate";
 
 type Props = {
   contractId: string;
@@ -15,6 +16,7 @@ type Props = {
 };
 
 const KpiTabContent: React.FC<Props> = ({ contractId, isActive, owner }) => {
+  const timeZone = useDateTimeZone();
   const { isManager, isCompanyAdmin } = useUserRole();
   // Only the contract's owner/manager may update KPI scores. A CM who isn't
   // the owner can still view but not update (mirrors the Approvers tab gate).
@@ -59,13 +61,13 @@ const KpiTabContent: React.FC<Props> = ({ contractId, isActive, owner }) => {
               : `${item.allTimeAvgScore ?? ""}`,
           lastUpdated: (() => {
             if (neverScored || !item.lastUpdated) return "-";
-            const d = new Date(item.lastUpdated);
-            return Number.isNaN(d.getTime()) ? "-" : format(d, "dd MMM yyyy");
+            const out = formatInTz(item.lastUpdated, timeZone, "dd MMM yyyy");
+            return out === "N/A" ? "-" : out;
           })(),
           actions: ["Update", "View"],
         };
       }),
-    [data],
+    [data, timeZone],
   );
 
   return (

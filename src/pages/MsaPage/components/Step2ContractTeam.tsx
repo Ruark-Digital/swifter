@@ -34,6 +34,7 @@ const SingleSelectField = ({
   placeholder,
   fallbackLabel,
   name,
+  error,
 }: {
   value?: string;
   onChange?: (val: string) => void;
@@ -41,6 +42,7 @@ const SingleSelectField = ({
   placeholder: string;
   fallbackLabel?: string;
   name?: string;
+  error?: string;
 }) => {
   const normalizedValue = typeof value === "string" ? value.trim() : "";
   // See contract Step2ContractTeam (QA #81): don't flash the raw Mongo ObjectId
@@ -63,6 +65,7 @@ const SingleSelectField = ({
   return (
     <TextMultiSelect
       name={name ?? ""}
+      error={error}
       options={options}
       placeholder={placeholder}
       maxCount={1}
