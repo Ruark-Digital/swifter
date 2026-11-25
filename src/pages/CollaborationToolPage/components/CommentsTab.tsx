@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { ArrowUpRight, MessageSquareText, X } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, MessageSquareText, Undo2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import FeedItem from "./FeedItem";
 import WriteComment from "./WriteComment";
@@ -10,11 +10,26 @@ type FeedAttachment = {
   size: string;
 };
 
-export type CommentsFeedItem = {
+export type CommentReply = {
   id: string;
   name: string;
   timestamp: string;
   message: string;
+  /** The viewer wrote it, so they may delete it. */
+  canDelete?: boolean;
+};
+
+export type CommentsFeedItem = {
+  id: string;
+  name: string;
+  timestamp: string;
+  /** Full time with the zone, for the hover tooltip. */
+  timestampTitle?: string;
+  message: string;
+  /** Thread controls (file-backed comments only). */
+  replies?: CommentReply[];
+  resolved?: boolean;
+  canDelete?: boolean;
   showDot?: boolean;
   attachment?: FeedAttachment | null;
   redlineId?: string | null;
@@ -34,6 +49,90 @@ type CommentsTabProps = {
   /** Excerpt of the document selection the next comment will anchor to. */
   anchorExcerpt?: string | null;
   onDismissAnchor?: () => void;
+  /** Thread actions. When omitted (local-only comments) no controls render. */
+  onReply?: (rootId: string, text: string) => void;
+  onResolveToggle?: (rootId: string, resolved: boolean) => void;
+  onDeleteComment?: (commentId: string) => void;
+};
+
+/** Reply box + resolve / delete actions under a thread. */
+const ThreadActions: React.FC<{
+  item: CommentsFeedItem;
+  onReply?: (rootId: string, text: string) => void;
+  onResolveToggle?: (rootId: string, resolved: boolean) => void;
+  onDeleteComment?: (commentId: string) => void;
+}> = ({ item, onReply, onResolveToggle, onDeleteComment }) => {
+  const [replying, setReplying] = React.useState(false);
+  const [text, setText] = React.useState("");
+  const send = () => {
+    const t = text.trim();
+    if (!t) return;
+    onReply?.(item.id, t);
+    setText("");
+    setReplying(false);
+  };
+  const btn =
+    "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100";
+  return (
+    <div className="mt-1 pl-[52px]" onClick={(e) => e.stopPropagation()}>
+      <div className="flex flex-wrap items-center gap-1">
+        {onReply && (
+          <button type="button" className={btn} onClick={() => setReplying((v) => !v)}>
+            Reply
+          </button>
+        )}
+        {onResolveToggle && (
+          <button
+            type="button"
+            className={btn}
+            onClick={() => onResolveToggle(item.id, !item.resolved)}
+          >
+            {item.resolved ? (
+              <>
+                <Undo2 className="h-3 w-3" /> Reopen
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-3 w-3" /> Resolve
+              </>
+            )}
+          </button>
+        )}
+        {onDeleteComment && item.canDelete && (
+          <button
+            type="button"
+            className={cn(btn, "hover:text-red-600 dark:hover:text-red-400")}
+            onClick={() => onDeleteComment(item.id)}
+          >
+            Delete
+          </button>
+        )}
+      </div>
+      {replying && (
+        <div className="mt-1.5 flex gap-1.5">
+          <textarea
+            autoFocus
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send();
+            }}
+            rows={2}
+            placeholder="Write a reply…"
+            className="min-w-0 flex-1 resize-none rounded-md border border-slate-200 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+          />
+          <button
+            type="button"
+            disabled={!text.trim()}
+            onClick={send}
+            className="self-end rounded-md bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Send
+          </button>
+        </div>
+      )}
+    </div>
+  );
 };
 
 const CommentsTab: React.FC<CommentsTabProps> = ({
@@ -47,6 +146,9 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
   mentionables = [],
   anchorExcerpt = null,
   onDismissAnchor,
+  onReply,
+  onResolveToggle,
+  onDeleteComment,
 }) => {
   const handleSubmit = useCallback(() => {
     onCommentSubmit?.();
@@ -77,6 +179,7 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
         <div
           className={cn(
             "group rounded-xl border border-transparent px-3 py-2.5 transition-colors",
+            comment.resolved && "opacity-60",
             isAnchored &&
               "cursor-pointer hover:border-slate-200 hover:bg-slate-50 dark:hover:border-slate-700 dark:hover:bg-slate-800/50",
           )}
@@ -100,6 +203,7 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
                 avatarSrc={avatarPublic}
                 name={comment.name}
                 timestamp={comment.timestamp}
+                timestampTitle={comment.timestampTitle}
                 message={comment.message}
                 attachment={comment.attachment}
                 showDot={comment.showDot}
@@ -115,6 +219,44 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
               </span>
             )}
           </div>
+          {comment.resolved && (
+            <div className="mt-1 pl-[52px]">
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-900/25 dark:text-emerald-300">
+                <CheckCircle2 className="h-3 w-3" strokeWidth={2} />
+                resolved
+              </span>
+            </div>
+          )}
+          {(comment.replies ?? []).map((reply) => (
+            <div key={reply.id} className="mt-2 border-l-2 border-slate-100 pl-3 ml-[26px] dark:border-slate-800">
+              <FeedItem
+                avatarSrc={avatarPublic}
+                name={reply.name}
+                timestamp={reply.timestamp}
+                message={reply.message}
+              />
+              {onDeleteComment && reply.canDelete && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteComment(reply.id);
+                  }}
+                  className="ml-[52px] rounded-md px-1.5 py-0.5 text-[11px] font-medium text-slate-500 hover:bg-slate-100 hover:text-red-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-red-400"
+                >
+                  Delete
+                </button>
+              )}
+            </div>
+          ))}
+          {(onReply || onResolveToggle || onDeleteComment) && (
+            <ThreadActions
+              item={comment}
+              onReply={onReply}
+              onResolveToggle={onResolveToggle}
+              onDeleteComment={onDeleteComment}
+            />
+          )}
           {isAnchored && (
             <div className="mt-1.5 pl-[52px]">
               <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-900/25 dark:text-amber-300">
@@ -126,7 +268,7 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
         </div>
       );
     },
-    [avatarPublic],
+    [avatarPublic, onReply, onResolveToggle, onDeleteComment],
   );
 
   return (

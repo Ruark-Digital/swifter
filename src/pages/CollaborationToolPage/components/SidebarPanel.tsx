@@ -55,6 +55,11 @@ interface SidebarPanelProps {
   /** Excerpt of the document selection the next comment will anchor to. */
   anchorExcerpt?: string | null;
   onDismissAnchor?: () => void;
+  onCommentReply?: (rootId: string, text: string) => void;
+  onCommentResolveToggle?: (rootId: string, resolved: boolean) => void;
+  onCommentDelete?: (commentId: string) => void;
+  /** Zone the Versions tab shows times in (the contract's). */
+  timeZone?: string;
   useFallbackFeed?: boolean;
   mentionables?: Mentionable[];
   // Versions — auto-saved; no manual save button anymore.
@@ -122,6 +127,10 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
   isSubmittingComment = false,
   anchorExcerpt = null,
   onDismissAnchor,
+  onCommentReply,
+  onCommentResolveToggle,
+  onCommentDelete,
+  timeZone,
   useFallbackFeed = false,
   mentionables = [],
   versions,
@@ -217,6 +226,9 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
               anchorExcerpt={anchorExcerpt}
               onDismissAnchor={onDismissAnchor}
               mentionables={mentionables}
+              onReply={onCommentReply}
+              onResolveToggle={onCommentResolveToggle}
+              onDeleteComment={onCommentDelete}
             />
           </Suspense>
         )}
@@ -257,6 +269,7 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
               isLoading={isLoadingVersions}
               activeVersionId={activeVersionId}
               restoringVersionId={restoringVersionId}
+              timeZone={timeZone}
             />
           </Suspense>
         )}

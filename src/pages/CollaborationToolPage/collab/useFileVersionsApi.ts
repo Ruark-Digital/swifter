@@ -46,15 +46,19 @@ const labelFromVersion = (v: BeFileVersion): string => {
   return v.name || "Saved version";
 };
 
-const toUiVersion = (v: BeFileVersion): Version => ({
+const toUiVersion = (
+  v: BeFileVersion,
+  authorNames: Record<string, string> = {},
+): Version => ({
   // versionId is unique and stable per BE; prefer it over the Mongo id
   // so the same record keys consistently across refetches.
   id: v.versionId || v.id || `${v.createdAt}`,
   timestamp: v.createdAt,
-  // BE only returns the updater's ObjectId — there's no name in this
-  // response. Use a placeholder; this can be enriched later if BE adds
-  // populated user fields.
-  author: v.updatedBy ? "Team member" : "Unknown User",
+  // BE only returns the updater's ObjectId (no name in this response). Resolve
+  // it against the contract's people when we know them; otherwise a placeholder.
+  author: v.updatedBy
+    ? (authorNames[v.updatedBy] ?? "Team member")
+    : "Unknown User",
   label: labelFromVersion(v),
   kind: kindFromSource(v.source, v.snapshotKind),
   source: "be",
@@ -72,20 +76,33 @@ const toUiVersion = (v: BeFileVersion): Version => ({
  * The axios baseURL is /api/v1/dev; swagger paths live under /contract,
  * so we self-prefix here.
  */
-export function useFileVersions(docName: string | undefined) {
-  return useQuery<{ versions: Version[]; activeVersionId: string | null }>({
+export function useFileVersions(
+  docName: string | undefined,
+  authorNames: Record<string, string> = {},
+) {
+  return useQuery<
+    { rows: BeFileVersion[]; activeVersionId: string | null },
+    unknown,
+    { versions: Version[]; activeVersionId: string | null }
+  >({
+    // Keyed by doc only; author names are applied in `select` so a changing
+    // names map never refetches.
     queryKey: ["collab-file-versions", docName],
     enabled: Boolean(docName),
     staleTime: 15_000,
+    select: (d) => ({
+      versions: d.rows.map((r) => toUiVersion(r, authorNames)),
+      activeVersionId: d.activeVersionId,
+    }),
     queryFn: async () => {
-      if (!docName) return { versions: [], activeVersionId: null };
+      if (!docName) return { rows: [], activeVersionId: null };
       const res = await getRequest({
         url: `/contract/file/versions/${encodeURIComponent(docName)}`,
       });
       const body = res.data as BeFileVersionsResponse | undefined;
       const rows = body?.data?.versions ?? [];
       return {
-        versions: rows.map(toUiVersion),
+        rows,
         activeVersionId: body?.data?.activeVersionId ?? null,
       };
     },

@@ -16,6 +16,15 @@ export type FileCommentRich = {
   /** SuperDoc document-comment id this comment is anchored to (click-to-scroll). */
   anchorCommentId?: string | null;
   mentions?: Mentionable[];
+  /** Id the client generated before the server assigned `_id` (kept so a
+   *  reply / marker created against it still resolves after a refetch). */
+  clientId?: string;
+  /** Root comment this one replies to (thread convention, see commentThreads). */
+  replyTo?: string | null;
+  /** Marker comments: resolve / reopen a thread, or delete one comment. */
+  action?: "resolve" | "reopen" | "delete";
+  /** The comment a marker applies to. */
+  target?: string | null;
   /**
    * True for comments imported from the .docx (`comment:<id>` location, no
    * sentinel JSON). Word writes `w:date` as the author's local wall-clock time
@@ -94,6 +103,11 @@ const encodeRichToWire = (rich: FileCommentRich): FileCommentWire => {
   if (rich.redlineKind) meta.redlineKind = rich.redlineKind;
   if (rich.anchorCommentId) meta.anchorCommentId = rich.anchorCommentId;
   if (rich.mentions && rich.mentions.length > 0) meta.mentions = rich.mentions;
+  if (rich.replyTo) meta.replyTo = rich.replyTo;
+  if (rich.action && rich.target) {
+    meta.action = rich.action;
+    meta.target = rich.target;
+  }
   meta.content = rich.content;
   return {
     author: rich.author,
@@ -145,6 +159,15 @@ export const decodeWireToRich = (
           ? parsed.anchorCommentId
           : locationAnchor,
       mentions: Array.isArray(parsed.mentions) ? parsed.mentions : undefined,
+      clientId: typeof parsed.id === "string" ? parsed.id : undefined,
+      replyTo: typeof parsed.replyTo === "string" ? parsed.replyTo : null,
+      action:
+        parsed.action === "resolve" ||
+        parsed.action === "reopen" ||
+        parsed.action === "delete"
+          ? parsed.action
+          : undefined,
+      target: typeof parsed.target === "string" ? parsed.target : null,
     };
   } catch {
     return base;
@@ -176,7 +199,13 @@ export function useFileComments(fileId: string | undefined) {
   return useQuery<FileCommentRich[]>({
     queryKey: ["file-comments", fileId],
     enabled: Boolean(fileId),
-    staleTime: 30_000,
+    staleTime: 5_000,
+    // The other side's comments and replies must show up without a reload: poll
+    // while the page is visible and refetch when the tab regains focus. (The
+    // backend has no comment push channel; the collab socket carries only the
+    // document and presence.)
+    refetchInterval: 8_000,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       if (!fileId) return [];
       const res = await getRequest({ url: `/contract/file-comment/${fileId}` });

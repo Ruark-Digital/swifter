@@ -13,6 +13,8 @@ interface FeedItemProps {
   avatarSrc?: string;
   name: string;
   timestamp: string;
+  /** Hover text for the timestamp (the full time with its zone). */
+  timestampTitle?: string;
   message: string;
   /** @deprecated retained for shape compatibility; the status dot no longer renders. */
   showDot?: boolean;
@@ -49,6 +51,7 @@ const toneFor = (key: string) => {
 const FeedItem: React.FC<FeedItemProps> = ({
   name,
   timestamp,
+  timestampTitle,
   message,
   attachment = null,
 }) => {
@@ -68,7 +71,9 @@ const FeedItem: React.FC<FeedItemProps> = ({
       <div className="ct-feed-content">
         <div className="ct-feed-meta">
           <span className="ct-feed-name">{name}</span>
-          <span className="ct-feed-time">{timestamp}</span>
+          <span className="ct-feed-time" title={timestampTitle ?? timestamp}>
+            {timestamp}
+          </span>
         </div>
         <div className="ct-feed-message">{message}</div>
         {attachment && (

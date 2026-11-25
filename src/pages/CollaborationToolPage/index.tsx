@@ -15,7 +15,6 @@ import {
   type Mentionable,
 } from "./collab/useContractMentionables";
 import {
-  formatCommentTimestamp,
   useAddFileComment,
   useFileComments,
   type FileCommentRich,
@@ -34,6 +33,9 @@ import {
 } from "./collab/useFileVersionsApi";
 import { getRequest } from "@/lib/axiosInstance";
 import { enrichWithLive, stalePendingIds } from "./collab/redlineItems";
+import { buildCommentThreads } from "./collab/commentThreads";
+import { formatZonedTimestamp } from "./collab/zonedTimestamp";
+import { useContractTimezone } from "./collab/useContractTimezone";
 import {
   classifyCollabLoss,
   COLLAB_LOSS_MESSAGE,
@@ -124,11 +126,16 @@ const TipTapEditorPane = lazyWithRetry(() => import("./components/TipTapEditorPa
 // deployed at VITE_SUPERDOC_APP_URL).
 const IframeEditorPane = lazyWithRetry(() => import("./components/IframeEditorPane"));
 
-const mapLocalCommentsToFeed = (comments: LocalComment[]): SidebarFeed[] =>
+const mapLocalCommentsToFeed = (
+  comments: LocalComment[],
+  timeZone: string,
+): SidebarFeed[] =>
   comments.map((comment) => ({
     id: comment.id,
     name: comment.author || "Unknown User",
-    timestamp: formatCommentTimestamp(comment.createdAt, comment.wallClock),
+    timestamp: formatZonedTimestamp(comment.createdAt, timeZone, {
+      wallClock: comment.wallClock,
+    }),
     message: comment.content,
     redlineId: comment.redlineId ?? null,
     anchorCommentId: comment.anchorCommentId ?? null,
@@ -301,6 +308,12 @@ const CollaborationToolPage: React.FC = () => {
     setLocalComments(readLocalComments(commentsStorageKey));
   }, [commentsStorageKey]);
 
+  const contractTz = useContractTimezone(
+    contractIdParam,
+    Boolean(msaContractIdParam),
+  );
+  const myAuthorName = user?.name || "Unknown User";
+
   const combinedComments: LocalComment[] = useMemo(() => {
     if (fileId) {
       return (fileCommentsQuery.data ?? []).map((c: FileCommentRich) => ({
@@ -318,10 +331,76 @@ const CollaborationToolPage: React.FC = () => {
     return localComments;
   }, [fileCommentsQuery.data, fileId, localComments]);
 
-  const commentsFeed = useMemo(
-    () => mapLocalCommentsToFeed(combinedComments),
-    [combinedComments],
+  const commentsFeed = useMemo(() => {
+    if (!fileId) return mapLocalCommentsToFeed(combinedComments, contractTz);
+    const stamp = (c: FileCommentRich) =>
+      formatZonedTimestamp(c.createdAt, contractTz, { wallClock: c.wallClock });
+    return buildCommentThreads(fileCommentsQuery.data ?? []).map((t) => ({
+      id: t.root.id,
+      name: t.root.author || "Unknown User",
+      timestamp: stamp(t.root),
+      timestampTitle: formatZonedTimestamp(t.root.createdAt, contractTz, {
+        wallClock: t.root.wallClock,
+        pattern: "MMM d, yyyy, h:mm:ss a zzz",
+      }),
+      message: t.root.content,
+      redlineId: t.root.redlineId ?? null,
+      anchorCommentId: t.root.anchorCommentId ?? null,
+      resolved: t.resolved,
+      canDelete: t.root.author === myAuthorName,
+      replies: t.replies.map((r) => ({
+        id: r.id,
+        name: r.author || "Unknown User",
+        timestamp: stamp(r),
+        message: r.content,
+        canDelete: r.author === myAuthorName,
+      })),
+    }));
+  }, [fileId, fileCommentsQuery.data, combinedComments, contractTz, myAuthorName]);
+
+  // Thread actions on the append-only comment store (see collab/commentThreads).
+  const postThreadComment = useCallback(
+    (extra: Partial<FileCommentRich>, content = "") => {
+      addFileComment.mutate(
+        {
+          id: crypto.randomUUID(),
+          author: myAuthorName,
+          createdAt: new Date().toISOString(),
+          content,
+          ...extra,
+        },
+        {
+          onError: () =>
+            toast({
+              title: "Could not save",
+              description: "Your change to the comment thread was not saved. Try again.",
+              variant: "destructive",
+            }),
+        },
+      );
+    },
+    [addFileComment, myAuthorName, toast],
   );
+  const handleReplyComment = useCallback(
+    (rootId: string, text: string) => postThreadComment({ replyTo: rootId }, text),
+    [postThreadComment],
+  );
+  const handleResolveToggle = useCallback(
+    (rootId: string, resolve: boolean) =>
+      postThreadComment({ action: resolve ? "resolve" : "reopen", target: rootId }),
+    [postThreadComment],
+  );
+  const handleDeleteComment = useCallback(
+    (commentId: string) => postThreadComment({ action: "delete", target: commentId }),
+    [postThreadComment],
+  );
+
+  // The other side's comments must appear when this tab is opened, not only on
+  // the next poll.
+  useEffect(() => {
+    if (activeTab === "comments" && fileId) void fileCommentsQuery.refetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, fileId]);
 
   useEffect(() => {
     const handleOffline = () => {
@@ -404,7 +483,13 @@ const CollaborationToolPage: React.FC = () => {
         ? superdocDocName(collabMeta.roomId)
         : collabMeta.roomId
       : undefined;
-  const fileVersionsQuery = useFileVersions(docName);
+  // The versions API returns only the updater's id; resolve it against the
+  // contract's people so history shows who made each snapshot.
+  const authorNames = useMemo(
+    () => Object.fromEntries(mentionables.map((m) => [m.id, m.name])),
+    [mentionables],
+  );
+  const fileVersionsQuery = useFileVersions(docName, authorNames);
   const downloadLatestMutation = useDownloadLatestCollab();
   const restoreVersionMutation = useRestoreVersion();
   // Id of the BE version currently being restored (drives the row's pending
@@ -588,9 +673,13 @@ const CollaborationToolPage: React.FC = () => {
           { restorePath: version.restorePath, docName },
           {
             onSuccess: () => {
+              // The server restore writes a new active version but does not reset
+              // the live collaboration room, which keeps serving its current
+              // content while anyone is connected. Say so instead of promising a
+              // reload will show it.
               toastHandler.success(
-                "Version restored",
-                "This version is now the active document. Reload to view it in the editor.",
+                "Version restored on the server",
+                "It is saved as the new active version. The open editor keeps the current content until every collaborator closes the document; it then loads the restored version.",
               );
             },
             onError: (err) => {
@@ -1582,6 +1671,10 @@ const CollaborationToolPage: React.FC = () => {
           isSubmittingComment={addFileComment.isPending}
           anchorExcerpt={pendingAnchor?.excerpt ?? null}
           onDismissAnchor={() => setPendingAnchor(null)}
+          onCommentReply={fileId ? handleReplyComment : undefined}
+          onCommentResolveToggle={fileId ? handleResolveToggle : undefined}
+          onCommentDelete={fileId ? handleDeleteComment : undefined}
+          timeZone={contractTz}
           useFallbackFeed={false}
           mentionables={mentionables}
           versions={versions}
