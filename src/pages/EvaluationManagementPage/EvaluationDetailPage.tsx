@@ -25,7 +25,7 @@ import {
 import { useParams } from "react-router-dom";
 import { DataTable } from "@/components/layouts/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
 import EvaluationScorecardSheet from "./components/EvaluationScorecardSheet";
@@ -71,10 +71,10 @@ type Evaluator = {
 type BidComparison = {
   id: string;
   vendorName: string;
-  totalPrice: number;
+  totalPrice: number | null;
   submissionDate: string;
   score: number;
-  rank: number;
+  rank: number | null;
   rankType: "first" | "second" | "third" | "other";
   currency: string;
   companyCurrency: string;
@@ -121,7 +121,7 @@ const RankBadge = ({
   rank,
   rankType,
 }: {
-  rank: number;
+  rank: number | null;
   rankType: BidComparison["rankType"];
 }) => {
   const getRankColor = (rankType: BidComparison["rankType"]) => {
@@ -139,11 +139,11 @@ const RankBadge = ({
     }
   };
 
-  const getRankText = (rank: number, rankType: BidComparison["rankType"]) => {
+  const getRankText = (rank: number | null, rankType: BidComparison["rankType"]) => {
     if (rankType === "first") return "1st";
     if (rankType === "second") return "2nd";
     if (rankType === "third") return "3rd";
-    return `${rank}`;
+    return rank == null ? "Unranked" : `${rank}`;
   };
 
   return (
@@ -174,10 +174,29 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
   const evaluationStartDate = evaluation?.startDate
     ? new Date(evaluation.startDate)
     : undefined;
+  const evaluationStartMs = evaluationStartDate?.getTime();
+  // Re-render at the start instant so "Release Group" enables without a reload.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (evaluationStartMs === undefined || Number.isNaN(evaluationStartMs)) {
+      return;
+    }
+    const remaining = evaluationStartMs - Date.now();
+    if (remaining <= 0) {
+      setNow(Date.now());
+      return;
+    }
+    // setTimeout caps at ~24.8 days; re-check periodically for far-off starts.
+    const timer = setTimeout(
+      () => setNow(Date.now()),
+      Math.min(remaining, 2 ** 31 - 1) + 50
+    );
+    return () => clearTimeout(timer);
+  }, [evaluationStartMs, now]);
   const isEvaluationStartInFuture =
-    !!evaluationStartDate &&
-    !Number.isNaN(evaluationStartDate.getTime()) &&
-    evaluationStartDate.getTime() > Date.now();
+    evaluationStartMs !== undefined &&
+    !Number.isNaN(evaluationStartMs) &&
+    evaluationStartMs > now;
   const { data: evaluatorsResponse } = useEvaluationEvaluators(id);
 
   // State for dialog management
@@ -486,15 +505,15 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
     if (!bidComparisonData?.data?.data) return [];
 
     return bidComparisonData.data.data.map(
-      (item: BidComparisonItem, index: number) => ({
+      (item: BidComparisonItem) => ({
         id: item.proposalId,
         vendorName: item.vendorName || "Unknown Vendor",
-        totalPrice: item.total || 0,
+        totalPrice: item.total ?? null,
         submissionDate: item.submission
           ? new Date(item.submission).toLocaleDateString()
           : "N/A",
         score: item.score || 0,
-        rank: item.rank || index + 1,
+        rank: item.rank ?? null,
         rankType:
           item.rank === 1
             ? ("first" as const)
@@ -706,10 +725,12 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
       // (that is surfaced separately in the Proposal Currency column).
       cell: ({ row }) => (
         <span className="font-medium">
-          {row.original.totalPrice.toLocaleString("en-US", {
-            style: "currency",
-            currency: row.original.companyCurrency,
-          })}
+          {row.original.totalPrice == null
+            ? "N/A"
+            : row.original.totalPrice.toLocaleString("en-US", {
+                style: "currency",
+                currency: row.original.companyCurrency,
+              })}
         </span>
       ),
     },
@@ -753,7 +774,7 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
             vendorName={vendorName}
             submissionDate={row.original.submissionDate}
             evaluationScore={row.original.score?.toString()}
-            rank={row.original.rank.toString()}
+            rank={row.original.rank?.toString()}
           />
         );
       },
@@ -1177,6 +1198,7 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
                         text={`This action will unseal the proposal documents, the evaluators will be notified to begin review and evaluation of the proposal.`}
                         primaryButtonText="Release"
                         secondaryButtonText="Cancel"
+                        showSecondaryButton
                         isLoading={releaseGroupMutation.isPending}
                         onPrimaryAction={handleReleaseGroup}
                         open={

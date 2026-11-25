@@ -54,7 +54,10 @@ interface ProposalDetailsSheetProps {
 
 // Helper function to format file size
 const formatFileSize = (sizeStr: string): string => {
+  // API may already return a formatted size (e.g. "91.88 KB"); don't re-parse it.
+  if (/[a-z]/i.test(String(sizeStr))) return String(sizeStr);
   const bytes = parseInt(sizeStr);
+  if (!bytes) return "0 Bytes";
   if (bytes === 0) return "0 Bytes";
   const k = 1024;
   const sizes = ["Bytes", "KB", "MB", "GB"];

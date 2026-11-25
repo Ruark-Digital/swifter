@@ -980,12 +980,8 @@ export const SolicitationManagementPage = () => {
                       primaryButtonLoading={isUnarchivingSolicitation}
                       trigger={
                         <Button
-                          className={cn(
-                            "flex items-center gap-2 bg-gray-300 text-gray-800 hover:bg-gray-400",
-                            {
-                              "!bg-transparent !text-gray-600": true,
-                            }
-                          )}
+                          variant="ghost"
+                          className="flex w-full justify-start gap-2 px-4 py-3 font-normal text-foreground hover:bg-accent"
                           disabled={isUnarchivingSolicitation}
                         >
                           {isUnarchivingSolicitation ? "Restoring..." : "Undelete"}
