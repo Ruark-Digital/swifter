@@ -23,6 +23,7 @@ export type SuperdocInbound =
   | { type: "superdoc:error"; payload: { message: string } }
   | { type: "superdoc:redlines"; payload: { redlines: RedlineSpan[] } }
   | { type: "superdoc:redline-clicked"; payload: { redlineId: string } }
+  | { type: "superdoc:redline-applied"; payload: { redlineId: string; ok: boolean; reason?: string } }
   | { type: "superdoc:presence"; payload: { users: PresenceUser[] } }
   | { type: "superdoc:selection"; payload: { hasSelection: boolean; excerpt: string } }
   | {
@@ -119,6 +120,18 @@ export function parseSuperdocMessage(
       const p = (data.payload ?? {}) as { redlineId?: unknown };
       if (typeof p.redlineId !== "string" || !p.redlineId) return null;
       return { type: "superdoc:redline-clicked", payload: { redlineId: p.redlineId } };
+    }
+    case "superdoc:redline-applied": {
+      const p = (data.payload ?? {}) as { redlineId?: unknown; ok?: unknown; reason?: unknown };
+      if (typeof p.redlineId !== "string" || !p.redlineId) return null;
+      return {
+        type: "superdoc:redline-applied",
+        payload: {
+          redlineId: p.redlineId,
+          ok: p.ok === true,
+          ...(typeof p.reason === "string" ? { reason: p.reason } : {}),
+        },
+      };
     }
     case "superdoc:presence": {
       const p = (data.payload ?? {}) as { users?: unknown };

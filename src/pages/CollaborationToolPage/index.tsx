@@ -32,6 +32,7 @@ import {
   useDownloadLatestCollab,
   useRestoreVersion,
 } from "./collab/useFileVersionsApi";
+import { enrichWithLive, stalePendingIds } from "./collab/redlineItems";
 import {
   useAiRedlineSuggestions,
   usePersistedSuggestions,
@@ -234,6 +235,11 @@ const CollaborationToolPage: React.FC = () => {
   // editor's `ct-redlines-updated` event so manual suggestions are listed even
   // when the AI is unavailable or has not been asked.
   const [docRedlines, setDocRedlines] = useState<RedlineSpan[]>([]);
+  // True once the editor has reported its tracked changes at least once, so an
+  // empty list means none rather than not reported yet.
+  const [docRedlinesLoaded, setDocRedlinesLoaded] = useState(false);
+  // Cards whose swap could not be applied to this client's document.
+  const [notAppliedIds, setNotAppliedIds] = useState<string[]>([]);
   const [aiProgress, setAiProgress] = useState<SuggestionProgress>({});
 
   // The stored document URL carries the API host baked in at upload time, so on
@@ -617,6 +623,7 @@ const CollaborationToolPage: React.FC = () => {
   useEffect(() => {
     const sync = () => {
       const next = editorAdapterRef.current?.extractRedlines() ?? [];
+      setDocRedlinesLoaded(true);
       setDocRedlines((prev) =>
         JSON.stringify(prev) === JSON.stringify(next) ? prev : next,
       );
@@ -625,6 +632,12 @@ const CollaborationToolPage: React.FC = () => {
     window.addEventListener("ct-redlines-updated", sync);
     return () => window.removeEventListener("ct-redlines-updated", sync);
   }, [editorReady]);
+
+  // Cards rehydrated from the persisted list may predate the editor's report:
+  // fill in the real kind / replacement parts once it arrives.
+  useEffect(() => {
+    setAiItems((prev) => enrichWithLive(prev, docRedlines));
+  }, [docRedlines]);
 
   // ── AI redline suggestion handlers ──────────────────────────────────
   const runAiSuggestions = useCallback(async () => {
@@ -731,6 +744,31 @@ const CollaborationToolPage: React.FC = () => {
     const byId = new Map(persisted.map((s) => [s.redlineId, s] as const));
     setAiItems((prev) => {
       let changed = false;
+      // The persisted list is the shared source of truth: a suggestion another
+      // session generated after this client loaded must appear here too, or the
+      // two sessions list (and count) different cards.
+      const known = new Set(prev.map((p) => p.redline.redlineId));
+      const live = new Map(
+        (editorAdapterRef.current?.extractRedlines() ?? []).map(
+          (r) => [r.redlineId, r] as const,
+        ),
+      );
+      const added: AiItem[] = persisted
+        .filter((s) => !known.has(s.redlineId))
+        .map((s) => ({
+          redline: {
+            redlineId: s.redlineId,
+            kind: live.get(s.redlineId)?.kind ?? ("insertion" as const),
+            text: s.sourceText ?? "",
+            deletedText: live.get(s.redlineId)?.deletedText,
+            insertedText: live.get(s.redlineId)?.insertedText,
+          },
+          suggestion: s,
+          state: resolutionToState(s.resolution?.action),
+          resolvedByHolder: getRedlineResolvedHolder(s.resolution),
+          accepted: s.accepted,
+        }));
+      if (added.length > 0) changed = true;
       const next = prev.map((p) => {
         const s = byId.get(p.redline.redlineId);
         if (!s) return p;
@@ -763,9 +801,36 @@ const CollaborationToolPage: React.FC = () => {
           accepted: mergedAccepted,
         };
       });
-      return changed ? next : prev;
+      return changed ? [...next, ...added] : prev;
     });
   }, [persistedQuery.data, aiHasRun]);
+
+  // The swap reports whether it really changed this client's document. A card
+  // can read Resolved (shared backend state) while the text here is untouched,
+  // so never let that pass silently.
+  useEffect(() => {
+    const onApplied = (e: Event) => {
+      const d = (
+        e as CustomEvent<{ redlineId: string; ok: boolean; reason?: string }>
+      ).detail;
+      if (!d) return;
+      if (d.ok) {
+        setNotAppliedIds((prev) => prev.filter((id) => id !== d.redlineId));
+        return;
+      }
+      setNotAppliedIds((prev) =>
+        prev.includes(d.redlineId) ? prev : [...prev, d.redlineId],
+      );
+      toastHandler.error(
+        "Redline",
+        d.reason === "not-found" || d.reason === "no-target"
+          ? "That change is no longer in your copy of the document, so the approved text could not be applied here."
+          : "The approved text could not be applied to the document.",
+      );
+    };
+    window.addEventListener("ct-redline-applied", onApplied);
+    return () => window.removeEventListener("ct-redline-applied", onApplied);
+  }, [toastHandler]);
 
   // Push the current edit permission into the SuperDoc iframe. When the viewer
   // can act, honour their Suggesting/Editing choice; otherwise force read-only
@@ -1145,6 +1210,11 @@ const CollaborationToolPage: React.FC = () => {
     return extra.length > 0 ? [...aiItems, ...extra] : aiItems;
   }, [aiItems, docRedlines]);
 
+  const staleIds = useMemo(
+    () => stalePendingIds(panelItems, docRedlines, docRedlinesLoaded),
+    [panelItems, docRedlines, docRedlinesLoaded],
+  );
+
   const aiStatus: "idle" | "loading" | "ready" | "error" | "empty" =
     persistedQuery.isLoading && activeTab === "redline" && panelItems.length === 0
       ? "loading"
@@ -1470,6 +1540,8 @@ const CollaborationToolPage: React.FC = () => {
           restoringVersionId={restoringVersionId}
           aiStatus={aiStatus}
           aiItems={panelItems}
+          aiStaleIds={staleIds}
+          aiNotAppliedIds={notAppliedIds}
           aiProgress={aiProgress}
           aiErrorMessage={friendlyAiError(aiMutation.error)}
           aiInlineError={friendlyAiError(aiMutation.error)}

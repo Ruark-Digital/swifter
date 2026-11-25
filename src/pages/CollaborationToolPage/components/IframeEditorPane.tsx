@@ -326,6 +326,12 @@ const IframeEditorPane: React.FC<Props> = ({
           // list the document's tracked changes without waiting on the AI.
           window.dispatchEvent(new CustomEvent("ct-redlines-updated"));
           break;
+        case "superdoc:redline-applied":
+          // Whether the swap really changed THIS client's document.
+          window.dispatchEvent(
+            new CustomEvent("ct-redline-applied", { detail: msg.payload }),
+          );
+          break;
         case "superdoc:redline-clicked":
           window.dispatchEvent(
             new CustomEvent("ct-add-redline", {

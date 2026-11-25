@@ -89,6 +89,10 @@ interface AiSuggestionsPanelProps {
   progress?: SuggestionProgress;
   /** AI request in flight while the document's tracked changes are listed. */
   generating?: boolean;
+  /** Pending cards whose tracked change is not in this document any more. */
+  staleIds?: string[];
+  /** Cards whose approved text could not be applied to this document. */
+  notAppliedIds?: string[];
   /** Friendly inline message when the AI request failed (the list stays usable). */
   inlineError?: string;
 }
@@ -169,6 +173,8 @@ type SuggestionCardProps = {
   onFocus?: (item: Item) => void;
   isMyTurn: boolean;
   mySide?: RedlineResolvedHolder | null;
+  /** Warning about this card's relation to the document, when it has one. */
+  docNote?: string;
 };
 
 const SuggestionCard: React.FC<SuggestionCardProps> = ({
@@ -179,6 +185,7 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
   onFocus,
   isMyTurn,
   mySide,
+  docNote,
 }) => {
   const { suggestion } = item;
   // Dual approval: a redline needs BOTH sides' approval. `phase` is a thin
@@ -339,6 +346,12 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
           </div>
         )}
       </div>
+
+      {docNote && (
+        <div className="mb-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+          {docNote}
+        </div>
+      )}
 
       <div className="mb-2 rounded-md bg-slate-100 px-3 py-2 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-300">
         <div className="font-semibold text-slate-500 dark:text-slate-400">
@@ -611,12 +624,20 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
   mySide,
   progress,
   generating = false,
+  staleIds,
+  notAppliedIds,
   inlineError,
 }) => {
   const [bulkTier, setBulkTier] = useState<AlternativeTier>("medium");
   if (!open) return null;
 
-  const remaining = items.filter((i) => i.state === "pending").length;
+  const stale = new Set(staleIds ?? []);
+  const notApplied = new Set(notAppliedIds ?? []);
+  // To review = pending AND still present in the document; a card whose change
+  // is gone is reported separately instead of inflating the count.
+  const remaining = items.filter(
+    (i) => i.state === "pending" && !stale.has(i.redline.redlineId),
+  ).length;
   // Per-side "addressed" — who has accepted a recommendation, shown for the
   // contract manager (CM) and the vendor PM independently — from the BE
   // progress. "Resolved" is counted from the cards' both-accepted state: the
@@ -678,6 +699,11 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
                       ? "Last request failed"
                       : "Professional rephrases for your redlines"}
             </div>
+            {status === "ready" && stale.size > 0 && (
+              <div className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                {stale.size} no longer in this document
+              </div>
+            )}
             {status === "ready" && noAiYet && (
               <div className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
                 {items.length} tracked change{items.length === 1 ? "" : "s"} in this document
@@ -933,6 +959,13 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
               onFocus={onFocus}
               isMyTurn={isMyTurn}
               mySide={mySide}
+              docNote={
+                notApplied.has(item.redline.redlineId)
+                  ? "Approved, but the text could not be applied to this copy of the document."
+                  : stale.has(item.redline.redlineId)
+                    ? "This change is no longer in the document, so it cannot be applied."
+                    : undefined
+              }
             />
           ))}
       </div>
