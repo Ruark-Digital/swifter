@@ -386,3 +386,24 @@ describe("DashboardDataTransformer", () => {
     });
   });
 });
+
+describe("contract manager feed timezone", () => {
+  const base = {
+    id: "u1",
+    statusText: 'Invoice "Roof" submitted',
+    contractRef: "c1",
+    date: "2026-11-25T18:44:00.000Z",
+  };
+  it("renders in the contract timezone when the item carries it", () => {
+    const [item] = DashboardDataTransformer.transformContractManagerDashboardActivity([
+      { ...base, timezone: "UTC", contractTimezone: "America/Toronto" },
+    ]);
+    expect(item.date).toContain("1:44 PM");
+  });
+  it("falls back to the item timezone otherwise", () => {
+    const [item] = DashboardDataTransformer.transformContractManagerDashboardActivity([
+      { ...base, timezone: "UTC" },
+    ]);
+    expect(item.date).toContain("6:44 PM");
+  });
+});

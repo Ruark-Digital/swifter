@@ -2635,7 +2635,7 @@ export class DashboardDataTransformer {
           id: item?.id ?? `cm-${index}`,
           title: statusText || "Action",
           text: body ? `${actionText} — ${body}` : actionText,
-          date: dateValue ? formatDateInZoneAbbrev(dateValue, "MMM d, yyyy h:mm a", item?.timezone) : undefined,
+          date: dateValue ? formatDateInZoneAbbrev(dateValue, "MMM d, yyyy h:mm a", item?.contractTimezone ?? item?.contract?.timezone ?? item?.timezone) : undefined,
           status: item?.status ?? undefined,
           type: item?.type ?? undefined,
         };
@@ -2659,7 +2659,7 @@ export class DashboardDataTransformer {
           id: item?.id ?? `cm-${index}`,
           title: contractTitle || "Contract",
           text: linkedText,
-          date: dateValue ? formatDateInZoneAbbrev(dateValue, "MMM d, yyyy h:mm a", item?.timezone) : undefined,
+          date: dateValue ? formatDateInZoneAbbrev(dateValue, "MMM d, yyyy h:mm a", item?.contractTimezone ?? item?.contract?.timezone ?? item?.timezone) : undefined,
           status: item?.status ?? undefined,
           type: item?.type ?? undefined,
         };
@@ -2683,7 +2683,7 @@ export class DashboardDataTransformer {
         id: item?.id ?? `cm-${index}`,
         title: contractTitle || title || "Contract",
         text: `${plainTitle}${suffix}`,
-        date: dateValue ? formatDateInZoneAbbrev(dateValue, "MMM d, yyyy h:mm a", item?.timezone) : undefined,
+        date: dateValue ? formatDateInZoneAbbrev(dateValue, "MMM d, yyyy h:mm a", item?.contractTimezone ?? item?.contract?.timezone ?? item?.timezone) : undefined,
         status: item?.status ?? undefined,
         type: item?.type ?? undefined,
       };

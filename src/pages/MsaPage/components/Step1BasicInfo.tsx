@@ -180,37 +180,8 @@ const Step1BasicInfo: React.FC<Props> = ({ typeOptions, isLoadingTypes }) => {
         label="MSA Type"
         placeholder={isLoadingTypes ? "Loading..." : "Select MSA type"}
         component={TextSelect}
-        options={
-          typeOptions && typeOptions.length > 0
-            ? typeOptions
-            : [
-                {
-                  label: "Major Work Construction",
-                  value: "major_work_construction",
-                },
-                {
-                  label: "Minor Work Contruction",
-                  value: "minor_work_contruction",
-                },
-                {
-                  label: "Engineering & Consulting",
-                  value: "engineering_consulting",
-                },
-                {
-                  label: "Environmental Services",
-                  value: "environmental_services",
-                },
-                {
-                  label: "Master Supply Agreement",
-                  value: "master_supply_agreement",
-                },
-                {
-                  label: "Geo-Technical Services",
-                  value: "geo_technical_services",
-                },
-                { label: "Others", value: "others" },
-              ]
-        }
+        // Categories only: the API rejects any msaType that is not a category.
+        options={typeOptions ?? []}
         data-testid="msa-type-select"
       />
 

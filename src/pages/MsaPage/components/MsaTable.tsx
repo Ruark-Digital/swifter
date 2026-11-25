@@ -261,12 +261,12 @@ const columns: ColumnDef<MsaRow>[] = [
       <div className="text-xs text-slate-500 dark:text-slate-400">
         {row.original.published && (
           <div>
-            Published: {formatInTz(row.original.published, row.original.timezone, "yyyy MMM dd")}
+            Published: {formatInTz(row.original.published, row.original.timezone, "dd MMM yyyy")}
           </div>
         )}
         {row.original.endDate && (
           <div>
-            End Date: {formatContractDateTime(row.original.endDate, row.original.timezone, row.original.published, { pattern: "yyyy MMM dd" })}
+            End Date: {formatContractDateTime(row.original.endDate, row.original.timezone, row.original.published, { pattern: "dd MMM yyyy" })}
           </div>
         )}
       </div>
