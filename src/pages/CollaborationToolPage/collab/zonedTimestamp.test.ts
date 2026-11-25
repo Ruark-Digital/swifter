@@ -8,7 +8,7 @@ describe("formatZonedTimestamp", () => {
     expect(formatZonedTimestamp(iso, "Pacific/Auckland")).toMatch(
       /^Nov 26, 2026, 8:39 AM GMT\+13$/,
     );
-    expect(formatZonedTimestamp(iso, "America/New_York")).toMatch(/2:39 PM GMT-5$/);
+    expect(formatZonedTimestamp(iso, "America/New_York")).toMatch(/2:39 PM (EST|GMT-5)$/);
   });
 
   it("accepts the abbreviation the app stores", () => {
