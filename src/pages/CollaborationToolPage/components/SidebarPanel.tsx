@@ -70,6 +70,8 @@ interface SidebarPanelProps {
   aiStatus: "idle" | "loading" | "ready" | "error" | "empty";
   aiItems: AiItem[];
   aiErrorMessage?: string;
+  aiGenerating?: boolean;
+  aiInlineError?: string;
   onAiApprove: (item: AiItem) => void;
   onAiDismiss: (item: AiItem) => void;
   onAiUndo?: (item: AiItem) => void;
@@ -128,6 +130,8 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
   aiStatus,
   aiItems,
   aiErrorMessage,
+  aiGenerating,
+  aiInlineError,
   onAiApprove,
   onAiDismiss,
   onAiUndo,
@@ -223,6 +227,8 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
                 variant="inline"
                 status={aiStatus}
                 errorMessage={aiErrorMessage}
+                generating={aiGenerating}
+                inlineError={aiInlineError}
                 items={aiItems}
                 onApprove={onAiApprove}
                 onDismiss={onAiDismiss}

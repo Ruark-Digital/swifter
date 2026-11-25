@@ -38,6 +38,7 @@ import {
   getRedlineResolvedHolder,
   dualApprovalPhase,
   withLocalAcceptance,
+  friendlyAiError,
   mergeAcceptance,
   type AiRedlineSuggestion,
   type PersistedSuggestion,
@@ -229,6 +230,10 @@ const CollaborationToolPage: React.FC = () => {
   const [aiItems, setAiItems] = useState<AiItem[]>([]);
   const [aiHasRun, setAiHasRun] = useState(false);
   const [aiNoRedlines, setAiNoRedlines] = useState(false);
+  // Tracked changes currently in the document, independent of the AI. Fed by the
+  // editor's `ct-redlines-updated` event so manual suggestions are listed even
+  // when the AI is unavailable or has not been asked.
+  const [docRedlines, setDocRedlines] = useState<RedlineSpan[]>([]);
   const [aiProgress, setAiProgress] = useState<SuggestionProgress>({});
 
   // The stored document URL carries the API host baked in at upload time, so on
@@ -609,27 +614,46 @@ const CollaborationToolPage: React.FC = () => {
     [versions, docName, restoreVersionMutation, getVersionSnapshot, toastHandler],
   );
 
+  useEffect(() => {
+    const sync = () => {
+      const next = editorAdapterRef.current?.extractRedlines() ?? [];
+      setDocRedlines((prev) =>
+        JSON.stringify(prev) === JSON.stringify(next) ? prev : next,
+      );
+    };
+    sync();
+    window.addEventListener("ct-redlines-updated", sync);
+    return () => window.removeEventListener("ct-redlines-updated", sync);
+  }, [editorReady]);
+
   // ── AI redline suggestion handlers ──────────────────────────────────
   const runAiSuggestions = useCallback(async () => {
     const adapter = editorAdapterRef.current;
     if (!adapter) return;
     setAiHasRun(true);
     const redlines = adapter.extractRedlines();
+    setDocRedlines(redlines);
     if (redlines.length === 0) {
       setAiItems([]);
       setAiNoRedlines(true);
       return;
     }
     setAiNoRedlines(false);
-    const analysis = await aiMutation.mutateAsync(redlines);
-    const byId = new Map(analysis.suggestions.map((s) => [s.redlineId, s]));
-    setAiItems(
-      redlines.map((r) => ({
-        redline: r,
-        suggestion: byId.get(r.redlineId),
-        state: "pending" as const,
-      })),
-    );
+    try {
+      const analysis = await aiMutation.mutateAsync(redlines);
+      const byId = new Map(analysis.suggestions.map((s) => [s.redlineId, s]));
+      setAiItems(
+        redlines.map((r) => ({
+          redline: r,
+          suggestion: byId.get(r.redlineId),
+          state: "pending" as const,
+        })),
+      );
+    } catch {
+      // The failure surfaces inline via aiMutation.isError (with Retry); the
+      // tracked changes stay listed. Swallow so it is not an unhandled rejection.
+      setAiHasRun(false);
+    }
   }, [aiMutation]);
 
   // QA #232/#237: load persisted suggestions from GET before generating new
@@ -671,14 +695,10 @@ const CollaborationToolPage: React.FC = () => {
       return;
     }
 
-    // Nothing persisted yet. Only the side whose turn it is generates (POST) —
-    // the waiting side (and observers) load whatever the other side has already
-    // generated above and view it read-only, rather than being shown an empty
-    // "Generate suggestions" prompt.
-    if (redlineTurn.canAct) {
-      void runAiSuggestions();
-    }
-  }, [activeTab, aiHasRun, runAiSuggestions, redlineTurn.canAct, persistedQuery.isLoading, persistedQuery.data]);
+    // Nothing persisted yet. The AI call is on demand ("Generate suggestions"),
+    // not fired on tab open: the document's own tracked changes are listed
+    // without it, and a failing AI service must not be hit on every visit.
+  }, [activeTab, aiHasRun, persistedQuery.isLoading, persistedQuery.data]);
 
   // Keep the header progress counts (CM/PM addressed, resolved) live. The
   // rehydrate above seeds them once; this syncs them on every subsequent
@@ -954,6 +974,8 @@ const CollaborationToolPage: React.FC = () => {
                   : p,
               ),
             );
+            // Refresh progress so the header counters drop back immediately.
+            persistedQuery.refetch();
             toastHandler.success("Redline", "Resolution undone.");
           },
           onError: (error) => {
@@ -967,7 +989,13 @@ const CollaborationToolPage: React.FC = () => {
         },
       );
     },
-    [docName, fileVersionsQuery.data?.activeVersionId, redlineTurn, toastHandler],
+    [
+      docName,
+      fileVersionsQuery.data?.activeVersionId,
+      redlineTurn,
+      toastHandler,
+      persistedQuery,
+    ],
   );
 
   // Bulk "resolve all pending": apply one action/tier to every pending
@@ -1104,16 +1132,32 @@ const CollaborationToolPage: React.FC = () => {
     );
   }, []);
 
+  // AI cards plus any tracked change in the document the AI has not covered
+  // (manual suggestions), so the list never depends on the AI being available.
+  const panelItems = useMemo<AiItem[]>(() => {
+    const known = new Set(aiItems.map((i) => i.redline.redlineId));
+    const extra = docRedlines
+      .filter((r) => !known.has(r.redlineId))
+      .map((r) => ({ redline: r, state: "pending" as const }));
+    return extra.length > 0 ? [...aiItems, ...extra] : aiItems;
+  }, [aiItems, docRedlines]);
+
   const aiStatus: "idle" | "loading" | "ready" | "error" | "empty" =
-    aiMutation.isPending || (persistedQuery.isLoading && activeTab === "redline")
+    persistedQuery.isLoading && activeTab === "redline" && panelItems.length === 0
       ? "loading"
-      : aiMutation.isError
-        ? "error"
-        : aiNoRedlines
-          ? "empty"
-          : aiItems.length > 0 || aiMutation.isSuccess
-            ? "ready"
-            : "idle";
+      : panelItems.length > 0
+        ? "ready"
+        : aiMutation.isPending
+          ? "loading"
+          : aiMutation.isError
+            ? "error"
+            : aiNoRedlines || (aiHasRun && docRedlines.length === 0)
+              ? "empty"
+              : aiMutation.isSuccess
+                ? "ready"
+                : docRedlines.length === 0 && editorReady
+                  ? "empty"
+                  : "idle";
 
   // When fileId is supplied we can persist to the backend; otherwise we
   // require contractId (which gates the localStorage scope).
@@ -1251,7 +1295,7 @@ const CollaborationToolPage: React.FC = () => {
             {/* Redline turn controls — compact, tooltip-driven, shown in the
                 header while reviewing redlines so the negotiation status/actions
                 stay visible without a full-width in-panel banner. */}
-            {activeTab === "redline" && (
+            {(activeTab === "redline" || redlineTurn.isParticipant) && (
               <>
                 <TurnControls
                   mySide={redlineTurn.mySide}
@@ -1422,9 +1466,11 @@ const CollaborationToolPage: React.FC = () => {
           activeVersionId={fileVersionsQuery.data?.activeVersionId ?? null}
           restoringVersionId={restoringVersionId}
           aiStatus={aiStatus}
-          aiItems={aiItems}
+          aiItems={panelItems}
           aiProgress={aiProgress}
-          aiErrorMessage={(aiMutation.error as Error | undefined)?.message}
+          aiErrorMessage={friendlyAiError(aiMutation.error)}
+          aiInlineError={friendlyAiError(aiMutation.error)}
+          aiGenerating={aiMutation.isPending}
           onAiApprove={handleApproveAi}
           onAiDismiss={handleDismissAi}
           onAiUndo={handleUndoAi}

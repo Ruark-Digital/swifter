@@ -554,6 +554,50 @@ export const deriveProgressCounts = (
 });
 
 /**
+ * Per-side "addressed" counts derived from the cards themselves, so the header
+ * moves the moment a card flips (the server progress only catches up after the
+ * post-resolve refetch). A side has addressed a card when it resolved it
+ * (approve or dismiss) or its acceptance flag is set.
+ */
+export const deriveLocalAddressed = (
+  items: Array<{
+    state: "pending" | "approved" | "dismissed";
+    resolvedByHolder?: RedlineResolvedHolder;
+    accepted?: RedlineAcceptance;
+  }>,
+): { cm: number; pm: number } => {
+  let cm = 0;
+  let pm = 0;
+  for (const i of items) {
+    const resolved = i.state !== "pending";
+    if (i.accepted?.cmAccepted || (resolved && i.resolvedByHolder === "manager")) cm++;
+    if (i.accepted?.vendorAccepted || (resolved && i.resolvedByHolder === "vendor")) pm++;
+  }
+  return { cm, pm };
+};
+
+/** A user-facing message for a failed AI request, never a raw axios string. */
+export const friendlyAiError = (error: unknown): string | undefined => {
+  if (!error) return undefined;
+  const status = (error as { response?: { status?: number } })?.response?.status;
+  const message = error instanceof Error ? error.message : "";
+  if (
+    (status && status >= 500) ||
+    /status code 5\d\d/.test(message) ||
+    /network error/i.test(message)
+  ) {
+    return "The AI service is unavailable right now. The tracked changes in your document are still listed; try again in a moment.";
+  }
+  const serverMessage = (
+    error as { response?: { data?: { message?: unknown } } }
+  )?.response?.data?.message;
+  if (typeof serverMessage === "string" && serverMessage.trim()) return serverMessage;
+  return /status code/.test(message) || !message
+    ? "Could not get AI suggestions. Please try again."
+    : message;
+};
+
+/**
  * Redlines accepted by BOTH sides — the only ones that are resolved in the
  * dual-approval flow (QA #185). The BE `resolved`/`resolvedCount` also counts
  * a one-sided action (swagger: "resolved status or both-accepted"), so it reads

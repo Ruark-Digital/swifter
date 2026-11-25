@@ -11,6 +11,7 @@ import type { RedlineSpan } from "../collab/redlineScan";
 import {
   acceptanceActor,
   countBothAccepted,
+  deriveLocalAddressed,
   deriveProgressCounts,
   effectiveApprovalPhase,
   redlineHolderLabel,
@@ -86,6 +87,10 @@ interface AiSuggestionsPanelProps {
   mySide?: RedlineResolvedHolder | null;
   /** Server-side progress counts from GET .../ai/redline-suggestions. */
   progress?: SuggestionProgress;
+  /** AI request in flight while the document's tracked changes are listed. */
+  generating?: boolean;
+  /** Friendly inline message when the AI request failed (the list stays usable). */
+  inlineError?: string;
 }
 
 const KindPill: React.FC<{ kind: RedlineSpan["kind"] }> = ({ kind }) => (
@@ -562,7 +567,7 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
         </>
       ) : (
         <div className="text-xs italic text-slate-500 dark:text-slate-400">
-          No suggestion returned for this redline.
+          No AI suggestion for this change yet.
         </div>
       )}
     </div>
@@ -585,6 +590,8 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
   isMyTurn = true,
   mySide,
   progress,
+  generating = false,
+  inlineError,
 }) => {
   const [bulkTier, setBulkTier] = useState<AlternativeTier>("medium");
   if (!open) return null;
@@ -596,7 +603,20 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
   // BE total also counts one-sided actions still awaiting the other side
   // (QA #185), so it is only a fallback when there are no cards.
   const counts = deriveProgressCounts(progress);
-  const { cmAddressed, pmAddressed } = counts;
+  // Never lag behind what the cards already show: take the larger of the BE
+  // progress and the per-side count derived from the cards (the BE catches up
+  // after the post-resolve refetch).
+  const local = deriveLocalAddressed(items);
+  const cmAddressed =
+    items.length > 0 || typeof counts.cmAddressed === "number"
+      ? Math.max(counts.cmAddressed ?? 0, local.cm)
+      : undefined;
+  const pmAddressed =
+    items.length > 0 || typeof counts.pmAddressed === "number"
+      ? Math.max(counts.pmAddressed ?? 0, local.pm)
+      : undefined;
+  const withoutAi = items.filter((i) => !i.suggestion).length;
+  const noAiYet = items.length > 0 && withoutAi === items.length;
   const resolved =
     items.length > 0
       ? countBothAccepted(items.map((i) => i.accepted))
@@ -638,6 +658,11 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
                       ? "Last request failed"
                       : "Professional rephrases for your redlines"}
             </div>
+            {status === "ready" && noAiYet && (
+              <div className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                {items.length} tracked change{items.length === 1 ? "" : "s"} in this document
+              </div>
+            )}
             {status === "ready" && hasProgress && (
               <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
                 {typeof cmAddressed === "number" && (
@@ -777,6 +802,41 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
           <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
             <RotateCw className="h-4 w-4 animate-spin" />
             Asking AI for professional rephrases…
+          </div>
+        )}
+
+        {status === "ready" && generating && (
+          <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+            <RotateCw className="h-4 w-4 animate-spin" />
+            Asking AI for professional rephrases…
+          </div>
+        )}
+
+        {status === "ready" && !generating && inlineError && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+            <div className="font-semibold">AI suggestions unavailable</div>
+            <div className="mt-1 text-xs">{inlineError}</div>
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-2 inline-flex items-center gap-1 rounded-md bg-red-600 px-2 py-1 text-xs font-semibold text-white hover:bg-red-700"
+            >
+              <RotateCw className="h-3 w-3" /> Retry
+            </button>
+          </div>
+        )}
+
+        {status === "ready" && !generating && !inlineError && withoutAi > 0 && (
+          <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-300">
+            AI recommendations are optional. Generate them for the {withoutAi}{" "}
+            change{withoutAi === 1 ? "" : "s"} below.
+            <button
+              type="button"
+              onClick={onRetry}
+              className="ml-2 inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2 py-1 text-xs font-semibold text-white hover:bg-indigo-700"
+            >
+              <Play className="h-3 w-3" /> Generate suggestions
+            </button>
           </div>
         )}
 
