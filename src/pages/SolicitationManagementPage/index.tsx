@@ -40,19 +40,15 @@ import {
   getStatusColorClass,
   normalizeStatus,
 } from "@/lib/solicitationStatusUtils";
-import { cn, formatDateTZ, formatQuestionDeadline } from "@/lib/utils";
+import { cn, formatDateTZ, formatQuestionDeadline, formatWallClockWithZone } from "@/lib/utils";
 import { applySolicitationCompanyFilter } from "./lib/solicitationCompanyFilter";
 // import ExportReportSheet from "@/components/layouts/ExportReportSheet";
 
-// Safe date formatting utility
+// Solicitation list dates: one format, in the solicitation's own zone, labelled.
 const safeFormatDate = (
   dateString: string | undefined,
-  formatStr?: string,
   timezone?: string
-): string => {
-  const date = formatDateTZ(dateString, formatStr, timezone);
-  return date;
-};
+): string => formatWallClockWithZone(dateString, "MMM d, yyyy h:mm a", timezone);
 
 // Format a date as yyyy/MM/dd for the backend `date=start-end` range filter.
 // The BE expects the combined form `date=yyyy/MM/dd-yyyy/MM/dd` (both halves in
@@ -894,11 +890,8 @@ export const SolicitationManagementPage = () => {
               {row.original?.vendor?.assignedAt ? (
                 <div className="font-medium">
                   Assigned:{" "}
-                  {safeFormatDate(
-                    row.original.vendor.assignedAt,
-                    "MMM d, yyyy, hh:mm a",
-                    row.original.timezone
-                  )}
+                  {safeFormatDate(row.original.vendor.assignedAt,
+                    row.original.timezone)}
                 </div>
               ) : row.original.visibility === "public" &&
                 !row.original.invitedAt ? (
@@ -909,20 +902,14 @@ export const SolicitationManagementPage = () => {
               ) : (
                 <div className="font-medium">
                   Invited:{" "}
-                  {safeFormatDate(
-                    row.original.invitedAt,
-                    "MMM d, yyyy, hh:mm a",
-                    row.original.timezone
-                  )}
+                  {safeFormatDate(row.original.invitedAt,
+                    row.original.timezone)}
                 </div>
               )}
               <div className="text-gray-500 dark:text-gray-400 font-medium">
                 Deadline:
-                {safeFormatDate(
-                  row.original.submissionDeadline,
-                  "MMM d, yyyy, h:mm a",
-                  row.original.timezone
-                )}
+                {safeFormatDate(row.original.submissionDeadline,
+                  row.original.timezone)}
               </div>
             </div>
           ),
@@ -1123,11 +1110,8 @@ export const SolicitationManagementPage = () => {
           header: "Submission Deadline",
           cell: ({ row }) => (
             <span>
-              {safeFormatDate(
-                row.original.submissionDeadline,
-                "MMM d, yyyy, KK:mm a",
-                row.original.timezone
-              )}
+              {safeFormatDate(row.original.submissionDeadline,
+                row.original.timezone)}
             </span>
           ),
         },
@@ -1350,18 +1334,12 @@ export const SolicitationManagementPage = () => {
             <>
               <span className="text-sm block">
                 <strong>Published:</strong>{" "}
-                {safeFormatDate(
-                  row.original.createdAt,
-                  "MMM d, yyyy hh:mm a"
-                )}
+                {safeFormatDate(row.original.createdAt, row.original.timezone)}
               </span>
               <span>
                 <strong>Closing:</strong>{" "}
-                {safeFormatDate(
-                  row.original.submissionDeadline,
-                  "MMM d, yyyy hh:mm a",
-                  row.original.timezone
-                )}
+                {safeFormatDate(row.original.submissionDeadline,
+                  row.original.timezone)}
               </span>
             </>
           ),

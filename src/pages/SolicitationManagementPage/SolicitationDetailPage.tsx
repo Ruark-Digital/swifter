@@ -748,7 +748,7 @@ export const SolicitationDetailPage = () => {
           <span className="text-sm">
             Assigned:{" "}
             {row.original.assignedOnFormatted
-              ? formatDateTZ(
+              ? formatWallClockWithZone(
                   row.original.assignedOnFormatted,
                   "MMM d, yyyy hh:mm a",
                   row.original.timezone
@@ -1304,14 +1304,15 @@ export const SolicitationDetailPage = () => {
                         Published Date
                       </label>
                       <p className="text-gray-900 dark:text-gray-200 font-medium">
-                        {formatDateTZ(
+                        {formatWallClockWithZone(
                           // Show the actual publish date; fall back to
                           // createdAt only when the solicitation has not been
-                          // published yet (no datePublished from the BE). A
-                          // record timestamp, so in the viewer's zone, not the
-                          // solicitation's.
+                          // published yet (no datePublished from the BE).
+                          // Rendered in the solicitation's own zone, labelled
+                          // (entity timezone wins over the viewer's; S1-FE-02).
                           solicitation.datePublished ?? solicitation.createdAt,
-                          "MMMM dd, yyyy hh:mm a"
+                          "MMMM dd, yyyy hh:mm a",
+                          solicitation.timezone
                         )}
                       </p>
                     </div>

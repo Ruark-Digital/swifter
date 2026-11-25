@@ -441,7 +441,7 @@ const UserManagementPage = () => {
         <div className="flex flex-col text-sm">
           <span className="text-gray-700 dark:text-gray-300">
             {row.original.lastActivity
-              ? formatDateTZ(row.original.lastActivity, "MMM dd, yyyy pppp")
+              ? formatDateTZ(row.original.lastActivity, "MMM d, yyyy h:mm a zzz")
               : "Never"}
           </span>
         </div>

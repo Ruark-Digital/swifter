@@ -397,7 +397,15 @@ export function formatWallClockWithZone(
 ): string {
   const label = (zoneAbbrev ?? "").trim();
   const out = formatDateTZ(dateInput, formatStr, label || undefined);
-  return out === "N/A" || !label ? out : `${out} ${label}`;
+  if (out === "N/A" || !label) return out;
+  // Label with the zone's name AT THAT INSTANT (NZDT in November, not the stored
+  // "NZST"); fall back to the stored label when it can't be resolved.
+  const instant =
+    dateInput && !(typeof dateInput === "string" && isDateOnly(dateInput))
+      ? toInstant(dateInput)
+      : undefined;
+  const seasonal = instant && resolveZone(instant, label)?.label;
+  return `${out} ${seasonal ?? label}`;
 }
 
 // Serialize a picked datetime as a naive wall clock, matching the create flow;
@@ -565,13 +573,49 @@ function resolveZone(
   }
 
   const offsetMin = ZONE_ABBREV_OFFSET_MINUTES[abbr];
-  return offsetMin === undefined ? undefined : { offsetMin, label: abbr };
+  if (offsetMin !== undefined) return { offsetMin, label: abbr };
+
+  // An IANA name (e.g. "Pacific/Auckland"), resolved per instant, DST-aware.
+  if (abbr.includes("/")) {
+    try {
+      return {
+        offsetMin: getTimeZoneOffset(instant, abbr),
+        label: zoneShortName(instant, abbr) ?? abbr,
+      };
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
 }
 
+// Standard/daylight names for zones where Intl("en-US") yields only a numeric
+// "GMT+13", so the seasonal label (NZST vs NZDT) can still be shown.
+const SEASONAL_NAMES: Record<string, [string, string]> = {
+  "Pacific/Auckland": ["NZST", "NZDT"],
+  "Australia/Sydney": ["AEST", "AEDT"],
+  "Australia/Adelaide": ["ACST", "ACDT"],
+  "Europe/Paris": ["CET", "CEST"],
+  "Europe/Athens": ["EET", "EEST"],
+  "Europe/London": ["GMT", "BST"],
+};
+
 // The zone's short name (e.g. "EST"/"EDT") for a given instant, via Intl.
-// Returns undefined when the platform yields a numeric name (e.g. "GMT-5") or
-// on any failure, so callers keep the BE-supplied abbreviation.
+// Returns undefined when the platform yields a numeric name (e.g. "GMT-5") and
+// the zone has no seasonal-name entry, or on any failure, so callers keep the
+// BE-supplied abbreviation.
 function zoneShortName(instant: Date, timeZone: string): string | undefined {
+  const seasonal = SEASONAL_NAMES[timeZone];
+  if (seasonal) {
+    const year = instant.getUTCFullYear();
+    const standard = Math.min(
+      getTimeZoneOffset(new Date(Date.UTC(year, 0, 1)), timeZone),
+      getTimeZoneOffset(new Date(Date.UTC(year, 6, 1)), timeZone)
+    );
+    return getTimeZoneOffset(instant, timeZone) > standard
+      ? seasonal[1]
+      : seasonal[0];
+  }
   try {
     const name = new Intl.DateTimeFormat("en-US", {
       timeZone,

@@ -11,7 +11,7 @@ import {
   useEvaluationScorecard,
   EvaluationCriteria,
 } from "../hooks/useEvaluationScorecard";
-import { formatDateTZ } from "@/lib/utils";
+import { formatWallClockWithZone } from "@/lib/utils";
 
 interface EvaluationScorecardProps {
   solicitationId: string;
@@ -156,7 +156,7 @@ const EvaluationScorecard: React.FC<EvaluationScorecardProps> = ({
                 </p>
                 <p className="text-sm font-medium dark:text-slate-200 text-gray-900">
                   {displayData?.submission
-                    ? formatDateTZ(
+                    ? formatWallClockWithZone(
                         displayData?.submission,
                         "MMM d, yyyy hh:mm a",
                         timezone

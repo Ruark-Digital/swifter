@@ -119,7 +119,7 @@ const AddendumDetailsSheet: React.FC<AddendumDetailsSheetProps> = ({
         {/* Date and Time */}
         <div className="text-sm text-gray-500">
           {addendumDetail
-            ? formatDateTZ(addendumDetail.createdAt, "MMMM d, yyyy hh:mm a")
+            ? formatWallClockWithZone(addendumDetail.createdAt, "MMMM d, yyyy hh:mm a", timezone)
             : addendum.datePublished}
         </div>
 
@@ -162,7 +162,7 @@ const AddendumDetailsSheet: React.FC<AddendumDetailsSheetProps> = ({
                   Publish Date
                 </h4>
                 <p className="text-sm font-medium text-gray-900">
-                  {formatDateTZ(addendumDetail.createdAt, "MMMM d, yyyy hh:mm a")}
+                  {formatWallClockWithZone(addendumDetail.createdAt, "MMMM d, yyyy hh:mm a", timezone)}
                 </p>
               </div>
               {addendumDetail.submissionDeadline && (
@@ -230,8 +230,8 @@ const AddendumDetailsSheet: React.FC<AddendumDetailsSheetProps> = ({
 
             <div className="space-y-3">
               <div className="text-xs text-gray-500">
-                {formatDateTZ(addendumDetail.createdAt, "MMMM d, yyyy")} •{" "}
-                {formatDateTZ(addendumDetail.createdAt, "h:mm a")}
+                {formatDateTZ(addendumDetail.createdAt, "MMMM d, yyyy", timezone)} •{" "}
+                {formatWallClockWithZone(addendumDetail.createdAt, "h:mm a", timezone)}
               </div>
               <p className="text-sm text-gray-900 leading-relaxed dark:text-gray-200">
                 {addendumDetail.questions}

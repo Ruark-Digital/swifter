@@ -52,7 +52,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDateTZ, daysUntilCalendar } from "@/lib/utils";
+import { formatWallClockWithZone, daysUntilCalendar } from "@/lib/utils";
 import { useUser } from "@/store/authSlice";
 
 // Evaluation type definition
@@ -101,7 +101,7 @@ const safeFormatDate = (
     return fallback;
   }
 
-  const v = formatDateTZ(dateInput, pattern, timezone);
+  const v = formatWallClockWithZone(dateInput, pattern, timezone);
   return v;
 };
 
@@ -127,7 +127,7 @@ const transformEvaluationData = (
     type: item.solicitationType,
     deadline: safeFormatDate(
       item.endDate,
-      "MMMM dd, yyyy, KK:mm a",
+      "MMM d, yyyy h:mm a",
       "N/A",
       item.timezone
     ),
@@ -168,11 +168,17 @@ const transformAssignedEvaluationData = (
       groupId: item.evaluationGroups?.[0]?._id || "",
       assignedDate: safeFormatDate(
         item.evaluationGroups?.[0]?.assignedOn,
-        "MMM dd, yyyy KK:mm a",
-        "N/A"
+        "MMM d, yyyy h:mm a",
+        "N/A",
+        item.timezone
       ),
       timezone: item.timezone,
-      deadline: safeFormatDate(item.endDate, "MMM dd, yyyy KK:mm a", "N/A"),
+      deadline: safeFormatDate(
+        item.endDate,
+        "MMM d, yyyy h:mm a",
+        "N/A",
+        item.timezone
+      ),
       progress: Math.round(item.averageProgress || 0),
       status,
       // Preserve groups for expansion
