@@ -43,6 +43,7 @@ import SubmitProponentPage from "@/pages/SolicitationManagementPage/components/P
 import ProjectManagementPage from "@/pages/ProjectManagementPage";
 import ContractManagementPage from "@/pages/ContractManagementPage";
 import ContractDetailPage from "@/pages/ContractManagementPage/ContractDetailPage";
+import ContractsModuleGate from "@/pages/ContractManagementPage/components/ContractsModuleGate";
 import MsaPage from "@/pages/MsaPage";
 import MsaDetailPage from "@/pages/MsaPage/MsaDetailPage";
 // import Example from "@/pages/Example";
@@ -209,7 +210,9 @@ export const routes = [
         path: "/dashboard/contract-management",
         element: (
           <ProtectedRoute>
-            <ContractManagementPage />
+            <ContractsModuleGate>
+              <ContractManagementPage />
+            </ContractsModuleGate>
           </ProtectedRoute>
         ),
       },
@@ -233,7 +236,9 @@ export const routes = [
         path: "/dashboard/contract-management/:id",
         element: (
           <ProtectedRoute>
-            <ContractDetailPage />
+            <ContractsModuleGate>
+              <ContractDetailPage />
+            </ContractsModuleGate>
           </ProtectedRoute>
         ),
       },

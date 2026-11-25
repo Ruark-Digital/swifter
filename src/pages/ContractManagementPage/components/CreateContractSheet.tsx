@@ -48,7 +48,16 @@ import {
   toIdStringOrUndefined,
   toPersonnelOrUndefined,
 } from "@/lib/contractFormValues";
-import { toContractDateTimeISO, toZonedStartOfDayISO } from "@/lib/zonedDate";
+import {
+  browserTimeZone,
+  toContractDateTimeISO,
+  toZonedStartOfDayISO,
+} from "@/lib/zonedDate";
+import {
+  isValidContactValue,
+  validateApprovalGroups,
+  validateLaterStep,
+} from "../lib/wizardValidation";
 
 type Props = {
   trigger: React.ReactNode;
@@ -77,6 +86,10 @@ export const schema = yup.object({
   msaContractId: yup.string().optional(),
   msaCategory: yup.string().optional(),
   description: yup.string().required("Description is required"),
+  // IANA name or the app's zone abbreviation; every contract date is read in it.
+  // Optional here because Edit shares this schema (it keeps the contract's own
+  // zone); the create wizard requires it in validateStep.
+  timezone: yup.string().optional(),
   vendor: yup
     .string()
     .optional()
@@ -218,6 +231,7 @@ export const defaultValues = {
   projectManager: "",
   jobTitle: "",
   businessDivision: "",
+  timezone: "",
   contractId: "",
   msaContractId: "",
   msaCategory: "",
@@ -474,9 +488,13 @@ const SendForApprovalDialog = React.memo(
           <div className=" space-y-6">
             <div className="flex items-center justify-between">
               <p className="text-xl font-semibold text-slate-900 dark:text-slate-100">
-                Send for Approval
+                Select Signatories
               </p>
             </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              The contract is created on the final step. Choose who should sign
+              it; approval is requested once it is created.
+            </p>
 
             <div className="space-y-3">
               <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
@@ -579,7 +597,7 @@ const SendForApprovalDialog = React.memo(
               </p>
               <div className="flex flex-wrap gap-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-4 py-4">
                 {assignedApprovers.length === 0 && (
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Search</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">No signatories selected</p>
                 )}
                 {assignedApprovers.map((approver, index) => {
                   const approverId = getApproverKey(approver, index);
@@ -645,7 +663,7 @@ const SendForApprovalDialog = React.memo(
                   onSendForApproval(sigs);
                 }}
               >
-                Send for Approval
+                Continue to Review
               </Button>
             </div>
           </div>
@@ -692,6 +710,14 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
   const clearSession = useClearSession();
   const { success, error } = useToastHandler();
   const currentUser = useUser();
+  const currentUserTimezone = currentUser?.timezone || browserTimeZone();
+  // Default the contract timezone to the creator's own; they can change it in
+  // step 3. Re-applied whenever the wizard opens with the field empty (reset).
+  React.useEffect(() => {
+    if (open && !getValues("timezone")) {
+      setValue("timezone", currentUserTimezone);
+    }
+  }, [open, currentUserTimezone, getValues, setValue]);
   // These endpoints are manager-only (x-roles: contract_manager, company_admin);
   // vendors/approvers get 403s if the queries run for them (QA-037).
   const { isManager, isCompanyAdmin } = useUserRole();
@@ -893,6 +919,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
     ],
     2: ["manager", "projectManager", "jobTitle", "vendor", "personnel", "internalTeam"],
     3: [
+      "timezone",
       "effectiveDate",
       "endDate",
       "duration",
@@ -952,8 +979,37 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
           }
         }
       }
+      if (currentStep === 2) {
+        const pm = getValues().projectManager;
+        if (!isValidContactValue(pm)) {
+          setError("projectManager", {
+            type: "validate",
+            message: "Select a vendor contact or enter a valid email address",
+          });
+          return false;
+        }
+      }
+      if (currentStep === 3 && !getValues().timezone) {
+        setError("timezone", {
+          type: "required",
+          message: "Timezone is required",
+        });
+        return false;
+      }
+      if (currentStep >= 4 && currentStep <= 6) {
+        const issues = validateLaterStep(currentStep, getValues());
+        issues.forEach(({ field, message }) =>
+          setError(field as any, { type: "required", message }),
+        );
+        if (issues.length) return false;
+      }
       if (currentStep === 8) {
         const approvalGroups = getValues().approvalGroups ?? [];
+        const issues = validateApprovalGroups(approvalGroups);
+        issues.forEach(({ field, message }) =>
+          setError(field as any, { type: "required", message }),
+        );
+        if (issues.length) return false;
         const seenApprovers = new Set<string>();
         const hasDuplicateApprover = approvalGroups.some((group) =>
           (group.approvers ?? []).some((approver) => {
@@ -1007,7 +1063,8 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
 
   const buildPayload = React.useCallback(
     (data: CreateContractFormData, status: "draft" | "publish") => {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+      // Dates are interpreted in the contract's chosen timezone, never the browser's.
+      const tz = data.timezone || browserTimeZone();
 
       const relationship =
         data.relationship === "msa" || data.relationship === "msa_project"
@@ -1355,6 +1412,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
               {step === 1 && (
                 <Step1BasicInfo
                   typeOptions={typeOptions}
+                  typesLoading={typesQuery.isLoading}
                   projectOptions={projectOptions}
                   awardedOptions={awardedOptions}
                   msaOptions={msaOptions}
@@ -1374,6 +1432,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
               {step === 3 && (
                 <Step4Timeline
                   control={control}
+                  defaultTimezone={currentUserTimezone}
                   termTypeOptions={termTypeOptions}
                 />
               )}

@@ -6,15 +6,29 @@ import { CreateContractFormData } from "./CreateContractSheet";
 import { useWatch } from "react-hook-form";
 import { formatDateTZ } from "@/lib/utils";
 import { differenceInCalendarDays } from "date-fns";
+import timezones from "@/assets/timezones.json";
 
 
 
 type Props = {
+  /** Extra zone (e.g. the user's own IANA zone) offered alongside the standard list. */
+  defaultTimezone?: string;
   termTypeOptions: Array<{ label: string; value: string }>;
   control: ForgeControl<CreateContractFormData>
 };
 
-const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
+const Step4Timeline: React.FC<Props> = ({
+  termTypeOptions,
+  control,
+  defaultTimezone,
+}) => {
+  const timezoneOptions = React.useMemo(
+    () =>
+      defaultTimezone && !timezones.some((t) => t.value === defaultTimezone)
+        ? [{ label: defaultTimezone, value: defaultTimezone }, ...timezones]
+        : timezones,
+    [defaultTimezone],
+  );
   // Past dates are intentionally allowed across every stage — contracts
   // can be backdated, and editing an in-flight contract needs to keep
   // the original past timeline. The chain still enforces order
@@ -49,6 +63,19 @@ const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
 
   return (
     <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="md:col-span-2 space-y-1">
+        <Forger
+          name="timezone"
+          label="Contract Timezone"
+          placeholder="Select Timezone"
+          component={TextSelect}
+          options={timezoneOptions}
+          data-testid="contract-timezone-select"
+        />
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          All contract dates and times are entered and shown in this timezone.
+        </p>
+      </div>
       <Forger
         name="effectiveDate"
         label="Contract Effective Date"
@@ -68,8 +95,8 @@ const Step4Timeline: React.FC<Props> = ({ termTypeOptions, control }) => {
       />
       <Forger
         name="duration"
-        label="Duration"
-        placeholder="Duration"
+        label="Duration (days)"
+        placeholder="Calculated from the effective and end dates"
         disabled={true}
         component={TextInput}
         containerClass="md:col-span-2"

@@ -264,6 +264,11 @@ const Step2ContractTeam: React.FC<Props> = ({
         label="Vendor/Contractor Key Personnel. (Multi-Select)"
         component={TextTagInput}
         enableDetailsPopover
+        placeholder="Click to add key personnel"
+        // The details popover is where name/email/role/phone are entered; a
+        // typeable inline input just had its text swallowed by the popover's
+        // focus trap, so the inline field is click-only.
+        inputProps={{ readOnly: true }}
         helperText="Add vendor’s/contractor’s key personnel with email address, name"
       />
       <Forger
