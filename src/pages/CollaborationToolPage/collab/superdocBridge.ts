@@ -24,6 +24,7 @@ export type SuperdocInbound =
   | { type: "superdoc:redlines"; payload: { redlines: RedlineSpan[] } }
   | { type: "superdoc:redline-clicked"; payload: { redlineId: string } }
   | { type: "superdoc:redline-applied"; payload: { redlineId: string; ok: boolean; reason?: string } }
+  | { type: "superdoc:collab-lost"; payload: { reason: string; attempts: number } }
   | { type: "superdoc:presence"; payload: { users: PresenceUser[] } }
   | { type: "superdoc:selection"; payload: { hasSelection: boolean; excerpt: string } }
   | {
@@ -120,6 +121,16 @@ export function parseSuperdocMessage(
       const p = (data.payload ?? {}) as { redlineId?: unknown };
       if (typeof p.redlineId !== "string" || !p.redlineId) return null;
       return { type: "superdoc:redline-clicked", payload: { redlineId: p.redlineId } };
+    }
+    case "superdoc:collab-lost": {
+      const p = (data.payload ?? {}) as { reason?: unknown; attempts?: unknown };
+      return {
+        type: "superdoc:collab-lost",
+        payload: {
+          reason: typeof p.reason === "string" ? p.reason : "unknown",
+          attempts: typeof p.attempts === "number" ? p.attempts : 0,
+        },
+      };
     }
     case "superdoc:redline-applied": {
       const p = (data.payload ?? {}) as { redlineId?: unknown; ok?: unknown; reason?: unknown };

@@ -32,7 +32,13 @@ import {
   useDownloadLatestCollab,
   useRestoreVersion,
 } from "./collab/useFileVersionsApi";
+import { getRequest } from "@/lib/axiosInstance";
 import { enrichWithLive, stalePendingIds } from "./collab/redlineItems";
+import {
+  classifyCollabLoss,
+  COLLAB_LOSS_MESSAGE,
+  type CollabLossKind,
+} from "./collab/collabLoss";
 import {
   useAiRedlineSuggestions,
   usePersistedSuggestions,
@@ -240,6 +246,9 @@ const CollaborationToolPage: React.FC = () => {
   const [docRedlinesLoaded, setDocRedlinesLoaded] = useState(false);
   // Cards whose swap could not be applied to this client's document.
   const [notAppliedIds, setNotAppliedIds] = useState<string[]>([]);
+  // Set when the editor reports its live collaboration connection is gone for
+  // good (expired session, another tab took over, or repeated failures).
+  const [collabLost, setCollabLost] = useState<CollabLossKind | null>(null);
   const [aiProgress, setAiProgress] = useState<SuggestionProgress>({});
 
   // The stored document URL carries the API host baked in at upload time, so on
@@ -841,8 +850,29 @@ const CollaborationToolPage: React.FC = () => {
     const adapter = editorAdapterRef.current;
     if (!adapter?.setMode) return;
     if (!redlineTurn.turnGateReady) return;
-    adapter.setMode(redlineTurn.canAct ? editorMode : "viewing");
-  }, [editorReady, redlineTurn.turnGateReady, redlineTurn.canAct, editorMode]);
+    // Read-only once live collaboration is lost: edits would no longer be saved
+    // or shared, and silently losing them is worse than blocking them.
+    adapter.setMode(redlineTurn.canAct && !collabLost ? editorMode : "viewing");
+  }, [editorReady, redlineTurn.turnGateReady, redlineTurn.canAct, editorMode, collabLost]);
+
+  useEffect(() => {
+    const onLost = async (e: Event) => {
+      const d = (e as CustomEvent<{ reason: string }>).detail;
+      let status: number | undefined;
+      try {
+        // A 401 here also trips the axios interceptor (setReset), which signs
+        // the user out so the app redirects to login like any other request.
+        await getRequest({ url: "/users/me" });
+      } catch (err) {
+        status = (err as { response?: { status?: number } })?.response?.status;
+      }
+      const kind = classifyCollabLoss(d?.reason ?? "", status);
+      setCollabLost(kind);
+      toastHandler.error("Editor", COLLAB_LOSS_MESSAGE[kind]);
+    };
+    window.addEventListener("ct-collab-lost", onLost);
+    return () => window.removeEventListener("ct-collab-lost", onLost);
+  }, [toastHandler]);
 
   // Apply accepted recommendations to the document, client-side.
   //
@@ -1467,6 +1497,27 @@ const CollaborationToolPage: React.FC = () => {
             Activity
           </button>
         </div>
+        {collabLost && (
+          <div
+            role="alert"
+            data-testid="collab-lost-banner"
+            className="flex shrink-0 flex-wrap items-center gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+          >
+            <span className="font-medium">{COLLAB_LOSS_MESSAGE[collabLost]}</span>
+            <span className="text-xs opacity-80">The document is read-only until then.</span>
+            <button
+              type="button"
+              onClick={() =>
+                collabLost === "session-expired"
+                  ? navigate("/")
+                  : window.location.reload()
+              }
+              className="ml-auto rounded-md bg-amber-600 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-700"
+            >
+              {collabLost === "session-expired" ? "Sign in" : "Reload"}
+            </button>
+          </div>
+        )}
         <div className="flex min-h-0 flex-1">
           <div
             className={cn(
