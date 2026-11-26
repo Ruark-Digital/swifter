@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSetReset } from '@/store/authSlice';
 import { useAuthentication } from '@/hooks/useAuthentication';
+import { markSessionExpired } from '@/lib/sessionExpiry';
 
 /**
  * Hook that automatically logs out the user after a specified period of inactivity
@@ -24,6 +25,7 @@ export function useInactivityLogout(timeout = 1200000) {
     }
 
     timerRef.current = setTimeout(() => {
+      markSessionExpired();
       setReset();
       navigate('/');
     }, timeout);

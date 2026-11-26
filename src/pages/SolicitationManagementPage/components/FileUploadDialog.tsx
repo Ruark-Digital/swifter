@@ -266,7 +266,7 @@ const FileUploadDialog: React.FC<FileUploadDialogProps> = ({
             accept={
               acceptedTypes
                 ? acceptedTypes.reduce((acc, type) => {
-                    acc[type] = [type];
+                    acc[type] = [];
                     return acc;
                   }, {} as Record<string, string[]>)
                 : {}

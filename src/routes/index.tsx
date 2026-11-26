@@ -44,6 +44,7 @@ import SubmitProponentPage from "@/pages/SolicitationManagementPage/components/P
 import ProjectManagementPage from "@/pages/ProjectManagementPage";
 import ContractManagementPage from "@/pages/ContractManagementPage";
 import ContractDetailPage from "@/pages/ContractManagementPage/ContractDetailPage";
+import ContractsModuleGate from "@/pages/ContractManagementPage/components/ContractsModuleGate";
 import MsaPage from "@/pages/MsaPage";
 import MsaDetailPage from "@/pages/MsaPage/MsaDetailPage";
 // import Example from "@/pages/Example";
@@ -210,9 +211,11 @@ export const routes = [
         path: "/dashboard/contract-management",
         element: (
           <ProtectedRoute>
-            <ContractModuleRoute>
-              <ContractManagementPage />
-            </ContractModuleRoute>
+            <ContractsModuleGate>
+              <ContractModuleRoute>
+                <ContractManagementPage />
+              </ContractModuleRoute>
+            </ContractsModuleGate>
           </ProtectedRoute>
         ),
       },
@@ -220,9 +223,11 @@ export const routes = [
         path: "/dashboard/msa",
         element: (
           <ProtectedRoute>
-            <ContractModuleRoute>
-              <MsaPage />
-            </ContractModuleRoute>
+            <ContractsModuleGate>
+              <ContractModuleRoute>
+                <MsaPage />
+              </ContractModuleRoute>
+            </ContractsModuleGate>
           </ProtectedRoute>
         ),
       },
@@ -230,9 +235,11 @@ export const routes = [
         path: "/dashboard/msa/:id",
         element: (
           <ProtectedRoute>
-            <ContractModuleRoute>
-              <MsaDetailPage />
-            </ContractModuleRoute>
+            <ContractsModuleGate>
+              <ContractModuleRoute>
+                <MsaDetailPage />
+              </ContractModuleRoute>
+            </ContractsModuleGate>
           </ProtectedRoute>
         ),
       },
@@ -240,9 +247,11 @@ export const routes = [
         path: "/dashboard/contract-management/:id",
         element: (
           <ProtectedRoute>
-            <ContractModuleRoute>
-              <ContractDetailPage />
-            </ContractModuleRoute>
+            <ContractsModuleGate>
+              <ContractModuleRoute>
+                <ContractDetailPage />
+              </ContractModuleRoute>
+            </ContractsModuleGate>
           </ProtectedRoute>
         ),
       },

@@ -217,7 +217,8 @@ export type BidComparisonItem = {
   total: number | null;
   score: number | null;
   submission: string | null; // ISO date string
-  rank: number | null;
+  // Price-band label from the API's rankPrices(), e.g. "Lowest Price" or "Normal".
+  rank: string | number | null;
   // Currency the vendor submitted their proposal in (e.g. "NGN").
   currency?: string | null;
   // The buying company's base currency (e.g. "CAD").

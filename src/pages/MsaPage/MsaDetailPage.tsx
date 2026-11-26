@@ -813,14 +813,14 @@ const MsaDetailPage: React.FC = () => {
             className="bg-[#2A4467] hover:bg-[#2A4467]/90"
             onClick={() => handleApprovalAction("approved")}
           >
-            Approve Contract
+            Approve MSA
           </Button>
           <Button
             variant="outline"
             className="bg-[#F3F4F6] border-[#E5E7EB]"
             onClick={() => handleApprovalAction("rejected")}
           >
-            Reject Contract
+            Reject MSA
           </Button>
         </div>
       )}
@@ -1113,13 +1113,13 @@ const MsaDetailPage: React.FC = () => {
           <DialogHeader>
             <DialogTitle>
               {approvalAction === "approved"
-                ? "Approve Contract"
-                : "Reject Contract"}
+                ? "Approve MSA"
+                : "Reject MSA"}
             </DialogTitle>
             <DialogDescription>
               {approvalAction === "approved"
-                ? "Are you sure you want to approve this contract? This action cannot be undone."
-                : "Please provide a reason for rejecting this contract."}
+                ? "Are you sure you want to approve this MSA? This action cannot be undone."
+                : "Please provide a reason for rejecting this MSA."}
             </DialogDescription>
           </DialogHeader>
 

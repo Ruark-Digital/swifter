@@ -52,7 +52,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatWallClockWithZone, daysUntilCalendar } from "@/lib/utils";
+import { formatWallClockWithZone, daysUntilCalendar, zoneLabelAt } from "@/lib/utils";
 import { useUser } from "@/store/authSlice";
 
 // Evaluation type definition
@@ -135,7 +135,8 @@ const transformEvaluationData = (
     daysLeft: calculateDaysLeft(item.endDate),
     status: item.status as "Active" | "Pending" | "Completed",
     owner: item.owner,
-    timezone: item.timezone,
+    // Seasonal label at the deadline, matching the dates in the row (N5).
+    timezone: zoneLabelAt(item.timezone, item.endDate),
     solId: item.solId,
     completionDate: item.completionDate,
   }));
@@ -154,7 +155,9 @@ const transformAssignedEvaluationData = (
     let status: "Active" | "Pending" | "Completed" = "Active";
     if (item.averageProgress === 100) {
       status = "Completed";
-    } else if (item.averageProgress === 0) {
+    } else if (item.startDate && new Date(item.startDate).getTime() > Date.now()) {
+      // Pending only until the evaluation starts; 0% progress on a started
+      // evaluation is still Active (matches the detail page).
       status = "Pending";
     }
 
@@ -172,7 +175,7 @@ const transformAssignedEvaluationData = (
         "N/A",
         item.timezone
       ),
-      timezone: item.timezone,
+      timezone: zoneLabelAt(item.timezone, item.endDate),
       deadline: safeFormatDate(
         item.endDate,
         "MMM d, yyyy h:mm a",

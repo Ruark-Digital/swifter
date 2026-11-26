@@ -160,6 +160,8 @@ const ProposalDetailsPage: React.FC = () => {
   const toastHandlers = useToastHandler();
   const currency = "USD";
   const [showAwardModal, setShowAwardModal] = useState(false);
+  // The proposal endpoint may not reflect the award immediately; track it locally.
+  const [justAwarded, setJustAwarded] = useState(false);
   const [showAmendDialog, setShowAmendDialog] = useState(false);
   const [selectedDocumentForAmend, setSelectedDocumentForAmend] =
     useState<SubmittedDocument | null>(null);
@@ -244,6 +246,8 @@ const ProposalDetailsPage: React.FC = () => {
   const isOwner = solicitationData?.data?.data?.owner;
   const criterias = proposalData?.data?.data?.overview?.criteria || [];
   const evaluatorScores = evaluatorScoresData?.data?.data;
+  const hasNoEvaluatorScores =
+    !evaluatorScores?.averageScore && !proposal?.proposalDetails?.score;
 
   // Transform evaluator scores data for DataTable
   const evaluatorTableData: EvaluatorData[] =
@@ -339,6 +343,7 @@ const ProposalDetailsPage: React.FC = () => {
         result.data.message ?? "Vendor awarded successfully"
       );
       setShowAwardModal(false);
+      setJustAwarded(true);
       queryClient.invalidateQueries({ queryKey: ["vendor-proposal", id] });
       queryClient.invalidateQueries({ queryKey: ["evaluator-scores", id] });
       queryClient.invalidateQueries({ queryKey: ["solicitation", id] });
@@ -1014,12 +1019,14 @@ const ProposalDetailsPage: React.FC = () => {
               <Badge
                 variant="secondary"
                 className={`${
-                  proposal?.proposalDetails?.status === "submit"
+                  proposal?.proposalDetails?.status === "submit" || justAwarded
                     ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
                     : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
                 }`}
               >
-                {proposal?.proposalDetails?.status === "submit"
+                {justAwarded
+                  ? "Awarded"
+                  : proposal?.proposalDetails?.status === "submit"
                   ? "Submitted"
                   : proposal?.proposalDetails?.status || "N/A"}
               </Badge>
@@ -1072,6 +1079,7 @@ const ProposalDetailsPage: React.FC = () => {
                 className="bg-blue-600 hover:bg-blue-700 text-white"
                 disabled={
                   proposal?.proposalDetails?.status !== "submit" ||
+                  justAwarded ||
                   solicitation?.status === "closed" ||
                   solicitation?.status === "awarded"
                 }
@@ -1433,7 +1441,11 @@ const ProposalDetailsPage: React.FC = () => {
           onClose={setShowAwardModal}
           onPrimaryAction={handleConfirmAward}
           title="Award Vendor"
-          text="Are you sure you want to award this vendor? This action cannot be undone."
+          text={`${
+            hasNoEvaluatorScores
+              ? "Warning: this vendor has no evaluator scores yet. "
+              : ""
+          }Are you sure you want to award this vendor? This action cannot be undone.`}
           primaryButtonText="Award Vendor"
           secondaryButtonText="Cancel"
           type="award"

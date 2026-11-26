@@ -55,6 +55,14 @@ interface SidebarPanelProps {
   /** Excerpt of the document selection the next comment will anchor to. */
   anchorExcerpt?: string | null;
   onDismissAnchor?: () => void;
+  onCommentReply?: (rootId: string, text: string) => void;
+  onCommentResolveToggle?: (rootId: string, resolved: boolean) => void;
+  onCommentDelete?: (commentId: string) => void;
+  onCommentEdit?: (commentId: string, text: string) => void;
+  /** Zone the Versions tab shows times in (the contract's). */
+  timeZone?: string;
+  /** "MSA" or "contract": the copy names the document type. */
+  docType?: string;
   useFallbackFeed?: boolean;
   mentionables?: Mentionable[];
   // Versions — auto-saved; no manual save button anymore.
@@ -70,6 +78,10 @@ interface SidebarPanelProps {
   aiStatus: "idle" | "loading" | "ready" | "error" | "empty";
   aiItems: AiItem[];
   aiErrorMessage?: string;
+  aiGenerating?: boolean;
+  aiStaleIds?: string[];
+  aiNotAppliedIds?: string[];
+  aiInlineError?: string;
   onAiApprove: (item: AiItem) => void;
   onAiDismiss: (item: AiItem) => void;
   onAiUndo?: (item: AiItem) => void;
@@ -118,6 +130,12 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
   isSubmittingComment = false,
   anchorExcerpt = null,
   onDismissAnchor,
+  onCommentReply,
+  onCommentResolveToggle,
+  onCommentDelete,
+  onCommentEdit,
+  timeZone,
+  docType,
   useFallbackFeed = false,
   mentionables = [],
   versions,
@@ -128,6 +146,10 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
   aiStatus,
   aiItems,
   aiErrorMessage,
+  aiGenerating,
+  aiStaleIds,
+  aiNotAppliedIds,
+  aiInlineError,
   onAiApprove,
   onAiDismiss,
   onAiUndo,
@@ -209,6 +231,10 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
               anchorExcerpt={anchorExcerpt}
               onDismissAnchor={onDismissAnchor}
               mentionables={mentionables}
+              onReply={onCommentReply}
+              onResolveToggle={onCommentResolveToggle}
+              onDeleteComment={onCommentDelete}
+              onEditComment={onCommentEdit}
             />
           </Suspense>
         )}
@@ -223,6 +249,12 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
                 variant="inline"
                 status={aiStatus}
                 errorMessage={aiErrorMessage}
+                generating={aiGenerating}
+                staleIds={aiStaleIds}
+                notAppliedIds={aiNotAppliedIds}
+                timeZone={timeZone}
+                docType={docType}
+                inlineError={aiInlineError}
                 items={aiItems}
                 onApprove={onAiApprove}
                 onDismiss={onAiDismiss}
@@ -245,6 +277,7 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
               isLoading={isLoadingVersions}
               activeVersionId={activeVersionId}
               restoringVersionId={restoringVersionId}
+              timeZone={timeZone}
             />
           </Suspense>
         )}

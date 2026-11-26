@@ -657,7 +657,7 @@ const IssueRfiDialog: React.FC<IssueRfiDialogProps> = ({
                             Drag & Drop or Click to choose files
                           </p>
                           <p className="text-sm text-[#6B7280] dark:text-slate-400">
-                            Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
+                            Supported formats: DOC, PDF, XLS, XLSX, ZIP, PNG, JPEG
                           </p>
                         </div>
                       </div>

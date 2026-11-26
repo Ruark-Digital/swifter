@@ -22,6 +22,7 @@ import { getRequest } from "@/lib/axiosInstance";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useUser } from "@/store/authSlice";
 import { getExchangeRate } from "@/lib/currencyUtils";
+import { canPrefillName } from "../lib/wizardValidation";
 
 type Props = {
   typeOptions: Array<{ label: string; value: string }>;
@@ -44,6 +45,8 @@ type Props = {
   /** Only the create flow auto-populates name/vendor from the selected awarded
    *  solicitation. Left off in edit mode so a hydrated contract isn't clobbered. */
   enableAwardedPrefill?: boolean;
+  /** True while contract types are still loading (suppresses the empty hint). */
+  typesLoading?: boolean;
 };
 
 const MSA_CATEGORY_OPTIONS = [
@@ -128,7 +131,9 @@ const Step1BasicInfo: React.FC<Props> = ({
   msaOptions,
   awardedOptions,
   enableAwardedPrefill = false,
+  typesLoading = false,
 }) => {
+  const noTypes = !typesLoading && typeOptions.length === 0;
   const { isManager } = useUserRole();
   const currentUser = useUser();
   const userCurrency = currentUser?.currency;
@@ -142,7 +147,9 @@ const Step1BasicInfo: React.FC<Props> = ({
   // updating. Category is now carried on the awarded payload (BE added
   // `categoryName`); its value is the category name, which matches how
   // categoryOptions are keyed (value === name).
-  const { setValue } = useFormContext();
+  const { setValue, getValues } = useFormContext();
+  // The name we last auto-filled, so a user-typed name is never overwritten.
+  const prefilledName = React.useRef<string | undefined>(undefined);
   const awardedSolicitation = useWatch({ name: "awardedSolicitation" });
 
   // #33: "Combination" is a BE-provided contract-type option. When it's chosen,
@@ -179,7 +186,11 @@ const Step1BasicInfo: React.FC<Props> = ({
       (opt) => opt.value === awardedSolicitation,
     );
     if (!selected) return;
-    if (selected.solicitationName) {
+    if (
+      selected.solicitationName &&
+      canPrefillName(getValues("name"), prefilledName.current)
+    ) {
+      prefilledName.current = selected.solicitationName;
       setValue("name", selected.solicitationName, { shouldValidate: true });
     }
     if (selected.categoryName) {
@@ -191,7 +202,7 @@ const Step1BasicInfo: React.FC<Props> = ({
         setValue("vendorLabel", selected.vendorName);
       }
     }
-  }, [enableAwardedPrefill, awardedSolicitation, awardedOptions, setValue]);
+  }, [enableAwardedPrefill, awardedSolicitation, awardedOptions, setValue, getValues]);
 
   // QA #67: linking a contract to an MSA auto-populates the vendor so no manual
   // vendor selection is needed. Create-mode only (same gate as the awarded
@@ -324,7 +335,7 @@ const Step1BasicInfo: React.FC<Props> = ({
       <Forger
         name="relationship"
         label="Contract Relationship"
-        placeholder="Enter Contract Relationship"
+        placeholder="Select contract relationship"
         component={TextSelect}
         options={[
           { label: "Stand-Alone Contract", value: "standalone" },
@@ -414,7 +425,11 @@ const Step1BasicInfo: React.FC<Props> = ({
         <Forger
           name="type"
           label="Contract Type"
-          placeholder="Select contract type"
+          placeholder={
+            noTypes
+              ? "No contract types available"
+              : "Select contract type"
+          }
           component={TextSelect}
           options={typeOptions}
           data-testid="contract-type-select"
@@ -428,6 +443,16 @@ const Step1BasicInfo: React.FC<Props> = ({
           data-testid="contract-category-select"
         />
       </div>
+
+      {noTypes && (
+        <p
+          className="-mt-2 text-xs text-amber-600 dark:text-amber-400"
+          data-testid="contract-type-empty-hint"
+        >
+          No contract types are set up for your company yet. Contact your
+          administrator.
+        </p>
+      )}
 
       {isCombination && (
         <Forger
@@ -452,7 +477,7 @@ const Step1BasicInfo: React.FC<Props> = ({
             onChange?: (val: string) => void;
           }) => (
             <TextInput
-              placeholder="Enter Title"
+              placeholder="Enter Name"
               value={
                 isManager ? (currentUser?.name ?? "") : ((value as any) ?? "")
               }
@@ -494,7 +519,7 @@ const Step1BasicInfo: React.FC<Props> = ({
       <Forger
         name="contractId"
         label="Contract ID/Number (Optional)"
-        placeholder="Enter Title"
+        placeholder="Enter contract ID or number"
         component={TextInput}
         data-testid="contract-id-input"
       />
@@ -515,11 +540,27 @@ const Step1BasicInfo: React.FC<Props> = ({
       <Forger
         name="businessDivision"
         label="Business Division"
-        placeholder={isLoadingDivisions ? "Loading..." : "Select Division"}
+        placeholder={
+          isLoadingDivisions
+            ? "Loading..."
+            : businessDivisionOptions.length === 0
+              ? "No business divisions available"
+              : "Select Division"
+        }
         component={TextSelect}
         options={businessDivisionOptions}
         data-testid="business-division-select"
       />
+      {!isLoadingDivisions && businessDivisionOptions.length === 0 && (
+        <p
+          className="-mt-2 text-xs text-amber-600 dark:text-amber-400"
+          data-testid="business-division-empty-hint"
+        >
+          No business divisions exist yet. A division is required to create a
+          contract, and Contract Managers cannot create one. Ask your company
+          administrator to add a business division.
+        </p>
+      )}
 
       <Forger
         name="currency"

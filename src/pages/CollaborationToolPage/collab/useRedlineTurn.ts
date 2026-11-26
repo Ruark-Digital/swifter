@@ -231,7 +231,10 @@ export function useRedlineTurn({ documentId, fileId, isMsa }: RedlineTurnScope) 
     // when the tab is focused (refetchIntervalInBackground defaults false).
     refetchInterval: (q) => {
       const turn = q.state.data;
-      if (!turn || turn.status === "finalized") return false;
+      if (turn?.status === "finalized") return false;
+      // No turn record yet (e.g. the other side has not sent the document):
+      // keep polling so the receiver sees the turn arrive on its own.
+      if (!turn) return mySide ? WAITING_TURN_POLL_MS : false;
       const myTurn = Boolean(mySide && turn.holder === mySide);
       return myTurn ? false : WAITING_TURN_POLL_MS;
     },

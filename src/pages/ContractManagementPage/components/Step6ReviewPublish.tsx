@@ -23,6 +23,25 @@ function extractList<T>(value: unknown): T[] {
   return [];
 }
 
+const OBJECT_ID_RE = /^[a-f\d]{24}$/i;
+
+/**
+ * The name for a looked-up value. Never shows a raw id: "Loading…" while the
+ * list is still loading, "Not specified" if the id is not in the list. A value
+ * that is not an id (free text, an email) is shown as is.
+ */
+function lookupLabel(
+  value: unknown,
+  name: string | undefined,
+  loading: boolean,
+): string | undefined {
+  if (name) return name;
+  if (value == null || value === "") return undefined;
+  const text = String(value);
+  if (!OBJECT_ID_RE.test(text)) return text;
+  return loading ? "Loading…" : "Not specified";
+}
+
 const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
   const currentUser = useUser();
   const name = useWatch({ control, name: "name" });
@@ -43,6 +62,9 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
     | Date
     | undefined;
   const endDate = useWatch({ control, name: "endDate" }) as Date | undefined;
+  const timezone = useWatch({ control, name: "timezone" }) as string | undefined;
+  // Every contract date is in the contract's timezone: say which.
+  const zoneSuffix = timezone ? ` (${timezone})` : "";
   const deliverables = useWatch({ control, name: "deliverables" }) as
     | { name?: string | null; dueDate?: Date | null }[]
     | undefined;
@@ -53,24 +75,24 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
     | { name?: string | null; approvers?: unknown; approvalLevel?: string }[]
     | undefined;
 
-  const { data: typesRes } = useQuery({
+  const { data: typesRes, isLoading: typesLoading } = useQuery({
     queryKey: ["contractReview", "types"],
     queryFn: async () => await getRequest({ url: "/contract/manager/types" }),
     staleTime: 60000,
   });
-  const { data: categoriesRes } = useQuery({
+  const { data: categoriesRes, isLoading: categoriesLoading } = useQuery({
     queryKey: ["contractReview", "categories"],
     queryFn: async () =>
       await getRequest({ url: "/procurement/solicitations/meta/categories" }),
     staleTime: 60000,
   });
-  const { data: paymentTermsRes } = useQuery({
+  const { data: paymentTermsRes, isLoading: paymentTermsLoading } = useQuery({
     queryKey: ["contractReview", "paymentTerms"],
     queryFn: async () =>
       await getRequest({ url: "/contract/manager/payment-terms" }),
     staleTime: 60000,
   });
-  const { data: vendorsRes } = useQuery({
+  const { data: vendorsRes, isLoading: vendorsLoading } = useQuery({
     queryKey: ["contractReview", "vendors"],
     queryFn: async () =>
       await getRequest({ url: "/procurement/solicitations/vendors" }),
@@ -84,8 +106,8 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
     const byId = options.find(
       (item: { _id?: string; name?: string }) => item?._id === type,
     );
-    return byId?.name || type;
-  }, [type, typesRes?.data?.data]);
+    return lookupLabel(type, byId?.name, typesLoading);
+  }, [type, typesRes?.data?.data, typesLoading]);
   const resolvedCategory = React.useMemo(() => {
     const options = extractList<{ _id?: string; name?: string }>(
       categoriesRes?.data?.data,
@@ -93,8 +115,8 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
     const byId = options.find(
       (item: { _id?: string; name?: string }) => item?._id === category,
     );
-    return byId?.name || category;
-  }, [categoriesRes?.data?.data, category]);
+    return lookupLabel(category, byId?.name, categoriesLoading);
+  }, [categoriesRes?.data?.data, category, categoriesLoading]);
   const resolvedPaymentTerm = React.useMemo(() => {
     const options = extractList<{ _id?: string; name?: string }>(
       paymentTermsRes?.data?.data,
@@ -102,8 +124,8 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
     const byId = options.find(
       (item: { _id?: string; name?: string }) => item?._id === paymentTerm,
     );
-    return byId?.name || paymentTerm;
-  }, [paymentTerm, paymentTermsRes?.data?.data]);
+    return lookupLabel(paymentTerm, byId?.name, paymentTermsLoading);
+  }, [paymentTerm, paymentTermsRes?.data?.data, paymentTermsLoading]);
   const resolvedVendor = React.useMemo(() => {
     const options = extractList<any>(vendorsRes?.data?.data).map((item) =>
       item?.vendor ? item.vendor : item,
@@ -113,18 +135,18 @@ const Step8ReviewPublish: React.FC<Props> = ({ control }) => {
         return item?._id === vendor || item?.email === vendor;
       },
     );
-    return byId?.name || byId?.email || vendor;
-  }, [vendor, vendorsRes?.data?.data]);
+    return lookupLabel(vendor, byId?.name || byId?.email, vendorsLoading);
+  }, [vendor, vendorsRes?.data?.data, vendorsLoading]);
   const resolvedManager = manager || currentUser?.name || currentUser?.email;
 
   const formatDate = (value?: Date | null) => {
     if (!value) return "Not specified";
-    return format(value, "dd MMM yyyy");
+    return `${format(value, "dd MMM yyyy")}${zoneSuffix}`;
   };
   // Effective/end dates carry a time (wall clock in the contract's timezone).
   const formatDateTime = (value?: Date | null) => {
     if (!value) return "Not specified";
-    return format(value, "dd MMM yyyy, hh:mm a");
+    return `${format(value, "dd MMM yyyy, hh:mm a")}${zoneSuffix}`;
   };
 
   const formatAmount = (value: unknown) => {
