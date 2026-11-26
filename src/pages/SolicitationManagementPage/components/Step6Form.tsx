@@ -284,6 +284,8 @@ const Step6Form = ({
           </AccordionContent>
         </AccordionItem>
 
+        {/* Public solicitations have no invited vendors (S1-FE-09). */}
+        {formData?.visibility !== "public" && (
         <AccordionItem
           value="5"
           className="border border-gray-200 dark:border-gray-700 rounded-lg mb-4"
@@ -326,6 +328,7 @@ const Step6Form = ({
             </div>
           </AccordionContent>
         </AccordionItem>
+        )}
       </Accordion>
     </div>
   );

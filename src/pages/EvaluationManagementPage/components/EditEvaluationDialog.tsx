@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Forge, useForge } from "@adexdsamson/forge";
 import * as yup from "yup";
 import { cn, toWallClockPayload } from "@/lib/utils";
+import { resolveTimeZone } from "@/lib/zonedDate";
+import { formatInTimeZone } from "date-fns-tz";
 import Step1Form from "./Step1Form";
 import Step2Form from "./Step2Form";
 import Step3Form from "./Step3Form";
@@ -150,6 +152,15 @@ type UpdateEvaluationDraftPayload = {
     score: string | number;
     group: string;
   }>;
+};
+
+// Stored dates are UTC instants. Prefill the pickers with the wall clock in
+// the evaluation's zone, the inverse of toWallClockPayload, so an unchanged
+// re-save sends the same values Create did (QA N7).
+const toZoneWallClock = (stored?: string, timezone?: string) => {
+  if (!stored) return "";
+  const zone = resolveTimeZone(timezone);
+  return zone ? formatInTimeZone(stored, zone, "yyyy-MM-dd'T'HH:mm:ss") : stored;
 };
 
 interface EditEvaluationDialogProps {
@@ -301,8 +312,14 @@ const EditEvaluationDialog = ({
       const payload: EditEvaluationFormData = {
         solicitation: evaluationData?.data?.data?.solicitation?._id || "",
         timezone: evaluationData?.data?.data?.timezone || "",
-        start_date: evaluationData?.data?.data?.startDate || "",
-        end_date: evaluationData?.data?.data?.endDate || "",
+        start_date: toZoneWallClock(
+          evaluationData?.data?.data?.startDate,
+          evaluationData?.data?.data?.timezone
+        ),
+        end_date: toZoneWallClock(
+          evaluationData?.data?.data?.endDate,
+          evaluationData?.data?.data?.timezone
+        ),
         group: [],
         documents: [],
       };
