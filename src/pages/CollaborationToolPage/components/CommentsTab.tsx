@@ -106,8 +106,10 @@ const OwnActions: React.FC<{
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) save();
               if (e.key === "Escape") setEditing(false);
+              if (e.key !== "Enter" || e.shiftKey) return;
+              e.preventDefault();
+              if (text.trim()) save();
             }}
             rows={2}
             className="min-w-0 flex-1 resize-none rounded-md border border-slate-200 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
@@ -176,7 +178,9 @@ const ThreadActions: React.FC<{
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send();
+              if (e.key !== "Enter" || e.shiftKey) return;
+              e.preventDefault();
+              send();
             }}
             rows={2}
             placeholder="Write a reply…"
