@@ -486,12 +486,26 @@ const CollaborationToolPage: React.FC = () => {
         ? superdocDocName(collabMeta.roomId)
         : collabMeta.roomId
       : undefined;
-  // The versions API returns only the updater's id; resolve it against the
-  // contract's people so history shows who made each snapshot.
-  const authorNames = useMemo(
-    () => Object.fromEntries(mentionables.map((m) => [m.id, m.name])),
-    [mentionables],
-  );
+  // The versions API returns only the updater's User id; resolve it against
+  // the contract's people (by personnel id and by User id) and the signed-in
+  // user, so history shows who made each snapshot.
+  const authorNames = useMemo(() => {
+    const names: Record<string, string> = {};
+    for (const m of mentionables) {
+      const label = m.name || m.email || "";
+      if (!label) continue;
+      names[m.id] = label;
+      if (m.userId) names[m.userId] = label;
+      if (m.email) names[m.email] = label;
+    }
+    const me = user as { _id?: string; name?: string; email?: string } | null;
+    const myLabel = me?.name || me?.email;
+    if (myLabel) {
+      if (me?._id) names[me._id] = myLabel;
+      if (me?.email) names[me.email] = myLabel;
+    }
+    return names;
+  }, [mentionables, user]);
   const fileVersionsQuery = useFileVersions(docName, authorNames);
   const downloadLatestMutation = useDownloadLatestCollab();
   const restoreVersionMutation = useRestoreVersion();

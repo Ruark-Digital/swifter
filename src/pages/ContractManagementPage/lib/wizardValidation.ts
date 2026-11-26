@@ -137,3 +137,19 @@ export const validateLaterStep = (step: number, v: Values): FieldIssue[] => {
   }
   return issues;
 };
+
+/**
+ * The backend's reason a create / publish request failed, for showing on the
+ * Review step. Reads `message` (string or list) or `error` from the response
+ * body, then a plain string or the Error's own message.
+ */
+export const submitErrorMessage = (e: unknown): string => {
+  const body = (e as { response?: { data?: { message?: unknown; error?: unknown } } })
+    ?.response?.data;
+  const m = body?.message ?? body?.error;
+  if (typeof m === "string" && m.trim()) return m;
+  if (Array.isArray(m) && m.length) return m.filter((x) => typeof x === "string").join(" ");
+  if (typeof e === "string" && e.trim()) return e;
+  if (e instanceof Error && e.message) return e.message;
+  return "The contract could not be saved. Please try again.";
+};

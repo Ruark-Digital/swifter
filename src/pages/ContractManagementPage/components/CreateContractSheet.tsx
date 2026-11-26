@@ -56,6 +56,7 @@ import {
 import { defaultContractTimezone } from "../lib/contractTimezone";
 import {
   isValidContactValue,
+  submitErrorMessage,
   validateApprovalGroups,
   validateLaterStep,
 } from "../lib/wizardValidation";
@@ -917,6 +918,10 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
     }));
   }, [msaQuery.data?.data?.contracts]);
 
+  // The backend's reason the last create / publish failed, shown on the step
+  // above the buttons as well as in a toast (a toast alone is easy to miss).
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
+
   const mutation = useMutation({
     mutationFn: async (payload: any) => {
       const res = await postRequest({
@@ -930,6 +935,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       };
     },
     onSuccess: (res) => {
+      setSubmitError(null);
       success("Contract Created", res.message);
       qc.invalidateQueries({ queryKey: ["contracts-all"] });
       qc.invalidateQueries({ queryKey: ["contracts-me"] });
@@ -943,7 +949,9 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       setOpen(false);
     },
     onError: (e: any) => {
-      error("Failed to create contract", e);
+      const message = submitErrorMessage(e);
+      setSubmitError(message);
+      error("Failed to create contract", message);
     },
   });
 
@@ -1366,6 +1374,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       status: "draft" | "publish" = "publish",
     ) => {
       const submitAsync = async () => {
+        setSubmitError(null);
         const payload = buildPayload(formData, status) as any;
 
         const baseCurrency = currentUser?.currency;
@@ -1383,10 +1392,10 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
               selectedCurrency,
             );
           } catch (err) {
-            error(
-              "Failed to create contract",
-              err instanceof Error ? err.message : "Unable to fetch currency rate",
-            );
+            const message =
+              err instanceof Error ? err.message : "Unable to fetch currency rate";
+            setSubmitError(message);
+            error("Failed to create contract", message);
             return;
           }
         }
@@ -1551,6 +1560,16 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
 
               {step === 9 && <Step8ReviewPublish control={control} />}
 
+              {submitError && (
+                <div
+                  role="alert"
+                  className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
+                >
+                  <p className="font-semibold">The contract was not saved</p>
+                  <p className="mt-0.5">{submitError}</p>
+                </div>
+              )}
+
               {step === 1 ? (
                 <div className="flex w-full gap-4 pt-4">
                   <Button
@@ -1615,6 +1634,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
                       </Button>
                     ) : (
                       <Button
+                        type="button"
                         onClick={() => {
                           const vals = getValues();
                           submit(vals as CreateContractFormData, "publish");

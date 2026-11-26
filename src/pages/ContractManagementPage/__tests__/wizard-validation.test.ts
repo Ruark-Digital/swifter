@@ -4,6 +4,7 @@ import {
   isValidContactValue,
   validateApprovalGroups,
   validateLaterStep,
+  submitErrorMessage,
 } from "../lib/wizardValidation";
 
 describe("canPrefillName", () => {
@@ -77,5 +78,21 @@ describe("validateLaterStep", () => {
   it("step 6 needs an expiry date when insured", () => {
     expect(validateLaterStep(6, { contractSecurity: "yes" }).map((i) => i.field)).toEqual(["insuranceExpiryDate"]);
     expect(validateLaterStep(6, { contractSecurity: "no" })).toEqual([]);
+  });
+});
+
+describe("submitErrorMessage", () => {
+  it("shows the backend's reason for a 400", () => {
+    const e = {
+      response: {
+        status: 400,
+        data: { message: "Contract amount (900) exceeds remaining MSA budget (500) based on approved invoice spend" },
+      },
+    };
+    expect(submitErrorMessage(e)).toMatch(/exceeds remaining MSA budget/);
+  });
+  it("joins a list of messages and falls back to a readable sentence", () => {
+    expect(submitErrorMessage({ response: { data: { message: ["a", "b"] } } })).toBe("a b");
+    expect(submitErrorMessage({})).toMatch(/could not be saved/);
   });
 });

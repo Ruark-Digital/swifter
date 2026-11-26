@@ -52,7 +52,7 @@ const nameFromEmail = (value: string): string => {
   const words = local.replace(/[._-]+/g, " ").trim();
   return words ? words.charAt(0).toUpperCase() + words.slice(1) : "Team member";
 };
-const readableAuthor = (raw: string, authorNames: Record<string, string>): string => {
+export const readableAuthor = (raw: string, authorNames: Record<string, string>): string => {
   const name = authorNames[raw] ?? (raw.includes("@") ? raw : undefined);
   if (!name) return "Team member";
   return name.includes("@") ? nameFromEmail(name) : name;
