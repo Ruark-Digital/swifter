@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { formatDateInZoneAbbrev, formatWallClockWithZone } from "@/lib/utils";
+import {
+  formatDateInZoneAbbrev,
+  formatWallClockWithZone,
+  zoneLabelAt,
+} from "@/lib/utils";
 
 const FMT = "MMM d, yyyy h:mm a";
 
@@ -42,5 +46,19 @@ describe("formatWallClockWithZone (entity timezone, labelled)", () => {
     expect(formatWallClockWithZone("2026-11-25", "MMM d, yyyy", "EST")).toBe(
       "Nov 25, 2026 EST"
     );
+  });
+});
+
+describe("zoneLabelAt (Timezone column agrees with the dates)", () => {
+  it("gives the same seasonal label formatWallClockWithZone appends", () => {
+    const nov = "2026-11-25T10:33:00.000Z";
+    expect(zoneLabelAt("NZST", nov)).toBe("NZDT");
+    expect(formatWallClockWithZone(nov, FMT, "NZST").endsWith(" NZDT")).toBe(true);
+    expect(zoneLabelAt("NZST", "2026-07-25T10:33:00.000Z")).toBe("NZST");
+  });
+
+  it("returns unknown zones as stored and empty for none", () => {
+    expect(zoneLabelAt("XYZ", "2026-11-25T10:33:00.000Z")).toBe("XYZ");
+    expect(zoneLabelAt(undefined)).toBe("");
   });
 });

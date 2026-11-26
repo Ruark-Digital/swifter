@@ -50,6 +50,7 @@ import {
   formatDateTZ,
   formatQuestionDeadline,
   formatWallClockWithZone,
+  zoneLabelAt,
   QUESTION_DEADLINE_FORMAT,
 } from "@/lib/utils";
 import { formatEventType } from "@/lib/solicitationEventUtils";
@@ -1349,7 +1350,7 @@ export const SolicitationDetailPage = () => {
                         Timezone
                       </label>
                       <p className="text-gray-900 dark:text-gray-200 font-medium">
-                        {solicitation.timezone}
+                        {zoneLabelAt(solicitation.timezone, solicitation.submissionDeadline)}
                       </p>
                     </div>
                     {solicitation.questionDeadline && (
@@ -1596,7 +1597,7 @@ export const SolicitationDetailPage = () => {
                     Timezone
                   </label>
                   <p className="text-gray-900 dark:text-gray-200 font-medium">
-                    {solicitation.timezone}
+                    {zoneLabelAt(solicitation.timezone, solicitation.submissionDeadline)}
                   </p>
                 </div>
               </div>

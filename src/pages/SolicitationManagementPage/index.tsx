@@ -40,7 +40,13 @@ import {
   getStatusColorClass,
   normalizeStatus,
 } from "@/lib/solicitationStatusUtils";
-import { cn, formatDateTZ, formatQuestionDeadline, formatWallClockWithZone } from "@/lib/utils";
+import {
+  cn,
+  formatDateTZ,
+  formatQuestionDeadline,
+  formatWallClockWithZone,
+  zoneLabelAt,
+} from "@/lib/utils";
 import { applySolicitationCompanyFilter } from "./lib/solicitationCompanyFilter";
 // import ExportReportSheet from "@/components/layouts/ExportReportSheet";
 
@@ -917,6 +923,9 @@ export const SolicitationManagementPage = () => {
         {
           accessorKey: "timezone",
           header: "Timezone",
+          // Same seasonal label as the deadline beside it (NZDT, not NZST).
+          cell: ({ row }) =>
+            zoneLabelAt(row.original.timezone, row.original.submissionDeadline),
         },
         {
           accessorKey: "submissionStatus",
@@ -1130,6 +1139,9 @@ export const SolicitationManagementPage = () => {
         {
           accessorKey: "timezone",
           header: "Timezone",
+          // Same seasonal label as the deadline beside it (NZDT, not NZST).
+          cell: ({ row }) =>
+            zoneLabelAt(row.original.timezone, row.original.submissionDeadline),
         },
         {
           accessorKey: "status",
@@ -1347,6 +1359,9 @@ export const SolicitationManagementPage = () => {
         {
           accessorKey: "timezone",
           header: "Timezone",
+          // Same seasonal label as the deadline beside it (NZDT, not NZST).
+          cell: ({ row }) =>
+            zoneLabelAt(row.original.timezone, row.original.submissionDeadline),
         },
         {
           accessorKey: "status",

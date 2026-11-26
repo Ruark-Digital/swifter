@@ -408,6 +408,24 @@ export function formatWallClockWithZone(
   return `${out} ${seasonal ?? label}`;
 }
 
+/**
+ * A stored zone's label at an instant, the same label `formatWallClockWithZone`
+ * appends: ("NZST", Nov 2026) -> "NZDT". For "Timezone" columns/fields, so they
+ * agree with the dates beside them. `at` defaults to now; an unrecognized zone
+ * is returned as stored.
+ */
+export function zoneLabelAt(
+  zone?: string | null,
+  at?: string | Date | null
+): string {
+  const label = (zone ?? "").trim();
+  if (!label) return "";
+  const instant =
+    (at && !(typeof at === "string" && isDateOnly(at)) && toInstant(at)) ||
+    new Date();
+  return resolveZone(instant, label)?.label ?? label;
+}
+
 // Serialize a picked datetime as a naive wall clock, matching the create flow;
 // the BE reads it in the solicitation's timezone. Pickers hold either a local
 // `Date` (once changed) or the naive prefill string.
