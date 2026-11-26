@@ -1064,6 +1064,9 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
         issues.forEach(({ field, message }) =>
           setError(field as any, { type: "required", message }),
         );
+        // No row exists to show a field error under, so say it in a toast.
+        const noGroups = issues.find((i) => i.field === "approvalGroups");
+        if (noGroups) error("Approval Groups", noGroups.message);
         if (issues.length) return false;
         const seenApprovers = new Set<string>();
         const hasDuplicateApprover = approvalGroups.some((group) =>

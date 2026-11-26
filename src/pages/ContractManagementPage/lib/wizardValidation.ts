@@ -46,23 +46,21 @@ type ApprovalGroup = {
 };
 
 /**
- * Approval groups (step 8). A completely empty row is ignored; any row with
- * something filled in needs a name, at least one approver, a level 1-5 and an
- * amount — otherwise the payload builder would silently drop it (the BE then
- * saw `approvers: []` and the Approvers tab was empty).
+ * Approval groups (step 8). At least one group is required, and every row —
+ * including an untouched default row — needs a name, at least one approver, a
+ * level 1-5 and an amount. An empty row used to be skipped here, which let it
+ * reach the signatories step as "Group 1 - Approval Level 0" with no approvers
+ * (N8); a partial row would be silently dropped by the payload builder.
  */
 export const validateApprovalGroups = (
   groups: ApprovalGroup[] | undefined,
 ): FieldIssue[] => {
+  if (!groups?.length) {
+    return [{ field: "approvalGroups", message: "Add at least one approval group" }];
+  }
   const issues: FieldIssue[] = [];
-  (groups ?? []).forEach((g, i) => {
+  groups.forEach((g, i) => {
     const level = toNum(g?.approvalLevel);
-    const touched =
-      !blank(g?.name) ||
-      (g?.approvers?.length ?? 0) > 0 ||
-      !blank(g?.amount) ||
-      (level !== undefined && level > 0);
-    if (!touched) return;
     const at = (f: string) => `approvalGroups.${i}.${f}`;
     if (blank(g?.name))
       issues.push({ field: at("name"), message: "Group name is required" });

@@ -32,12 +32,28 @@ describe("isValidContactValue", () => {
 });
 
 describe("validateApprovalGroups", () => {
-  it("ignores an untouched default row", () => {
-    expect(
-      validateApprovalGroups([
-        { name: "", approvers: [], approvalLevel: "0", amount: "" },
-      ]),
-    ).toEqual([]);
+  it("blocks a fully empty group (N8)", () => {
+    const fields = validateApprovalGroups([
+      { name: "", approvers: [], approvalLevel: "0", amount: "" },
+    ]).map((i) => i.field);
+    expect(fields).toEqual([
+      "approvalGroups.0.name",
+      "approvalGroups.0.approvers",
+      "approvalGroups.0.approvalLevel",
+      "approvalGroups.0.amount",
+    ]);
+  });
+  it("blocks an empty group next to a complete one (N8)", () => {
+    const fields = validateApprovalGroups([
+      { name: "Legal", approvers: [{ id: "u1" }], approvalLevel: "1", amount: 5000 },
+      { name: "", approvers: [], approvalLevel: "0", amount: "" },
+    ]).map((i) => i.field);
+    expect(fields).toContain("approvalGroups.1.approvers");
+  });
+  it("requires at least one group (N8)", () => {
+    expect(validateApprovalGroups([])).toEqual([
+      { field: "approvalGroups", message: "Add at least one approval group" },
+    ]);
   });
   it("flags a row with approvers but no name, level or amount", () => {
     const fields = validateApprovalGroups([
