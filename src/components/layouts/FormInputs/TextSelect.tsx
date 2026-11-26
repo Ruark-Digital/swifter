@@ -133,7 +133,8 @@ export const TextSelect = (
             ?.filter((item) => item.value !== "")
             .map((item) => (
               <SelectItem
-                key={item.value}
+                // Values can repeat (CST/AST timezones); label keeps keys unique.
+                key={`${item.value}|${item.label}`}
                 value={item.value}
                 disabled={item.disabled}
                 className={`py-3 dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:bg-gray-700 ${
