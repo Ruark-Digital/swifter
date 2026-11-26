@@ -48,6 +48,41 @@ export const enrichWithLive = <T extends ItemLike>(
 };
 
 /**
+ * Cards after "Generate suggestions": fresh AI suggestions for the document's
+ * current tracked changes, merged into the existing cards instead of replacing
+ * them (O6). A card keeps its approval state and its replacement parts, and a
+ * card whose change is gone (already applied) stays as it was, so it still
+ * reads "Remote -> Hybrid" and the counters never drop to 0 in between.
+ */
+export const mergeRegenerated = <
+  S,
+  T extends ItemLike & { suggestion?: S },
+>(
+  prev: T[],
+  live: RedlineSpan[],
+  suggestions: Map<string, S>,
+): Array<T | (ItemLike & { suggestion?: S })> => {
+  const prevById = new Map(prev.map((p) => [p.redline.redlineId, p] as const));
+  const liveIds = new Set(live.map((r) => r.redlineId));
+  const fromLive = live.map((r) => {
+    const p = prevById.get(r.redlineId);
+    const suggestion = suggestions.get(r.redlineId) ?? p?.suggestion;
+    if (!p) return { redline: r, suggestion, state: "pending" as const };
+    return {
+      ...p,
+      redline: {
+        ...p.redline,
+        ...r,
+        deletedText: r.deletedText ?? p.redline.deletedText,
+        insertedText: r.insertedText ?? p.redline.insertedText,
+      },
+      suggestion,
+    };
+  });
+  return [...fromLive, ...prev.filter((p) => !liveIds.has(p.redline.redlineId))];
+};
+
+/**
  * Ids of still-pending cards whose tracked change is not in this document, i.e.
  * the suggestion no longer applies here (accepted or rejected elsewhere, edited
  * away, or this client's document diverged from the room). Empty until the

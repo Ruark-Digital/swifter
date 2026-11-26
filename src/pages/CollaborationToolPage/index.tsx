@@ -32,7 +32,7 @@ import {
   useRestoreVersion,
 } from "./collab/useFileVersionsApi";
 import { getRequest } from "@/lib/axiosInstance";
-import { enrichWithLive, stalePendingIds } from "./collab/redlineItems";
+import { enrichWithLive, mergeRegenerated, stalePendingIds } from "./collab/redlineItems";
 import { buildCommentThreads } from "./collab/commentThreads";
 import { formatZonedTimestamp } from "./collab/zonedTimestamp";
 import { useContractTimezone } from "./collab/useContractTimezone";
@@ -770,13 +770,8 @@ const CollaborationToolPage: React.FC = () => {
     try {
       const analysis = await aiMutation.mutateAsync(redlines);
       const byId = new Map(analysis.suggestions.map((s) => [s.redlineId, s]));
-      setAiItems(
-        redlines.map((r) => ({
-          redline: r,
-          suggestion: byId.get(r.redlineId),
-          state: "pending" as const,
-        })),
-      );
+      // Merge, do not replace: keep approvals and applied cards (O6).
+      setAiItems((prev) => mergeRegenerated(prev, redlines, byId) as AiItem[]);
     } catch {
       // The failure surfaces inline via aiMutation.isError (with Retry); the
       // tracked changes stay listed. Swallow so it is not an unhandled rejection.
