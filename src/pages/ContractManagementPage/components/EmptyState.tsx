@@ -2,6 +2,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { FolderOffIcon, Add01Icon } from "@hugeicons/core-free-icons";
+import { useUserRole } from "@/hooks/useUserRole";
 import CreateContractSheet from "./CreateContractSheet";
 
 type EmptyStateProps = {
@@ -9,12 +10,16 @@ type EmptyStateProps = {
 };
 
 const EmptyState: React.FC<EmptyStateProps> = ({ isReadOnly }) => {
+  // Only Contract Manager and Procurement Lead (`isManager`) can create contracts.
+  const { isManager } = useUserRole();
+  const canCreate = isManager && !isReadOnly;
+
   return (
     <div
       className="flex flex-col items-center justify-center h-[520px] space-y-4"
       data-testid="empty-state"
     >
-      {!isReadOnly ? (
+      {canCreate ? (
         <CreateContractSheet
           trigger={
             <span className="inline-flex" data-testid="create-contract-icon">
@@ -35,15 +40,15 @@ const EmptyState: React.FC<EmptyStateProps> = ({ isReadOnly }) => {
       )}
       <div className="text-center space-y-1">
         <p className="text-2xl font-semibold text-slate-600">
-          No Contracts Yet
+          {canCreate ? "No Contracts Yet" : "No contracts available"}
         </p>
         <p className="text-sm text-slate-500 max-w-md">
-          {isReadOnly
-            ? "There are no contracts to show at the moment."
-            : "You don’t have any active contracts at the moment. Click the button below to create your first contract."}
+          {canCreate
+            ? "You don’t have any contracts at the moment. Click the button below to create your first one."
+            : "There are no contracts to show yet."}
         </p>
       </div>
-      {!isReadOnly && (
+      {canCreate && (
         <CreateContractSheet
           trigger={
             <Button className="h-12 rounded-xl" data-testid="create-contract-cta">

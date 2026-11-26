@@ -112,7 +112,8 @@ type CreateAmendmentPayload = {
 
 const CREATE_AMENDMENT_DEFAULT_VALUES: CreateAmendmentFormValues = {
   amendmentTitle: "",
-  impactType: "time",
+  // Empty until the user picks one ("Select impact"); the schema requires it.
+  impactType: "" as unknown as CreateAmendmentFormValues["impactType"],
   timeImpactDays: "",
   costImpactAmount: "",
   scopeEnabled: true,
@@ -131,7 +132,23 @@ const CREATE_AMENDMENT_DEFAULT_VALUES: CreateAmendmentFormValues = {
 
 const CREATE_AMENDMENT_SCHEMA = yup.object({
   amendmentTitle: yup.string().trim().required("Amendment title is required"),
+  impactType: yup
+    .mixed<CreateAmendmentFormValues["impactType"]>()
+    .oneOf(["time", "cost", "time_cost", "others"], "Select an impact type")
+    .required("Select an impact type"),
 });
+
+// The API answers a missing/invalid `impact` with a raw enum message
+// ("Invalid enum value ..."); show something a user can act on instead.
+export const friendlyAmendmentError = (
+  error: ApiResponseError,
+): ApiResponseError | string => {
+  const message = String(error?.response?.data?.message ?? "");
+  if (/impact/i.test(message)) {
+    return "Please select an impact type (Time, Cost, Time & Cost, or Other) and try again.";
+  }
+  return error;
+};
 
 const getCreateAmendmentDefaultValues = (
   initialValues?: Partial<CreateAmendmentFormValues>,
@@ -284,7 +301,7 @@ export const CreateAmendmentDialog: React.FC<{
     onError: (error: ApiResponseError) => {
       toastHandler.error(
         isEditMode ? "Update Amendment Failed" : "Create Amendment Failed",
-        error,
+        friendlyAmendmentError(error),
       );
     },
   });
@@ -440,10 +457,19 @@ export const CreateAmendmentDialog: React.FC<{
                 component={({
                   value,
                   onChange,
+                  error,
                 }: {
                   value?: string;
                   onChange: (val: string) => void;
+                  error?: string;
                 }) => (
+                  <div className="space-y-2" role="radiogroup" aria-label="Impact">
+                  <div className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">
+                    Impact
+                    {!value && (
+                      <span className="ml-2 font-normal text-slate-400">Select impact</span>
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-6">
                     {[
                       {
@@ -491,6 +517,8 @@ export const CreateAmendmentDialog: React.FC<{
                       );
                     })}
                   </div>
+                  {error && <span className="text-xs text-red-500">{error}</span>}
+                  </div>
                 )}
               />
 
@@ -498,7 +526,7 @@ export const CreateAmendmentDialog: React.FC<{
                 <Forger
                   name="timeImpactDays"
                   label="New Expiry/ Delivery / Completion Date"
-                  placeholder="Enter no. of days"
+                  placeholder="Select new date"
                   component={TextDatePicker}
                 />
               )}
@@ -517,7 +545,7 @@ export const CreateAmendmentDialog: React.FC<{
                   <Forger
                     name="timeImpactDays"
                     label="New Expiry/ Delivery / Completion Date"
-                    placeholder="Enter no. of days"
+                    placeholder="Select new date"
                     component={TextDatePicker}
                   />
                   <Forger

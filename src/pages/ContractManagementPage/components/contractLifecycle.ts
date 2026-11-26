@@ -16,6 +16,20 @@ const normalizeLifecycleStatus = (status?: string) => {
   return normalized === "published" ? "publish" : normalized;
 };
 
+/**
+ * The published date to show for a contract/MSA, or undefined while it is not
+ * published yet. The API stamps `datePublished` when a record is submitted, i.e.
+ * while it is still pending approval, so a draft/pending record must not show it.
+ */
+export const publishedDateOf = <T,>(
+  status: string | undefined,
+  datePublished: T | null | undefined,
+): T | undefined => {
+  const s = normalizeLifecycleStatus(status);
+  if (!datePublished || s === "draft" || s === "pending_approval") return undefined;
+  return datePublished;
+};
+
 /** Edit is only offered while the contract/MSA is still a draft. */
 export const isEditableStatus = (status?: string): boolean =>
   normalizeLifecycleStatus(status) === "draft";

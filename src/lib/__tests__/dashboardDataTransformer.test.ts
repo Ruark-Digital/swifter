@@ -199,23 +199,22 @@ describe("DashboardDataTransformer", () => {
     );
   });
 
-  it("#194 renders Procurement General Updates in the actor's item-level timezone, not the solicitation's", () => {
+  it("renders Procurement General Updates in the solicitation's timezone, not the actor's (supersedes #194)", () => {
     const [item] = DashboardDataTransformer.transformProcurementGeneralUpdates([
       {
         _id: "gu-1",
         createdAt: "2026-08-21T22:00:00.000Z",
-        timezone: "WAT", // actor's zone (correct source, as My Actions uses)
+        timezone: "WAT", // actor's zone (fallback only)
         statusText: "Michael Duncan completed an evaluation on HVAC",
-        solicitation: { _id: "sol-1", name: "HVAC", timezone: "EST" }, // wrong zone
+        solicitation: { _id: "sol-1", name: "HVAC", timezone: "EST" }, // entity zone
       },
     ]);
 
-    // WAT (UTC+1) = 11:00 PM. If it wrongly used the solicitation's EST it would
-    // render 6:00 PM EDT.
-    expect(item.date).toBe("Aug 21, 2026 11:00 PM WAT");
+    // Solicitation zone EST (America/New_York, EDT in August) = 6:00 PM EDT.
+    expect(item.date).toBe("Aug 21, 2026 6:00 PM EDT");
   });
 
-  it("#194 renders Company Admin General Updates in the actor's item-level timezone, not the solicitation's", () => {
+  it("renders Company Admin General Updates in the solicitation's timezone, not the actor's (supersedes #194)", () => {
     const [item] = DashboardDataTransformer.transformCompanyAdminGeneralUpdates([
       {
         _id: "au-1",
@@ -226,7 +225,7 @@ describe("DashboardDataTransformer", () => {
       },
     ]);
 
-    expect(item.date).toBe("Aug 21, 2026 11:00 PM WAT");
+    expect(item.date).toBe("Aug 21, 2026 6:00 PM EDT");
   });
 
   it("#257 links a Procurement group-release update whose solicitation is nested under evaluation", () => {
@@ -384,5 +383,26 @@ describe("DashboardDataTransformer", () => {
       expect(result).toHaveLength(12);
       expect(result.every((b) => b.activities === 0)).toBe(true);
     });
+  });
+});
+
+describe("contract manager feed timezone", () => {
+  const base = {
+    id: "u1",
+    statusText: 'Invoice "Roof" submitted',
+    contractRef: "c1",
+    date: "2026-11-25T18:44:00.000Z",
+  };
+  it("renders in the contract timezone when the item carries it", () => {
+    const [item] = DashboardDataTransformer.transformContractManagerDashboardActivity([
+      { ...base, timezone: "UTC", contractTimezone: "America/Toronto" },
+    ]);
+    expect(item.date).toContain("1:44 PM");
+  });
+  it("falls back to the item timezone otherwise", () => {
+    const [item] = DashboardDataTransformer.transformContractManagerDashboardActivity([
+      { ...base, timezone: "UTC" },
+    ]);
+    expect(item.date).toContain("6:44 PM");
   });
 });

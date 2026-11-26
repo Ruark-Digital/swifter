@@ -1,5 +1,6 @@
 import { RouteErrorFallback } from "@/components/layouts/Error";
 import { ProtectedRoute } from "./PrivateRoute";
+import { ContractModuleRoute } from "./ContractModuleRoute";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { Dashboard } from "@/layouts/Dashboard";
 import { NotFound } from "@/layouts/NotFound";
@@ -211,7 +212,9 @@ export const routes = [
         element: (
           <ProtectedRoute>
             <ContractsModuleGate>
-              <ContractManagementPage />
+              <ContractModuleRoute>
+                <ContractManagementPage />
+              </ContractModuleRoute>
             </ContractsModuleGate>
           </ProtectedRoute>
         ),
@@ -221,7 +224,9 @@ export const routes = [
         element: (
           <ProtectedRoute>
             <ContractsModuleGate>
-              <MsaPage />
+              <ContractModuleRoute>
+                <MsaPage />
+              </ContractModuleRoute>
             </ContractsModuleGate>
           </ProtectedRoute>
         ),
@@ -231,7 +236,9 @@ export const routes = [
         element: (
           <ProtectedRoute>
             <ContractsModuleGate>
-              <MsaDetailPage />
+              <ContractModuleRoute>
+                <MsaDetailPage />
+              </ContractModuleRoute>
             </ContractsModuleGate>
           </ProtectedRoute>
         ),
@@ -241,7 +248,9 @@ export const routes = [
         element: (
           <ProtectedRoute>
             <ContractsModuleGate>
-              <ContractDetailPage />
+              <ContractModuleRoute>
+                <ContractDetailPage />
+              </ContractModuleRoute>
             </ContractsModuleGate>
           </ProtectedRoute>
         ),

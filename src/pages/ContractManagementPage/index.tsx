@@ -24,6 +24,7 @@ import VendorContractsTable, {
 } from "./components/VendorContractsTable";
 import { resolveCurrency } from "@/lib/utils";
 import { formatContractDateTime, formatInTz } from "@/lib/zonedDate";
+import { publishedDateOf } from "./components/contractLifecycle";
 
 type ContractApi = {
   timezone?: string;
@@ -447,7 +448,7 @@ export const mapContractsToRows = (contracts?: ContractApi[], profileCurrency?: 
       owner: c.creator?.name ?? "-",
       ownerId: c.creator?._id,
       isOwner: c.owner,
-      published: c.datePublished
+      published: publishedDateOf(c.status, c.datePublished)
         ? formatInTz(c.datePublished, c.timezone, "dd MMM yyyy")
         : undefined,
       endDate: c.endDate ? formatContractDateTime(c.endDate, c.timezone, c.createdAt, { pattern: "dd MMM yyyy" }) : undefined,
@@ -501,7 +502,7 @@ export const mapVendorContractsToRows = (
       company: mapCompanyLabel(c.company, c.vendor),
       contractRelationship: mapContractRelationshipLabel(c.contractRelationship),
       value,
-      published: c.datePublished
+      published: publishedDateOf(c.status, c.datePublished)
         ? formatInTz(c.datePublished, c.timezone, "dd MMM yyyy")
         : undefined,
       endDate: c.endDate ? formatContractDateTime(c.endDate, c.timezone, c.createdAt, { pattern: "dd MMM yyyy" }) : undefined,
@@ -512,7 +513,7 @@ export const mapVendorContractsToRows = (
 };
 
 const ContractManagementPage: React.FC = () => {
-  const { isVendor, isProjectManager, isApprover, isViewOnly, isCompanyAdmin } =
+  const { isVendor, isProjectManager, isApprover, isViewOnly, isCompanyAdmin, isManager } =
     useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
   // View-only uses the read-only `/user/contracts` surface, not the manager one
@@ -822,7 +823,7 @@ const ContractManagementPage: React.FC = () => {
                   filenameBase="contracts-export"
                 />
               )}
-              {!isApprover && !isViewOnly && !isCompanyAdmin && (
+              {isManager && (
                 <CreateContractSheet
                   trigger={
                     <Button
