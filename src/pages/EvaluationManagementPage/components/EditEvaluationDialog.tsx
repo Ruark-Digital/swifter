@@ -9,7 +9,7 @@ import { Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Forge, useForge } from "@adexdsamson/forge";
 import * as yup from "yup";
-import { cn } from "@/lib/utils";
+import { cn, toWallClockPayload } from "@/lib/utils";
 import Step1Form from "./Step1Form";
 import Step2Form from "./Step2Form";
 import Step3Form from "./Step3Form";
@@ -21,7 +21,6 @@ import { useToastHandler } from "@/hooks/useToaster";
 import timezones from "@/assets/timezones.json";
 import { useEvaluationDetail } from "../hooks/useEvaluationDetailApi";
 import { PageLoader } from "@/components/ui/PageLoader";
-import { format } from "date-fns";
 
 // Form validation schemas for each step
 const step1Schema = yup.object({
@@ -257,6 +256,22 @@ const EditEvaluationDialog = ({
       value: solicitation._id,
     })) || [];
 
+  // A draft shows its (fixed) solicitation and inherits its timezone. The
+  // solicitations list leaves out solicitations that already have an
+  // evaluation, the draft's own included, so add it as an option (QA N3).
+  const isDraft = evaluationData?.data?.data?.status === "draft";
+  const ownSolicitation = evaluationData?.data?.data?.solicitation;
+  if (
+    isDraft &&
+    ownSolicitation?._id &&
+    !solicitationOptions.some((o) => o.value === ownSolicitation._id)
+  ) {
+    solicitationOptions.unshift({
+      label: ownSolicitation.name ?? "",
+      value: ownSolicitation._id,
+    });
+  }
+
   // Single form instance for all steps
   const forge = useForge<EditEvaluationFormData>({
     defaultValues: {
@@ -358,10 +373,10 @@ const EditEvaluationDialog = ({
         id: evaluationId,
         timezone: data.timezone || undefined,
         start_date: data.start_date
-          ?  format(data.start_date, "yyyy-MM-dd'T'HH:mm:ss")
+          ? toWallClockPayload(data.start_date)
           : undefined,
         end_date: data.end_date
-          ? format(data.end_date, "yyyy-MM-dd'T'HH:mm:ss")
+          ? toWallClockPayload(data.end_date)
           : undefined,
         group:
           data.group?.map((item) =>
@@ -476,11 +491,11 @@ const EditEvaluationDialog = ({
       }
 
       if (formData.start_date) {
-        draftData.start_date = formData.start_date;
+        draftData.start_date = toWallClockPayload(formData.start_date);
       }
 
       if (formData.end_date) {
-        draftData.end_date = formData.end_date;
+        draftData.end_date = toWallClockPayload(formData.end_date);
       }
 
       if (formData.group && formData.group.length > 0) {
@@ -605,7 +620,8 @@ const EditEvaluationDialog = ({
           <Forge control={forge.control} onSubmit={onSubmit}>
             {currentStep === 1 && (
               <Step1Form
-                isEdit
+                isEdit={!isDraft}
+                lockSolicitation={isDraft}
                 solicitationOptions={solicitationOptions}
                 timezoneOptions={timezoneOptions}
               />

@@ -11,6 +11,8 @@ import { matchTimezoneOption } from "@/lib/timezoneOption";
 
 interface Step1FormProps {
   isEdit?: boolean;
+  // Show the solicitation but do not allow changing it (editing a draft).
+  lockSolicitation?: boolean;
   solicitationOptions: { label: string; value: string }[];
   timezoneOptions: { label: string; value: string }[];
   solicitationsData?: {
@@ -23,7 +25,7 @@ interface Step1FormProps {
   }[];
 }
 
-const Step1Form = ({ solicitationOptions, timezoneOptions, solicitationsData, isEdit }: Step1FormProps) => {
+const Step1Form = ({ solicitationOptions, timezoneOptions, solicitationsData, isEdit, lockSolicitation }: Step1FormProps) => {
   // Watch for solicitation selection changes
   const selectedSolicitationId = useWatch({ name: "solicitation" });
   
@@ -85,6 +87,7 @@ const Step1Form = ({ solicitationOptions, timezoneOptions, solicitationsData, is
           component={TextCombo}
           label="Solicitation"
           containerClass={cn("", { "hidden": isEdit })}
+          disabled={lockSolicitation}
           placeholder="Select Solicitation"
           options={solicitationOptions}
         />
