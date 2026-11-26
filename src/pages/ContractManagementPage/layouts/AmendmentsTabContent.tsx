@@ -112,7 +112,8 @@ type CreateAmendmentPayload = {
 
 const CREATE_AMENDMENT_DEFAULT_VALUES: CreateAmendmentFormValues = {
   amendmentTitle: "",
-  impactType: "time",
+  // Empty until the user picks one ("Select impact"); the schema requires it.
+  impactType: "" as unknown as CreateAmendmentFormValues["impactType"],
   timeImpactDays: "",
   costImpactAmount: "",
   scopeEnabled: true,
@@ -456,10 +457,19 @@ export const CreateAmendmentDialog: React.FC<{
                 component={({
                   value,
                   onChange,
+                  error,
                 }: {
                   value?: string;
                   onChange: (val: string) => void;
+                  error?: string;
                 }) => (
+                  <div className="space-y-2" role="radiogroup" aria-label="Impact">
+                  <div className="text-sm font-medium text-[#0F0F0F] dark:text-slate-100">
+                    Impact
+                    {!value && (
+                      <span className="ml-2 font-normal text-slate-400">Select impact</span>
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-6">
                     {[
                       {
@@ -506,6 +516,8 @@ export const CreateAmendmentDialog: React.FC<{
                         </button>
                       );
                     })}
+                  </div>
+                  {error && <span className="text-xs text-red-500">{error}</span>}
                   </div>
                 )}
               />

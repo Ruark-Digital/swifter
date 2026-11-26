@@ -1,5 +1,6 @@
 import { RouteErrorFallback } from "@/components/layouts/Error";
 import { ProtectedRoute } from "./PrivateRoute";
+import { ContractModuleRoute } from "./ContractModuleRoute";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { Dashboard } from "@/layouts/Dashboard";
 import { NotFound } from "@/layouts/NotFound";
@@ -209,7 +210,9 @@ export const routes = [
         path: "/dashboard/contract-management",
         element: (
           <ProtectedRoute>
-            <ContractManagementPage />
+            <ContractModuleRoute>
+              <ContractManagementPage />
+            </ContractModuleRoute>
           </ProtectedRoute>
         ),
       },
@@ -217,7 +220,9 @@ export const routes = [
         path: "/dashboard/msa",
         element: (
           <ProtectedRoute>
-            <MsaPage />
+            <ContractModuleRoute>
+              <MsaPage />
+            </ContractModuleRoute>
           </ProtectedRoute>
         ),
       },
@@ -225,7 +230,9 @@ export const routes = [
         path: "/dashboard/msa/:id",
         element: (
           <ProtectedRoute>
-            <MsaDetailPage />
+            <ContractModuleRoute>
+              <MsaDetailPage />
+            </ContractModuleRoute>
           </ProtectedRoute>
         ),
       },
@@ -233,7 +240,9 @@ export const routes = [
         path: "/dashboard/contract-management/:id",
         element: (
           <ProtectedRoute>
-            <ContractDetailPage />
+            <ContractModuleRoute>
+              <ContractDetailPage />
+            </ContractModuleRoute>
           </ProtectedRoute>
         ),
       },

@@ -50,6 +50,7 @@ export interface Contract {
   timezone?: string;
   status: string;
   createdAt: string;
+  datePublished?: string;
   vendor: Vendor;
   category?: string;
   projectManager?: { name?: string } | string;
@@ -216,7 +217,10 @@ const MsaPage: React.FC = () => {
       ),
       ownerId: it?.creator?._id ? String(it.creator._id) : undefined,
       isOwner: typeof it?.owner === "boolean" ? it.owner : undefined,
-      published: it?.createdAt || undefined,
+      // Only set once the MSA is actually published (drafts have no
+      // datePublished); createdAt is kept separately for drafts and filters.
+      published: it?.datePublished || undefined,
+      createdAt: it?.createdAt || undefined,
       endDate: it?.endDate || undefined,
       // The list endpoint omits a per-MSA timezone; fall back to UTC so a
       // date-only/UTC-midnight end date is not shifted by the browser zone.

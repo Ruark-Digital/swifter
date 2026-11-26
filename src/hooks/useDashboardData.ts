@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError, UserRole } from "@/types";
 import { DashboardDataTransformer } from "@/lib/dashboardDataTransformer";
@@ -353,6 +354,72 @@ export type ContractManagerRenewals = {
  * Custom hook for fetching dashboard data based on user role
  * Implements API integration for SuperAdmin and other roles
  */
+// The contract/MSA feed items carry the ACTOR's timezone, not the entity's, and
+// the feed API does not return the entity zone. Look it up from the contract /
+// MSA detail (cached) and attach it as `contractTimezone` so the feed renders
+// each event in the entity's zone.
+const MAX_FEED_TZ_LOOKUPS = 30;
+const feedEntityKey = (item: any): { key: string; path: string } | null => {
+  const id = item?.contractRef;
+  if (!id) return null;
+  const isMsa = /msa/i.test(String(item?.contractDef ?? ""));
+  return isMsa
+    ? { key: `msa:${id}`, path: `msa-contracts/${id}` }
+    : { key: `contract:${id}`, path: `contracts/${id}` };
+};
+const feedBaseFor = (role: UserRole) =>
+  role === "vendor" || role === "project_manager"
+    ? "/contract/vendor"
+    : role === "approver"
+      ? "/contract/approver"
+      : role === "view_only"
+        ? "/contract/user"
+        : "/contract/manager";
+
+export const useFeedEntityTimezones = (
+  userRole: UserRole,
+  feeds: Array<any[] | undefined>
+) => {
+  const userKey = useUserQueryKey(["feed-entity-tz"]);
+  const entities = new Map<string, string>();
+  for (const feed of feeds) {
+    if (!Array.isArray(feed)) continue;
+    for (const item of feed) {
+      const e = feedEntityKey(item);
+      if (e && entities.size < MAX_FEED_TZ_LOOKUPS) entities.set(e.key, e.path);
+    }
+  }
+  const entries = Array.from(entities.entries());
+  const tzByKey = useQueries({
+    queries: entries.map(([key, path]) => ({
+      queryKey: [...userKey, key],
+      queryFn: async () => {
+        const res: any = await getRequest({ url: `${feedBaseFor(userRole)}/${path}` });
+        return (res?.data?.data?.timezone ?? res?.data?.timezone ?? null) as string | null;
+      },
+      staleTime: 10 * 60_000,
+      retry: false,
+    })),
+    combine: (results) =>
+      new Map(entries.map(([key], i) => [key, results[i]?.data ?? null] as const)),
+  });
+  // Stable across renders unless a looked-up zone actually changes, so the
+  // dashboard's downstream useMemos do not recompute every render.
+  const sig = JSON.stringify(Array.from(tzByKey.entries()));
+  return useMemo(() => {
+    const enrich = (items: any[] | undefined) =>
+      Array.isArray(items)
+        ? items.map((item) => {
+            const e = feedEntityKey(item);
+            const tz = e ? tzByKey.get(e.key) : null;
+            return tz ? { ...item, contractTimezone: tz } : item;
+          })
+        : items;
+    return feeds.map(enrich);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sig, ...feeds]);
+};
+
 export const useDashboardData = (
   userRole: UserRole,
   chartFilters: Record<string, string> = {},
@@ -1506,6 +1573,17 @@ export const useDashboardData = (
   // role; charts and activity panels render their own card shells and stream
   // in afterward. This is what turns a multi-second blank spinner (the slowest
   // of ~6-17 parallel calls) into an instant first paint.
+  const [
+    cmActionLogsTz,
+    cmGeneralUpdatesTz,
+    pmMyActionsTz,
+    pmGeneralUpdatesTz,
+  ] = useFeedEntityTimezones(userRole, [
+    contractManagerActionLogs?.data,
+    contractManagerGeneralUpdates?.data,
+    pmContractMyActions?.data,
+    pmContractGeneralUpdates?.data,
+  ]);
   const isInitialLoading =
     (userRole === "super_admin" && isLoadingCount) ||
     (userRole === "company_admin" && isLoadingSolicitationStatus) ||
@@ -1555,13 +1633,13 @@ export const useDashboardData = (
     vendorGeneralUpdates: vendorGeneralUpdates?.data?.data,
 
     // PM data (aliased to "vendor"; contract-scoped My Actions/General Updates)
-    pmContractMyActions: pmContractMyActions?.data,
-    pmContractGeneralUpdates: pmContractGeneralUpdates?.data,
+    pmContractMyActions: pmMyActionsTz,
+    pmContractGeneralUpdates: pmGeneralUpdatesTz,
 
     contractManagerTotalCards: contractManagerTotalCards?.data,
     contractManagerYtdCards: contractManagerYtdCards?.data,
-    contractManagerActionLogs: contractManagerActionLogs?.data,
-    contractManagerGeneralUpdates: contractManagerGeneralUpdates?.data,
+    contractManagerActionLogs: cmActionLogsTz,
+    contractManagerGeneralUpdates: cmGeneralUpdatesTz,
     contractManagerCycleTime: contractManagerCycleTime?.data,
     contractManagerInvoiceStatus: contractManagerInvoiceStatus?.data,
     contractManagerCommittedVsActualSpend: contractManagerCommittedVsActualSpend?.data,
