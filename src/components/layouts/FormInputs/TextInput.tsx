@@ -296,6 +296,11 @@ export const TextTagInput = (
       return;
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+      setErrorText("Enter a valid email address");
+      return;
+    }
+
     const exists = (value ?? []).some((t, idx) => {
       if (activeTagIndex !== null && idx === activeTagIndex) return false;
       return (
@@ -831,7 +836,6 @@ export const TextCurrencyInput = (props: TextCurrencyInputProps) => {
           onBlur={onBlur}
           decimalsLimit={2}
           prefix={currencyPrefix}
-          defaultValue={1000}
           onValueChange={(value) => onChange?.(value ?? "")}
           placeholder={placeholder}
           className={`w-full h-12 border border-gray-300 rounded-lg px-4 pr-10 bg-white text-slate-900 placeholder:text-slate-400 focus:border-[#2A4467] focus:ring-[#2A4467] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-indigo-400 dark:focus:ring-indigo-400 ${

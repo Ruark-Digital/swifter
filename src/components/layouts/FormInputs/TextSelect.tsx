@@ -105,6 +105,11 @@ export const TextSelect = (
   };
 
   const handleValueChange = (selectedValue: string) => {
+    // Radix's hidden native select can report "" when a controlled value is set
+    // (e.g. form.reset) before its options register, which wiped prefilled
+    // values and marked them dirty. Items can't have an empty value, so "" is
+    // never a user choice; clearing goes through the sentinel below.
+    if (selectedValue === "") return;
     // The "Clear selection" row reports the sentinel; emit "" instead.
     const option = selectOptions.find((o) => o.selectValue === selectedValue);
     setPicked(option ? selectedValue : undefined);

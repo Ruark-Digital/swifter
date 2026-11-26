@@ -2,12 +2,17 @@ import { Forger } from "@adexdsamson/forge";
 import { TextCombo } from "@/components/layouts/FormInputs/TextCombo";
 import { TextSelect } from "@/components/layouts/FormInputs/TextSelect";
 import { TextDatePicker } from "@/components/layouts/FormInputs/TextInput";
-import { useWatch } from "react-hook-form";
-import { useMemo } from "react";
+import { useFormContext, useFormState, useWatch } from "react-hook-form";
+import { useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { getRequest } from "@/lib/axiosInstance";
+import { matchTimezoneOption } from "@/lib/timezoneOption";
 
 interface Step1FormProps {
   isEdit?: boolean;
+  // Show the solicitation but do not allow changing it (editing a draft).
+  lockSolicitation?: boolean;
   solicitationOptions: { label: string; value: string }[];
   timezoneOptions: { label: string; value: string }[];
   solicitationsData?: {
@@ -16,10 +21,11 @@ interface Step1FormProps {
     submissionDeadline: string;
     questionDeadline: string;
     bidIntentDeadline: string;
+    timezone?: string;
   }[];
 }
 
-const Step1Form = ({ solicitationOptions, timezoneOptions, solicitationsData, isEdit }: Step1FormProps) => {
+const Step1Form = ({ solicitationOptions, timezoneOptions, solicitationsData, isEdit, lockSolicitation }: Step1FormProps) => {
   // Watch for solicitation selection changes
   const selectedSolicitationId = useWatch({ name: "solicitation" });
   
@@ -37,9 +43,38 @@ const Step1Form = ({ solicitationOptions, timezoneOptions, solicitationsData, is
     return selectedSolicitation ? new Date(selectedSolicitation.submissionDeadline) : undefined;
   }, [selectedSolicitationId, solicitationsData]);
 
-  // Only surface the hint once a start date is picked that is too early, not
-  // as soon as a solicitation is chosen.
+  // Inherit the timezone from the selected solicitation (create/draft flow).
+  // The evaluations solicitation list does not include `timezone`, so read it
+  // from the solicitation itself. Stored values may be abbreviations that are
+  // not select options (e.g. "NZDT"), so map them onto an option. A timezone
+  // the user picked by hand (dirty) is never overwritten.
+  const { setValue } = useFormContext();
+  const { dirtyFields } = useFormState({ name: ["start_date", "timezone"] });
+  const { data: selectedSolicitationData } = useQuery({
+    queryKey: ["solicitation", selectedSolicitationId],
+    queryFn: async () =>
+      await getRequest({
+        url: `/procurement/solicitations/${selectedSolicitationId}`,
+      }),
+    enabled: !isEdit && !!selectedSolicitationId,
+  });
+  const selectedSolicitation = selectedSolicitationData?.data?.data;
+  const selectedSolicitationTimezone: string | undefined =
+    selectedSolicitation?.solicitation?.timezone ??
+    selectedSolicitation?.timezone ??
+    solicitationsData?.find((s) => s._id === selectedSolicitationId)?.timezone;
+  const timezoneTouched = !!dirtyFields.timezone;
+  useEffect(() => {
+    if (isEdit || timezoneTouched) return;
+    const option = matchTimezoneOption(selectedSolicitationTimezone, timezoneOptions);
+    if (option) setValue("timezone", option, { shouldValidate: true });
+  }, [isEdit, timezoneTouched, selectedSolicitationTimezone, timezoneOptions, setValue]);
+
+  // Only surface the hint once the user has edited the start date (a value
+  // prefilled from a draft must not show an error before any input) and it is
+  // too early.
   const startDateInvalid =
+    !!dirtyFields.start_date &&
     !!selectedStartDate &&
     !!selectedSolicitationCloseDate &&
     new Date(selectedStartDate) <= selectedSolicitationCloseDate;
@@ -52,6 +87,7 @@ const Step1Form = ({ solicitationOptions, timezoneOptions, solicitationsData, is
           component={TextCombo}
           label="Solicitation"
           containerClass={cn("", { "hidden": isEdit })}
+          disabled={lockSolicitation}
           placeholder="Select Solicitation"
           options={solicitationOptions}
         />

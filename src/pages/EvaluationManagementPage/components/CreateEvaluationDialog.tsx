@@ -9,7 +9,7 @@ import { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
 import { Forge, useForge } from "@adexdsamson/forge";
 import * as yup from "yup";
-import { cn } from "@/lib/utils";
+import { cn, toWallClockPayload } from "@/lib/utils";
 import Step1Form from "./Step1Form";
 import Step2Form from "./Step2Form";
 import Step3Form from "./Step3Form";
@@ -19,7 +19,10 @@ import { getRequest, postRequest } from "@/lib/axiosInstance";
 import { ApiResponse, ApiResponseError } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
 import timezones from "@/assets/timezones.json";
-import { format } from "date-fns";
+import {
+  buildEvaluationDraftPayload,
+  CreateEvaluationDraftPayload,
+} from "./evaluationDraftPayload";
 
 // Form validation schemas for each step
 const step1Schema = yup.object({
@@ -123,31 +126,6 @@ type EvaluationDraft = {
   }>;
   createdAt: string;
   updatedAt: string;
-};
-
-type CreateEvaluationDraftPayload = {
-  solicitation: string;
-  timezone: string;
-  start_date: string;
-  end_date: string;
-  group: Array<{
-    name: string;
-    evaluators: string[];
-  }>;
-  documents: Array<{
-    title: string;
-    type: string;
-    group: string;
-    required: boolean;
-    multiple: boolean;
-  }>;
-  criteria: Array<{
-    title: string;
-    description: string;
-    type: "pass_fail" | "weight";
-    score: string | number;
-    group: string;
-  }>;
 };
 
 const CreateEvaluationDialog = () => {
@@ -283,8 +261,8 @@ const CreateEvaluationDialog = () => {
         group: { name: string; evaluators: string[] }[];
       } = {
         ...data,
-        start_date: format(data.start_date, "yyyy-MM-dd'T'HH:mm:ss") || "",
-        end_date: format(data.end_date, "yyyy-MM-dd'T'HH:mm:ss") || "",
+        start_date: toWallClockPayload(data.start_date),
+        end_date: toWallClockPayload(data.end_date),
         group:
           data.group?.map((item) => ({
             name: item.name,
@@ -344,74 +322,7 @@ const CreateEvaluationDialog = () => {
 
   const handleSaveAsDraft = async () => {
     try {
-      const formData = forge.getValues();
-      const draftData: Partial<CreateEvaluationDraftPayload> = {};
-      // console.log({ formData })
-
-      // Only include fields with actual values
-      if (formData.solicitation && typeof formData.solicitation === 'string' && formData.solicitation.trim()) {
-        draftData.solicitation = formData.solicitation;
-      }
-      
-      if (formData.timezone && typeof formData.timezone === 'string' && formData.timezone.trim()) {
-        draftData.timezone = formData.timezone;
-      }
-      
-      if (formData.start_date) {
-        draftData.start_date = formData.start_date;
-      }
-      
-      if (formData.end_date) {
-        draftData.end_date = formData.end_date;
-      }
-      
-      if (formData.group && formData.group.length > 0) {
-        const validGroups = formData.group
-          .filter((group) => group.name && group.name.trim())
-          .map((group) => ({
-            name: group.name,
-            evaluators:
-              group.evaluators
-                ?.filter((evaluator) => evaluator !== undefined)
-                .map((item) => item.value)
-                .filter((value) => value && value.trim()) || [],
-          }))
-          .filter((group) => group.evaluators.length > 0);
-        
-        if (validGroups.length > 0) {
-          draftData.group = validGroups;
-        }
-      }
-      
-      if (formData.documents && formData.documents.length > 0) {
-        const validDocuments = formData.documents
-          .filter((document) => document.title && document.title.trim())
-          .map((document) => ({
-            ...document,
-            required: document.required ?? false,
-            multiple: document.multiple ?? false,
-          }));
-        
-        if (validDocuments.length > 0) {
-          draftData.documents = validDocuments;
-        }
-      }
-      
-      if (formData.criteria && formData.criteria.length > 0) {
-        const validCriteria = formData.criteria
-          .filter((criteria) => criteria.title && criteria.title.trim())
-          .map((criteria) => ({
-            ...criteria,
-            score:
-              criteria.type === "weight"
-                ? parseInt(criteria.score as string)
-                : String(criteria.score),
-          }));
-        
-        if (validCriteria.length > 0) {
-          draftData.criteria = validCriteria;
-        }
-      }
+      const draftData = buildEvaluationDraftPayload(forge.getValues());
 
       await saveDraft(draftData as CreateEvaluationDraftPayload);
       // Immediately refetch evaluation lists and drafts after successful save

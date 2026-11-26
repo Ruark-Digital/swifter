@@ -30,6 +30,7 @@ const singleUserSchema = yup.object().shape({
   middleName: yup.string(),
   lastName: yup.string().required("Last name is required"),
   email: yup.string().email("Invalid email").required("Email is required"),
+  employeeId: yup.string(),
   roles: yup
     .array()
     .min(1, "Select at least one role")
@@ -48,6 +49,7 @@ type CreateUserPayload = {
   middleName?: string;
   lastName: string;
   email: string;
+  employeeId?: string;
   roles: string[];
   companyId: string;
 };
@@ -80,6 +82,7 @@ const CreateUserDialog = () => {
         middleName: "",
         lastName: "",
         email: "",
+        employeeId: "",
         roles: [],
       },
     });
@@ -124,6 +127,7 @@ const CreateUserDialog = () => {
         middleName: data.middleName,
         lastName: data.lastName,
         email: data.email,
+        employeeId: data.employeeId?.trim() || undefined,
         roles: selectedRoles.map((option) => option.value),
         companyId: user?.companyId?._id ?? "",
       });
@@ -275,7 +279,7 @@ const CreateUserDialog = () => {
                 component={TextInput}
                 label="Employee ID"
                 placeholder="Enter ID"
-                type="email"
+                type="text"
                 containerClass="space-y-1"
               />
             </Forge>

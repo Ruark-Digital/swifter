@@ -576,7 +576,7 @@ const UserManagementPage = () => {
             Users
           </h1>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0 whitespace-nowrap">
           <CreateUserDialog />
         </div>
       </div>

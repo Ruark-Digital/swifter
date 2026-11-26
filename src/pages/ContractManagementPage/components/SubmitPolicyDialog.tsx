@@ -242,7 +242,7 @@ const SubmitPolicyDialog: React.FC<SubmitPolicyDialogProps> = ({
                         Drag & Drop or Click to choose files
                       </p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                        Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
+                        Supported formats: DOC, PDF, XLS, XLSX, ZIP, PNG, JPEG
                       </p>
                     </div>
                   </div>

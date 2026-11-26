@@ -58,7 +58,7 @@ const Step6Form = ({
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-gray-500">Solicitation NAme</p>
+                  <p className="text-sm text-gray-500">Solicitation Name</p>
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                     {formData?.solicitationName || "Not specified"}
                   </p>
@@ -284,6 +284,8 @@ const Step6Form = ({
           </AccordionContent>
         </AccordionItem>
 
+        {/* Public solicitations have no invited vendors (S1-FE-09). */}
+        {formData?.visibility !== "public" && (
         <AccordionItem
           value="5"
           className="border border-gray-200 dark:border-gray-700 rounded-lg mb-4"
@@ -326,6 +328,7 @@ const Step6Form = ({
             </div>
           </AccordionContent>
         </AccordionItem>
+        )}
       </Accordion>
     </div>
   );
