@@ -5,6 +5,9 @@ import { TextDatePicker } from "@/components/layouts/FormInputs/TextInput";
 import { useFormContext, useFormState, useWatch } from "react-hook-form";
 import { useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { getRequest } from "@/lib/axiosInstance";
+import { matchTimezoneOption } from "@/lib/timezoneOption";
 
 interface Step1FormProps {
   isEdit?: boolean;
@@ -38,24 +41,36 @@ const Step1Form = ({ solicitationOptions, timezoneOptions, solicitationsData, is
     return selectedSolicitation ? new Date(selectedSolicitation.submissionDeadline) : undefined;
   }, [selectedSolicitationId, solicitationsData]);
 
-  // Inherit the timezone from the selected solicitation (create flow only).
+  // Inherit the timezone from the selected solicitation (create/draft flow).
+  // The evaluations solicitation list does not include `timezone`, so read it
+  // from the solicitation itself. Stored values may be abbreviations that are
+  // not select options (e.g. "NZDT"), so map them onto an option. A timezone
+  // the user picked by hand (dirty) is never overwritten.
   const { setValue } = useFormContext();
-  const selectedSolicitationTimezone = useMemo(
-    () =>
-      solicitationsData?.find((s) => s._id === selectedSolicitationId)?.timezone,
-    [selectedSolicitationId, solicitationsData]
-  );
+  const { dirtyFields } = useFormState({ name: ["start_date", "timezone"] });
+  const { data: selectedSolicitationData } = useQuery({
+    queryKey: ["solicitation", selectedSolicitationId],
+    queryFn: async () =>
+      await getRequest({
+        url: `/procurement/solicitations/${selectedSolicitationId}`,
+      }),
+    enabled: !isEdit && !!selectedSolicitationId,
+  });
+  const selectedSolicitation = selectedSolicitationData?.data?.data;
+  const selectedSolicitationTimezone: string | undefined =
+    selectedSolicitation?.solicitation?.timezone ??
+    selectedSolicitation?.timezone ??
+    solicitationsData?.find((s) => s._id === selectedSolicitationId)?.timezone;
+  const timezoneTouched = !!dirtyFields.timezone;
   useEffect(() => {
-    if (isEdit || !selectedSolicitationTimezone) return;
-    if (timezoneOptions.some((t) => t.value === selectedSolicitationTimezone)) {
-      setValue("timezone", selectedSolicitationTimezone, { shouldValidate: false });
-    }
-  }, [isEdit, selectedSolicitationTimezone, timezoneOptions, setValue]);
+    if (isEdit || timezoneTouched) return;
+    const option = matchTimezoneOption(selectedSolicitationTimezone, timezoneOptions);
+    if (option) setValue("timezone", option, { shouldValidate: true });
+  }, [isEdit, timezoneTouched, selectedSolicitationTimezone, timezoneOptions, setValue]);
 
   // Only surface the hint once the user has edited the start date (a value
   // prefilled from a draft must not show an error before any input) and it is
   // too early.
-  const { dirtyFields } = useFormState({ name: "start_date" });
   const startDateInvalid =
     !!dirtyFields.start_date &&
     !!selectedStartDate &&
