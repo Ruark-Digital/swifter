@@ -75,7 +75,8 @@ const FeedItem: React.FC<FeedItemProps> = ({
             {timestamp}
           </span>
         </div>
-        <div className="ct-feed-message">{message}</div>
+        {/* Keep the line breaks typed with Shift+Enter (N11). */}
+        <div className="ct-feed-message whitespace-pre-wrap break-words">{message}</div>
         {attachment && (
           <div className="ct-attachment">
             <div className="ct-attachment-icon">
