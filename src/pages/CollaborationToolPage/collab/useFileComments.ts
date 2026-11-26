@@ -22,7 +22,9 @@ export type FileCommentRich = {
   /** Root comment this one replies to (thread convention, see commentThreads). */
   replyTo?: string | null;
   /** Marker comments: resolve / reopen a thread, or delete one comment. */
-  action?: "resolve" | "reopen" | "delete";
+  action?: "resolve" | "reopen" | "delete" | "edit";
+  /** Set client-side when an edit marker replaced the text. */
+  edited?: boolean;
   /** The comment a marker applies to. */
   target?: string | null;
   /**
@@ -164,7 +166,8 @@ export const decodeWireToRich = (
       action:
         parsed.action === "resolve" ||
         parsed.action === "reopen" ||
-        parsed.action === "delete"
+        parsed.action === "delete" ||
+        parsed.action === "edit"
           ? parsed.action
           : undefined,
       target: typeof parsed.target === "string" ? parsed.target : null,

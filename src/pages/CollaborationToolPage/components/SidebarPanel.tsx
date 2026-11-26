@@ -58,6 +58,7 @@ interface SidebarPanelProps {
   onCommentReply?: (rootId: string, text: string) => void;
   onCommentResolveToggle?: (rootId: string, resolved: boolean) => void;
   onCommentDelete?: (commentId: string) => void;
+  onCommentEdit?: (commentId: string, text: string) => void;
   /** Zone the Versions tab shows times in (the contract's). */
   timeZone?: string;
   useFallbackFeed?: boolean;
@@ -130,6 +131,7 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
   onCommentReply,
   onCommentResolveToggle,
   onCommentDelete,
+  onCommentEdit,
   timeZone,
   useFallbackFeed = false,
   mentionables = [],
@@ -229,6 +231,7 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
               onReply={onCommentReply}
               onResolveToggle={onCommentResolveToggle}
               onDeleteComment={onCommentDelete}
+              onEditComment={onCommentEdit}
             />
           </Suspense>
         )}

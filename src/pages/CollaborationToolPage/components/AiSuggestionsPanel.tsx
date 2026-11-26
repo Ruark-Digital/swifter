@@ -275,7 +275,9 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
               }
             >
               {phase === "both"
-                ? "Resolved"
+                ? docNote
+                  ? "Approved · not applied"
+                  : "Resolved"
                 : phase === "awaiting-me"
                   ? "Needs your approval"
                   : "Awaiting other side"}
@@ -506,6 +508,12 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
                   : ""}
                 . Approve to apply it to the document, or reject.
               </div>
+              {!isMyTurn && (
+                <div className="mt-1 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                  It is the other side&apos;s turn. You can approve or reject once
+                  they have finished their round.
+                </div>
+              )}
               <div className="mt-2 flex justify-end gap-2">
                 <button
                   type="button"

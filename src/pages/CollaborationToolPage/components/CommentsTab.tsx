@@ -53,15 +53,85 @@ type CommentsTabProps = {
   onReply?: (rootId: string, text: string) => void;
   onResolveToggle?: (rootId: string, resolved: boolean) => void;
   onDeleteComment?: (commentId: string) => void;
+  onEditComment?: (commentId: string, text: string) => void;
 };
 
-/** Reply box + resolve / delete actions under a thread. */
+const ownBtn =
+  "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100";
+
+/** Edit / Delete for the viewer's own comment, with an inline editor. */
+const OwnActions: React.FC<{
+  id: string;
+  message: string;
+  onEdit?: (id: string, text: string) => void;
+  onDelete?: (id: string) => void;
+  className?: string;
+}> = ({ id, message, onEdit, onDelete, className }) => {
+  const [editing, setEditing] = React.useState(false);
+  const [text, setText] = React.useState(message);
+  const save = () => {
+    const t = text.trim();
+    if (t && t !== message.trim()) onEdit?.(id, t);
+    setEditing(false);
+  };
+  return (
+    <div className={className} onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center gap-1">
+        {onEdit && (
+          <button
+            type="button"
+            className={ownBtn}
+            onClick={() => {
+              setText(message);
+              setEditing((v) => !v);
+            }}
+          >
+            Edit
+          </button>
+        )}
+        {onDelete && (
+          <button
+            type="button"
+            className={cn(ownBtn, "hover:text-red-600 dark:hover:text-red-400")}
+            onClick={() => onDelete(id)}
+          >
+            Delete
+          </button>
+        )}
+      </div>
+      {editing && (
+        <div className="mt-1.5 flex gap-1.5">
+          <textarea
+            autoFocus
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) save();
+              if (e.key === "Escape") setEditing(false);
+            }}
+            rows={2}
+            className="min-w-0 flex-1 resize-none rounded-md border border-slate-200 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+          />
+          <button
+            type="button"
+            disabled={!text.trim()}
+            onClick={save}
+            className="self-end rounded-md bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Save
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/** Reply box + resolve actions under a thread. */
 const ThreadActions: React.FC<{
   item: CommentsFeedItem;
   onReply?: (rootId: string, text: string) => void;
   onResolveToggle?: (rootId: string, resolved: boolean) => void;
-  onDeleteComment?: (commentId: string) => void;
-}> = ({ item, onReply, onResolveToggle, onDeleteComment }) => {
+}> = ({ item, onReply, onResolveToggle }) => {
   const [replying, setReplying] = React.useState(false);
   const [text, setText] = React.useState("");
   const send = () => {
@@ -96,15 +166,6 @@ const ThreadActions: React.FC<{
                 <CheckCircle2 className="h-3 w-3" /> Resolve
               </>
             )}
-          </button>
-        )}
-        {onDeleteComment && item.canDelete && (
-          <button
-            type="button"
-            className={cn(btn, "hover:text-red-600 dark:hover:text-red-400")}
-            onClick={() => onDeleteComment(item.id)}
-          >
-            Delete
           </button>
         )}
       </div>
@@ -149,6 +210,7 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
   onReply,
   onResolveToggle,
   onDeleteComment,
+  onEditComment,
 }) => {
   const handleSubmit = useCallback(() => {
     onCommentSubmit?.();
@@ -235,26 +297,31 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
                 timestamp={reply.timestamp}
                 message={reply.message}
               />
-              {onDeleteComment && reply.canDelete && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteComment(reply.id);
-                  }}
-                  className="ml-[52px] rounded-md px-1.5 py-0.5 text-[11px] font-medium text-slate-500 hover:bg-slate-100 hover:text-red-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-red-400"
-                >
-                  Delete
-                </button>
+              {(onEditComment || onDeleteComment) && reply.canDelete && (
+                <OwnActions
+                  id={reply.id}
+                  message={reply.message}
+                  onEdit={onEditComment}
+                  onDelete={onDeleteComment}
+                  className="ml-[52px]"
+                />
               )}
             </div>
           ))}
-          {(onReply || onResolveToggle || onDeleteComment) && (
+          {(onReply || onResolveToggle) && (
             <ThreadActions
               item={comment}
               onReply={onReply}
               onResolveToggle={onResolveToggle}
-              onDeleteComment={onDeleteComment}
+            />
+          )}
+          {(onEditComment || onDeleteComment) && comment.canDelete && (
+            <OwnActions
+              id={comment.id}
+              message={comment.message}
+              onEdit={onEditComment}
+              onDelete={onDeleteComment}
+              className="mt-0.5 pl-[52px]"
             />
           )}
           {isAnchored && (
@@ -268,7 +335,7 @@ const CommentsTab: React.FC<CommentsTabProps> = ({
         </div>
       );
     },
-    [avatarPublic, onReply, onResolveToggle, onDeleteComment],
+    [avatarPublic, onReply, onResolveToggle, onDeleteComment, onEditComment],
   );
 
   return (

@@ -7,9 +7,10 @@ import type { FileCommentRich } from "./useFileComments";
  * PATCH / DELETE, no parent or resolved fields; the body is strict). So threading
  * is a convention carried inside the encoded `text` field:
  *   - a reply is an ordinary comment with `replyTo` = the root comment id;
- *   - resolve / reopen / delete are marker comments (`action` + `target`) that
+ *   - resolve / reopen / delete / edit are marker comments (`action` + `target`) that
  *     are never shown, only folded into the thread state below.
- * A delete marker is honoured only when its author wrote the target comment.
+ * An edit marker carries the new text as its content. Delete and edit markers
+ * are honoured only when their author wrote the target comment.
  * This is a display-level rule: the data stays on the server until the backend
  * grows real endpoints.
  */
@@ -35,6 +36,7 @@ export const buildCommentThreads = (all: FileCommentRich[]): CommentThread[] => 
   const canon = (id: string) => byId.get(id)?.id ?? id;
 
   const deleted = new Set<string>();
+  const edited = new Map<string, string>();
   const resolvedAt = new Map<string, "resolve" | "reopen">();
   for (const m of sorted) {
     if (!m.action || !m.target) continue;
@@ -42,13 +44,23 @@ export const buildCommentThreads = (all: FileCommentRich[]): CommentThread[] => 
     if (!target) continue;
     if (m.action === "delete") {
       if (m.author === target.author) deleted.add(target.id);
+    } else if (m.action === "edit") {
+      if (m.author === target.author && m.content.trim()) {
+        edited.set(target.id, m.content);
+      }
     } else {
       // Later markers win: sorted oldest-first, so the last write sticks.
       resolvedAt.set(target.id, m.action);
     }
   }
 
-  const visible = sorted.filter((c) => !c.action && !deleted.has(c.id));
+  const visible = sorted
+    .filter((c) => !c.action && !deleted.has(c.id))
+    .map((c) =>
+      edited.has(c.id)
+        ? { ...c, content: edited.get(c.id) as string, edited: true }
+        : c,
+    );
   const roots = visible.filter((c) => !c.replyTo || !byId.has(c.replyTo));
   return roots
     .map((root) => ({

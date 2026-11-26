@@ -46,6 +46,18 @@ const labelFromVersion = (v: BeFileVersion): string => {
   return v.name || "Saved version";
 };
 
+/** "pm1@beta.example" → "Pm1": a readable stand-in when only an email is known. */
+const nameFromEmail = (value: string): string => {
+  const local = value.split("@")[0] ?? value;
+  const words = local.replace(/[._-]+/g, " ").trim();
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : "Team member";
+};
+const readableAuthor = (raw: string, authorNames: Record<string, string>): string => {
+  const name = authorNames[raw] ?? (raw.includes("@") ? raw : undefined);
+  if (!name) return "Team member";
+  return name.includes("@") ? nameFromEmail(name) : name;
+};
+
 const toUiVersion = (
   v: BeFileVersion,
   authorNames: Record<string, string> = {},
@@ -56,9 +68,7 @@ const toUiVersion = (
   timestamp: v.createdAt,
   // BE only returns the updater's ObjectId (no name in this response). Resolve
   // it against the contract's people when we know them; otherwise a placeholder.
-  author: v.updatedBy
-    ? (authorNames[v.updatedBy] ?? "Team member")
-    : "Unknown User",
+  author: v.updatedBy ? readableAuthor(v.updatedBy, authorNames) : "Unknown User",
   label: labelFromVersion(v),
   kind: kindFromSource(v.source, v.snapshotKind),
   source: "be",

@@ -338,7 +338,7 @@ const CollaborationToolPage: React.FC = () => {
     return buildCommentThreads(fileCommentsQuery.data ?? []).map((t) => ({
       id: t.root.id,
       name: t.root.author || "Unknown User",
-      timestamp: stamp(t.root),
+      timestamp: stamp(t.root) + (t.root.edited ? " · edited" : ""),
       timestampTitle: formatZonedTimestamp(t.root.createdAt, contractTz, {
         wallClock: t.root.wallClock,
         pattern: "MMM d, yyyy, h:mm:ss a zzz",
@@ -351,7 +351,7 @@ const CollaborationToolPage: React.FC = () => {
       replies: t.replies.map((r) => ({
         id: r.id,
         name: r.author || "Unknown User",
-        timestamp: stamp(r),
+        timestamp: stamp(r) + (r.edited ? " · edited" : ""),
         message: r.content,
         canDelete: r.author === myAuthorName,
       })),
@@ -388,6 +388,11 @@ const CollaborationToolPage: React.FC = () => {
   const handleResolveToggle = useCallback(
     (rootId: string, resolve: boolean) =>
       postThreadComment({ action: resolve ? "resolve" : "reopen", target: rootId }),
+    [postThreadComment],
+  );
+  const handleEditComment = useCallback(
+    (commentId: string, text: string) =>
+      postThreadComment({ action: "edit", target: commentId }, text),
     [postThreadComment],
   );
   const handleDeleteComment = useCallback(
@@ -1676,6 +1681,7 @@ const CollaborationToolPage: React.FC = () => {
           onCommentReply={fileId ? handleReplyComment : undefined}
           onCommentResolveToggle={fileId ? handleResolveToggle : undefined}
           onCommentDelete={fileId ? handleDeleteComment : undefined}
+          onCommentEdit={fileId ? handleEditComment : undefined}
           timeZone={contractTz}
           useFallbackFeed={false}
           mentionables={mentionables}

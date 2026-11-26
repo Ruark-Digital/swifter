@@ -57,4 +57,15 @@ describe("buildCommentThreads", () => {
     const b = c({ id: "b" });
     expect(buildCommentThreads([a, b]).map((t) => t.root.id)).toEqual(["b", "a"]);
   });
+
+  it("an edit marker replaces the text, latest wins, and only the author's counts", () => {
+    const root = c({ id: "r", content: "old" });
+    const e1 = c({ action: "edit", target: "r", content: "new" });
+    const e2 = c({ action: "edit", target: "r", content: "newer" });
+    const [t] = buildCommentThreads([root, e1, e2]);
+    expect(t.root.content).toBe("newer");
+    expect(t.root.edited).toBe(true);
+    const forged = c({ action: "edit", target: "r", content: "hacked", author: "Bob" });
+    expect(buildCommentThreads([root, forged])[0].root.content).toBe("old");
+  });
 });
