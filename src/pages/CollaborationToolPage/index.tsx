@@ -923,7 +923,9 @@ const CollaborationToolPage: React.FC = () => {
         "Redline",
         d.reason === "not-found" || d.reason === "no-target"
           ? "That change is no longer in your copy of the document, so the approved text could not be applied here."
-          : "The approved text could not be applied to the document.",
+          : d.reason === "no-text"
+            ? "The editor could not read what this replacement changed, so the approved text was not applied. Apply it by hand."
+            : "The approved text could not be applied to the document.",
       );
     };
     window.addEventListener("ct-redline-applied", onApplied);
