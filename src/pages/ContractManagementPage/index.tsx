@@ -512,7 +512,7 @@ export const mapVendorContractsToRows = (
 };
 
 const ContractManagementPage: React.FC = () => {
-  const { isVendor, isProjectManager, isApprover, isViewOnly, isCompanyAdmin } =
+  const { isVendor, isProjectManager, isApprover, isViewOnly, isCompanyAdmin, isManager } =
     useUserRole();
   const isContractVendorLike = isVendor || isProjectManager;
   // View-only uses the read-only `/user/contracts` surface, not the manager one
@@ -822,7 +822,7 @@ const ContractManagementPage: React.FC = () => {
                   filenameBase="contracts-export"
                 />
               )}
-              {!isApprover && !isViewOnly && !isCompanyAdmin && (
+              {isManager && (
                 <CreateContractSheet
                   trigger={
                     <Button

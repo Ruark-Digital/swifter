@@ -5,62 +5,32 @@ import "@testing-library/jest-dom/vitest";
 
 import EmptyState from "../components/EmptyState";
 
-const role = {
-  isManager: false,
-  isApprover: true,
-  isVendor: false,
-  isProjectManager: false,
-};
+const role = { isManager: false };
 
-vi.mock("@/hooks/useUserRole", () => {
-  return {
-    useUserRole: () => role,
-  };
-});
-
+vi.mock("@/hooks/useUserRole", () => ({ useUserRole: () => role }));
 vi.mock("../layouts/CreateMSADialog", () => ({
   default: ({ trigger }: { trigger: React.ReactNode }) => <>{trigger}</>,
 }));
 
-const CREATE_PROMPT = /Click the button below to create your first MSA/;
-
-const setRole = (overrides: Partial<typeof role>) =>
-  Object.assign(role, {
-    isManager: false,
-    isApprover: false,
-    isVendor: false,
-    isProjectManager: false,
-    ...overrides,
+describe("MsaPage EmptyState (create only for contract_manager / procurement)", () => {
+  beforeEach(() => {
+    role.isManager = false;
   });
 
-describe("MsaPage EmptyState", () => {
-  beforeEach(() => setRole({ isApprover: true }));
-
-  it("hides Create MSA CTA for non-managers", () => {
-    render(<EmptyState />);
-    expect(screen.queryByTestId("create-msa-cta")).not.toBeInTheDocument();
-  });
-
-  it("shows the create prompt and CTA for managers", () => {
-    setRole({ isManager: true });
-    render(<EmptyState />);
-    expect(screen.getByText(CREATE_PROMPT)).toBeInTheDocument();
-    expect(screen.getByTestId("create-msa-cta")).toBeInTheDocument();
-  });
-
-  it("keeps the create prompt for other non-vendor roles", () => {
-    render(<EmptyState />);
-    expect(screen.getByText(CREATE_PROMPT)).toBeInTheDocument();
-  });
-
-  it.each([
-    ["vendor", { isVendor: true }],
-    ["vendor PM", { isProjectManager: true }],
-  ])("hides the create prompt and CTA for %s (QA #189)", (_, overrides) => {
-    setRole(overrides);
+  it("shows the creation prompt and CTA for managers, without 'proposals' wording", () => {
+    role.isManager = true;
     render(<EmptyState />);
     expect(screen.getByText("No MSA Yet")).toBeInTheDocument();
-    expect(screen.queryByText(CREATE_PROMPT)).not.toBeInTheDocument();
+    expect(screen.getByText(/Click the button below to create your first MSA/)).toBeInTheDocument();
+    expect(screen.getByTestId("create-msa-cta")).toBeInTheDocument();
+    expect(screen.queryByText(/proposals/i)).not.toBeInTheDocument();
+  });
+
+  it("shows a neutral message and no CTA for every other role", () => {
+    render(<EmptyState />);
+    expect(screen.getByText("No MSAs available")).toBeInTheDocument();
+    expect(screen.getByText("There are no MSAs to show yet.")).toBeInTheDocument();
+    expect(screen.queryByText(/button below/i)).not.toBeInTheDocument();
     expect(screen.queryByTestId("create-msa-cta")).not.toBeInTheDocument();
   });
 });
