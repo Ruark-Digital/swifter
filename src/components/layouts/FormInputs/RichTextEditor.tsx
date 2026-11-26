@@ -76,9 +76,18 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
     q.on('text-change', handleChange);
 
+    const container = editorRef.current;
     return () => {
       q.off('text-change', handleChange);
       quillRef.current = null;
+      // Quill inserts its toolbar as a sibling of the container and mutates the
+      // container itself; undo both so a remount (StrictMode) doesn't stack a
+      // second toolbar.
+      container.parentElement
+        ?.querySelectorAll(':scope > .ql-toolbar')
+        .forEach((el) => el.remove());
+      container.innerHTML = '';
+      container.className = cn('text-gray-900 dark:text-gray-100');
     };
     // We want to run only once on mount, toolbarOptions/formats are stable via useMemo
     // eslint-disable-next-line react-hooks/exhaustive-deps

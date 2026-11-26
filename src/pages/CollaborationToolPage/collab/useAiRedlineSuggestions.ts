@@ -167,10 +167,14 @@ const chunkRedlines = (redlines: RedlineSpan[], size: number): RedlineSpan[][] =
  * before chunking so positions stay global across batches.
  */
 export const withDocumentPositions = (redlines: RedlineSpan[]): RedlineSpan[] =>
-  redlines.map((r, index) => ({
-    ...r,
-    documentPosition: r.documentPosition ?? index,
-  }));
+  redlines.map((span, index) => {
+    // deletedText/insertedText are display-only (replacement cards); the BE
+    // request keeps its original span shape.
+    const r = { ...span };
+    delete r.deletedText;
+    delete r.insertedText;
+    return { ...r, documentPosition: r.documentPosition ?? index };
+  });
 
 /** Parse one BE response body into an `AiRedlineAnalysis`. */
 const parseAnalysisBody = (body: ApiResponseBody): AiRedlineAnalysis => {
@@ -454,8 +458,13 @@ export const acceptanceActor = (
 };
 
 /** Human label for a negotiating side. */
-export const redlineHolderLabel = (holder: RedlineResolvedHolder): string =>
-  holder === "vendor" ? "Vendor PM" : "Contract manager";
+export const redlineHolderLabel = (
+  holder: RedlineResolvedHolder,
+  docType = "contract",
+): string =>
+  holder === "vendor"
+    ? "Vendor PM"
+    : `${docType.charAt(0).toUpperCase()}${docType.slice(1)} manager`;
 
 /** Optimistically fold this viewer's acceptance into the bilateral state so the
  *  card flips immediately, before the GET refetch confirms it. */
@@ -554,6 +563,50 @@ export const deriveProgressCounts = (
 });
 
 /**
+ * Per-side "addressed" counts derived from the cards themselves, so the header
+ * moves the moment a card flips (the server progress only catches up after the
+ * post-resolve refetch). A side has addressed a card when it resolved it
+ * (approve or dismiss) or its acceptance flag is set.
+ */
+export const deriveLocalAddressed = (
+  items: Array<{
+    state: "pending" | "approved" | "dismissed";
+    resolvedByHolder?: RedlineResolvedHolder;
+    accepted?: RedlineAcceptance;
+  }>,
+): { cm: number; pm: number } => {
+  let cm = 0;
+  let pm = 0;
+  for (const i of items) {
+    const resolved = i.state !== "pending";
+    if (i.accepted?.cmAccepted || (resolved && i.resolvedByHolder === "manager")) cm++;
+    if (i.accepted?.vendorAccepted || (resolved && i.resolvedByHolder === "vendor")) pm++;
+  }
+  return { cm, pm };
+};
+
+/** A user-facing message for a failed AI request, never a raw axios string. */
+export const friendlyAiError = (error: unknown): string | undefined => {
+  if (!error) return undefined;
+  const status = (error as { response?: { status?: number } })?.response?.status;
+  const message = error instanceof Error ? error.message : "";
+  if (
+    (status && status >= 500) ||
+    /status code 5\d\d/.test(message) ||
+    /network error/i.test(message)
+  ) {
+    return "The AI service is unavailable right now. The tracked changes in your document are still listed; try again in a moment.";
+  }
+  const serverMessage = (
+    error as { response?: { data?: { message?: unknown } } }
+  )?.response?.data?.message;
+  if (typeof serverMessage === "string" && serverMessage.trim()) return serverMessage;
+  return /status code/.test(message) || !message
+    ? "Could not get AI suggestions. Please try again."
+    : message;
+};
+
+/**
  * Redlines accepted by BOTH sides — the only ones that are resolved in the
  * dual-approval flow (QA #185). The BE `resolved`/`resolvedCount` also counts
  * a one-sided action (swagger: "resolved status or both-accepted"), so it reads
@@ -632,7 +685,6 @@ export function usePersistedSuggestions({
   documentId,
   fileId,
   isMsa,
-  pollWhileWaiting = false,
 }: AiRedlineScope & { fileId?: string; pollWhileWaiting?: boolean }) {
   const role = useUserRole();
   // The GET list route requires both the contract id and the document (file) id.
@@ -659,9 +711,10 @@ export function usePersistedSuggestions({
     // load/poll and hammer the endpoint.
     retry: false,
     staleTime: 30000,
-    // Poll only while waiting on the other side, and only when the tab is
-    // focused (refetchIntervalInBackground defaults false), so the other
-    // side's edits/approvals surface without a manual refresh.
-    refetchInterval: pollWhileWaiting ? WAITING_POLL_MS : false,
+    // Always poll (only while the tab is focused: refetchIntervalInBackground
+    // defaults false) and refetch on focus, so suggestions generated or approved
+    // by the other side appear without a reload, whoever holds the turn.
+    refetchInterval: WAITING_POLL_MS,
+    refetchOnWindowFocus: true,
   });
 }

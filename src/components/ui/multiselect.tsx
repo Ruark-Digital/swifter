@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Check, ChevronsUpDown, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import {
   Command,
   CommandEmpty,
@@ -49,7 +49,7 @@ interface MultiSelectProps {
 }
 
 const MultipleSelector = React.forwardRef<
-  React.ElementRef<typeof Button>,
+  HTMLDivElement,
   MultiSelectProps
 >((
   {
@@ -72,6 +72,9 @@ const MultipleSelector = React.forwardRef<
     enableMultiTermFilter = false,
     multiTermOperator = "AND",
     searchFieldsPriority,
+    // Not a DOM attribute; the trigger is a plain div now.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    asChild: _asChild,
     ...props
   },
   ref
@@ -85,6 +88,28 @@ const MultipleSelector = React.forwardRef<
     value || defaultValue
   )
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false)
+  // The field itself, to take focus back after a chip control removes itself.
+  const triggerRef = React.useRef<HTMLDivElement | null>(null)
+  const setTriggerRef = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      triggerRef.current = node
+      if (typeof ref === "function") ref(node)
+      else if (ref) ref.current = node
+    },
+    [ref]
+  )
+  // Run a chip-level action from the keyboard, then put focus back on the field
+  // (the focused control is removed from the page by the action).
+  const runFromKeyboard = React.useCallback(
+    (e: React.KeyboardEvent, action: () => void) => {
+      if (e.key !== "Enter" && e.key !== " ") return
+      e.preventDefault()
+      e.stopPropagation()
+      action()
+      triggerRef.current?.focus()
+    },
+    []
+  )
   const [isAnimating, setIsAnimating] = React.useState(false)
   const [inputValue, setInputValue] = React.useState("")
 
@@ -271,12 +296,27 @@ const MultipleSelector = React.forwardRef<
       modal={modalPopover}
     >
       <PopoverTrigger asChild>
-        <Button
-          ref={ref}
+        {/* A div, not a <button>: the chips' remove controls are buttons, and a
+            button may not contain another button (invalid HTML, React warns). */}
+        <div
+          ref={setTriggerRef}
           {...props}
-          type="button"
+          role="combobox"
+          tabIndex={0}
           onClick={handleTogglePopover}
+          onKeyDown={(e) => {
+            // Ignore keys from the chips' own controls inside the field.
+            if (e.target !== e.currentTarget) return
+            if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+              e.preventDefault()
+              setIsPopoverOpen(true)
+            } else if (e.key === "Escape") {
+              setIsPopoverOpen(false)
+            }
+          }}
           className={cn(
+            buttonVariants({ variant: "outline" }),
+            "cursor-pointer",
             // `min-w-0` is load-bearing: Button base ships `inline-flex` +
             // `whitespace-nowrap`, so without it a long placeholder grows the
             // trigger past its container and forces a horizontal scrollbar on
@@ -284,7 +324,6 @@ const MultipleSelector = React.forwardRef<
             "flex h-auto min-h-10 w-full min-w-0 items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1 dark:border-gray-600  dark:text-gray-100 dark:placeholder:text-gray-400 dark:focus:ring-gray-400",
             className
           )}
-          variant="outline"
         >
           {selectedValues.length > 0 ? (
             <div className="flex justify-between items-center w-full">
@@ -306,21 +345,24 @@ const MultipleSelector = React.forwardRef<
                       {option.label}
                       <button
                         type="button"
+                        aria-label={`Remove ${option.label}`}
                         className={cn(
                           "ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                           (option as any).fixed &&
                             "hidden"
                         )}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            handleUnselect(option)
-                          }
-                        }}
+                        onKeyDown={(e) =>
+                          runFromKeyboard(e, () => handleUnselect(option))
+                        }
                         onMouseDown={(e) => {
                           e.preventDefault()
                           e.stopPropagation()
                         }}
-                        onClick={() => handleUnselect(option)}
+                        onClick={(e) => {
+                          // Removing a chip must not also toggle the field open.
+                          e.stopPropagation()
+                          handleUnselect(option)
+                        }}
                       >
                         <X className="h-3 w-3 text-muted-foreground hover:text-foreground dark:text-gray-400 dark:hover:text-gray-200" />
                       </button>
@@ -336,17 +378,18 @@ const MultipleSelector = React.forwardRef<
                     {`+ ${selectedValues.length - maxCount} more`}
                     <button
                       type="button"
+                      aria-label={`Clear all (${selectedValues.length - maxCount} more)`}
                       className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          handleClearAll()
-                        }
-                      }}
+                      onKeyDown={(e) => runFromKeyboard(e, handleClearAll)}
                       onMouseDown={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
                       }}
-                      onClick={handleClearAll}
+                      onClick={(e) => {
+                        // Clearing must not also toggle the field open.
+                        e.stopPropagation()
+                        handleClearAll()
+                      }}
                     >
                       <X className="h-3 w-3 text-muted-foreground hover:text-foreground dark:text-gray-400 dark:hover:text-gray-200" />
                     </button>
@@ -358,16 +401,17 @@ const MultipleSelector = React.forwardRef<
                   <div>
                     <button
                       type="button"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          handleClearAll()
-                        }
-                      }}
+                      aria-label="Clear all"
+                      onKeyDown={(e) => runFromKeyboard(e, handleClearAll)}
                       onMouseDown={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
                       }}
-                      onClick={handleClearAll}
+                      onClick={(e) => {
+                        // Clearing must not also toggle the field open.
+                        e.stopPropagation()
+                        handleClearAll()
+                      }}
                     >
                       <X className="h-4 w-4 text-muted-foreground hover:text-foreground dark:text-gray-400 dark:hover:text-gray-200" />
                     </button>
@@ -384,7 +428,7 @@ const MultipleSelector = React.forwardRef<
               <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50 dark:text-gray-400" />
             </div>
           )}
-        </Button>
+        </div>
       </PopoverTrigger>
 
       <PopoverContent

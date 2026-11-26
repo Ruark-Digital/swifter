@@ -225,7 +225,7 @@ const UploadElement = () => (
       Drag & Drop or Click to choose files
     </p>
     <p className="mt-2 text-sm text-[#6B6B6B]">
-      Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
+      Supported formats: DOC, PDF, XLS, XLSX, ZIP, PNG, JPEG
     </p>
   </div>
 );

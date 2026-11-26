@@ -972,7 +972,7 @@ const SubmittedDocumentPage: React.FC = () => {
                                             editingCriteriaId !== criteriaItem._id;
                                           if (!readOnly) setValue("score", parseInt(value));
                                         }}
-                                        className="flex gap-8 justify-center mb-1"
+                                        className="flex flex-wrap gap-x-4 gap-y-2 justify-center mb-1"
                                       >
                                         {Array.from({ length: 10 }, (_, i) => i + 1).map((score) => (
                                           <div
@@ -1038,7 +1038,7 @@ const SubmittedDocumentPage: React.FC = () => {
                                 <p className="text-sm text-blue-600 dark:text-slate-200">
                                   {criteriaItem.criteria.pass_fail
                                     ? criteriaItem.scoring.scoring.pass_fail
-                                    : criteriaItem.scoring.scoring.weight}
+                                    : `${Number(criteriaItem.scoring.scoring.weight) / 10}/10 (${criteriaItem.scoring.scoring.weight}% of weight)`}
                                 </p>
                                 {submittedCriteriaTimestamps[criteriaItem._id] && (
                                   <p className="text-xs text-gray-600 mt-1 dark:text-gray-300">
@@ -1091,7 +1091,9 @@ const SubmittedDocumentPage: React.FC = () => {
                                   (isEvaluationSubmitted || !!criteriaItem.scoring?._id) &&
                                   editingCriteriaId !== criteriaItem._id
                                 }
-                                className="w-full dark:text-slate-200"
+                                className={`w-full dark:text-slate-200 ${
+                                  scoreErrors.comment ? "border-red-500" : ""
+                                }`}
                                 rows={3}
                                 placeholder="Enter your comments here..."
                               />

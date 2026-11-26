@@ -14,7 +14,7 @@ const STORED = "2026-10-09T14:00:00.000Z";
 describe("question acceptance deadline (QA #190)", () => {
   it("renders the same time and zone label on both tabs", () => {
     expect(formatQuestionDeadline(STORED, "CST")).toBe(
-      "Oct 9, 2026 9:00 AM CST"
+      "Oct 9, 2026 9:00 AM CDT"
     );
     expect(formatQuestionDeadline(STORED, "CST")).toBe(
       formatWallClockWithZone(STORED, QUESTION_DEADLINE_FORMAT, "CST")

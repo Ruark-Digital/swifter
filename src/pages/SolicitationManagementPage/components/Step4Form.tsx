@@ -9,6 +9,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { getSimpleFileExtension, formatFileSize } from "@/lib/fileUtils.tsx";
+import { validateUploadFiles } from "@/lib/fileValidation";
 import { postRequest } from "@/lib/axiosInstance";
 import { ApiResponseError } from "@/types";
 import { useToastHandler } from "@/hooks/useToaster";
@@ -168,7 +169,7 @@ const DropzoneArea = ({
           </span>
         </p>
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          Supported formats: DOC, PDF, XLS, XLSLS, ZIP, PNG, JPEG
+          Supported formats: DOC, PDF, XLS, XLSX, ZIP, PNG, JPEG
         </p>
       </div>
     </div>
@@ -509,15 +510,27 @@ export const FileUploadManager = ({
 
   const handleFileSelect = useCallback(
     (fileList: FileList) => {
-      const newFiles = Array.from(fileList).map((file) => ({
-        file,
-        status: "pending" as const,
-        progress: 0,
-      }));
+      const existingNames = filesWithState
+        .map((f) => f.file?.name || f.uploadedData?.name)
+        .filter((n): n is string => !!n);
+      const { accepted, errors } = validateUploadFiles(
+        Array.from(fileList),
+        existingNames
+      );
+      if (errors.length > 0) {
+        toast.error("File Validation Error", errors.join("; "));
+      }
+      if (accepted.length === 0) return;
 
-      addFiles(newFiles);
+      addFiles(
+        accepted.map((file) => ({
+          file,
+          status: "pending" as const,
+          progress: 0,
+        }))
+      );
     },
-    [addFiles]
+    [addFiles, filesWithState, toast]
   );
 
   const handleRemoveFile = useCallback(

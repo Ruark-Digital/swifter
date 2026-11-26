@@ -8,6 +8,7 @@ interface MessageThreadProps {
   sendType: "reply" | "addendum" | null;
   onReply?: (questionId: string, type: "reply" | "addendum") => void;
   solicitationStatus?: string;
+  timezone?: string;
 }
 
 const MessageThread: React.FC<MessageThreadProps> = ({
@@ -15,6 +16,7 @@ const MessageThread: React.FC<MessageThreadProps> = ({
   sendType,
   onReply,
   solicitationStatus,
+  timezone,
 }) => {
   // Convert the question and answer structure to a threaded format
   const buildThreadStructure = (question: Question) => {
@@ -57,6 +59,7 @@ const MessageThread: React.FC<MessageThreadProps> = ({
       showReplyButtons={!hasAnswer && !!onReply}
       depth={0}
       solicitationStatus={solicitationStatus}
+      timezone={timezone}
     />
   );
 };

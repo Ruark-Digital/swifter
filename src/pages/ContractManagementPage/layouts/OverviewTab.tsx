@@ -19,6 +19,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useUser } from "@/store/authSlice";
 import { differenceInDays, parseISO } from "date-fns";
 import { LabelItem } from "../components/LabelItem";
+import { publishedDateOf } from "../components/contractLifecycle";
 
 /**
  * Conditional Rendering Matrix
@@ -890,7 +891,7 @@ const OverviewTab: React.FC<Props> = ({ contract, status }) => {
   const effectiveDate = formatContractDateTime(contract.startDate, timeZone, contract.createdAt, { withZone: true });
   const endDate = formatContractDateTime(contract.endDate, timeZone, contract.createdAt, { withZone: true });
   const publishedDate = formatInTz(
-    contract.datePublished,
+    publishedDateOf(contract.status, contract.datePublished),
     timeZone,
     "dd MMM yyyy",
   );

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { useEvaluationScorecard } from "../hooks/useEvaluationScorecard";
-import { formatDateTZ } from "@/lib/utils";
+import { formatWallClockWithZone } from "@/lib/utils";
 import {
   getEvaluationStatusLabel,
   getEvaluationStatusColorClass,
@@ -122,9 +122,9 @@ const EvaluationScorecardSheet: React.FC<EvaluationScorecardSheetProps> = ({
                       </p>
                       <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                         {activeData.data.evaluator.submission
-                          ? formatDateTZ(
+                          ? formatWallClockWithZone(
                               new Date(activeData.data.evaluator.submission),
-                              "MMMM dd, yyyy",
+                              "MMMM dd, yyyy h:mm a",
                               timezone
                             )
                           : "N/A"}

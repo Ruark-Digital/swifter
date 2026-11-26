@@ -1,5 +1,6 @@
 import { RouteErrorFallback } from "@/components/layouts/Error";
 import { ProtectedRoute } from "./PrivateRoute";
+import { ContractModuleRoute } from "./ContractModuleRoute";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { Dashboard } from "@/layouts/Dashboard";
 import { NotFound } from "@/layouts/NotFound";
@@ -43,6 +44,7 @@ import SubmitProponentPage from "@/pages/SolicitationManagementPage/components/P
 import ProjectManagementPage from "@/pages/ProjectManagementPage";
 import ContractManagementPage from "@/pages/ContractManagementPage";
 import ContractDetailPage from "@/pages/ContractManagementPage/ContractDetailPage";
+import ContractsModuleGate from "@/pages/ContractManagementPage/components/ContractsModuleGate";
 import MsaPage from "@/pages/MsaPage";
 import MsaDetailPage from "@/pages/MsaPage/MsaDetailPage";
 // import Example from "@/pages/Example";
@@ -209,7 +211,11 @@ export const routes = [
         path: "/dashboard/contract-management",
         element: (
           <ProtectedRoute>
-            <ContractManagementPage />
+            <ContractsModuleGate>
+              <ContractModuleRoute>
+                <ContractManagementPage />
+              </ContractModuleRoute>
+            </ContractsModuleGate>
           </ProtectedRoute>
         ),
       },
@@ -217,7 +223,11 @@ export const routes = [
         path: "/dashboard/msa",
         element: (
           <ProtectedRoute>
-            <MsaPage />
+            <ContractsModuleGate>
+              <ContractModuleRoute>
+                <MsaPage />
+              </ContractModuleRoute>
+            </ContractsModuleGate>
           </ProtectedRoute>
         ),
       },
@@ -225,7 +235,11 @@ export const routes = [
         path: "/dashboard/msa/:id",
         element: (
           <ProtectedRoute>
-            <MsaDetailPage />
+            <ContractsModuleGate>
+              <ContractModuleRoute>
+                <MsaDetailPage />
+              </ContractModuleRoute>
+            </ContractsModuleGate>
           </ProtectedRoute>
         ),
       },
@@ -233,7 +247,11 @@ export const routes = [
         path: "/dashboard/contract-management/:id",
         element: (
           <ProtectedRoute>
-            <ContractDetailPage />
+            <ContractsModuleGate>
+              <ContractModuleRoute>
+                <ContractDetailPage />
+              </ContractModuleRoute>
+            </ContractsModuleGate>
           </ProtectedRoute>
         ),
       },

@@ -26,6 +26,8 @@ import { useParams } from "react-router-dom";
 import { DataTable } from "@/components/layouts/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
+import { useIsFutureTime } from "@/hooks/useIsFutureTime";
+import { formatBidTotal, getBidRankLabel } from "./utils/bidComparison";
 import { useMutation } from "@tanstack/react-query";
 import { getRequest } from "@/lib/axiosInstance";
 import EvaluationScorecardSheet from "./components/EvaluationScorecardSheet";
@@ -53,7 +55,7 @@ import {
   getEvaluationStatusLabel,
   getEvaluationStatusColorClass,
 } from "@/lib/evaluationStatusUtils";
-import { formatDateTZ } from "@/lib/utils";
+import { formatWallClockWithZone } from "@/lib/utils";
 import { truncate } from "lodash";
 
 // Component Types
@@ -71,13 +73,12 @@ type Evaluator = {
 type BidComparison = {
   id: string;
   vendorName: string;
-  totalPrice: number;
+  totalPrice: number | null;
+  totalDisplay: string;
   submissionDate: string;
   score: number;
-  rank: number;
-  rankType: "first" | "second" | "third" | "other";
+  rank: string;
   currency: string;
-  companyCurrency: string;
 };
 
 type Document = {
@@ -116,41 +117,24 @@ const EvaluationGroupStatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-// Rank badge component for bid comparison
-const RankBadge = ({
-  rank,
-  rankType,
-}: {
-  rank: number;
-  rankType: BidComparison["rankType"];
-}) => {
-  const getRankColor = (rankType: BidComparison["rankType"]) => {
-    switch (rankType) {
-      case "first":
-        return "bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200";
-      case "second":
-        return "bg-gray-100 text-gray-800 hover:bg-gray-100 border-gray-200";
-      case "third":
-        return "bg-orange-100 text-orange-800 hover:bg-orange-100 border-orange-200";
-      case "other":
+// Rank badge component for bid comparison. The API sends a price-band label.
+const RankBadge = ({ rank }: { rank: string }) => {
+  const getRankColor = (label: string) => {
+    switch (label) {
+      case "Lowest Price":
+        return "bg-green-100 text-green-800 hover:bg-green-100 border-green-200";
+      case "Competitive":
         return "bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200";
+      case "Fair Price":
+        return "bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200";
+      case "Highest Price":
+        return "bg-orange-100 text-orange-800 hover:bg-orange-100 border-orange-200";
       default:
         return "bg-gray-100 text-gray-800 hover:bg-gray-100 border-gray-200";
     }
   };
 
-  const getRankText = (rank: number, rankType: BidComparison["rankType"]) => {
-    if (rankType === "first") return "1st";
-    if (rankType === "second") return "2nd";
-    if (rankType === "third") return "3rd";
-    return `${rank}`;
-  };
-
-  return (
-    <Badge className={`${getRankColor(rankType)} border`}>
-      {getRankText(rank, rankType)}
-    </Badge>
-  );
+  return <Badge className={`${getRankColor(rank)} border`}>{rank}</Badge>;
 };
 
 const EvaluationDetailPage: React.FC = () => {
@@ -174,10 +158,10 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
   const evaluationStartDate = evaluation?.startDate
     ? new Date(evaluation.startDate)
     : undefined;
-  const isEvaluationStartInFuture =
-    !!evaluationStartDate &&
-    !Number.isNaN(evaluationStartDate.getTime()) &&
-    evaluationStartDate.getTime() > Date.now();
+  // Re-renders at the start instant so "Release Group" enables without a reload.
+  const isEvaluationStartInFuture = useIsFutureTime(
+    evaluationStartDate?.getTime()
+  );
   const { data: evaluatorsResponse } = useEvaluationEvaluators(id);
 
   // State for dialog management
@@ -486,28 +470,24 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
     if (!bidComparisonData?.data?.data) return [];
 
     return bidComparisonData.data.data.map(
-      (item: BidComparisonItem, index: number) => ({
+      (item: BidComparisonItem) => ({
         id: item.proposalId,
         vendorName: item.vendorName || "Unknown Vendor",
-        totalPrice: item.total || 0,
+        totalPrice: item.total ?? null,
+        totalDisplay: formatBidTotal(item),
         submissionDate: item.submission
-          ? new Date(item.submission).toLocaleDateString()
+          ? formatWallClockWithZone(
+              item.submission,
+              "MMM d, yyyy h:mm a",
+              evaluation?.timezone
+            )
           : "N/A",
         score: item.score || 0,
-        rank: item.rank || index + 1,
-        rankType:
-          item.rank === 1
-            ? ("first" as const)
-            : item.rank === 2
-            ? ("second" as const)
-            : item.rank === 3
-            ? ("third" as const)
-            : ("other" as const),
-        currency: item.currency || "USD",
-        companyCurrency: item.companyCurrency || item.currency || "USD",
+        rank: getBidRankLabel(item.rank),
+        currency: item.currency || item.companyCurrency || "USD",
       })
     );
-  }, [bidComparisonData]);
+  }, [bidComparisonData, evaluation?.timezone]);
 
   // Loading state
   if (evaluationLoading) {
@@ -701,16 +681,9 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
     {
       accessorKey: "totalPrice",
       header: "Total Price",
-      // Total is converted to the buying company's base currency, so it is
-      // shown with the company currency — not each vendor's proposal currency
-      // (that is surfaced separately in the Proposal Currency column).
+      // Shown in the vendor's proposal currency (matches Proposal Currency).
       cell: ({ row }) => (
-        <span className="font-medium">
-          {row.original.totalPrice.toLocaleString("en-US", {
-            style: "currency",
-            currency: row.original.companyCurrency,
-          })}
-        </span>
+        <span className="font-medium">{row.original.totalDisplay}</span>
       ),
     },
     {
@@ -737,7 +710,7 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
       accessorKey: "rank",
       header: "Rank",
       cell: ({ row }) => (
-        <RankBadge rankType={row.original.rankType} rank={row.original.rank} />
+        <RankBadge rank={row.original.rank} />
       ),
     },
     {
@@ -753,7 +726,7 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
             vendorName={vendorName}
             submissionDate={row.original.submissionDate}
             evaluationScore={row.original.score?.toString()}
-            rank={row.original.rank.toString()}
+            rank={row.original.rank}
           />
         );
       },
@@ -969,13 +942,12 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
                     </h3>
                     <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                       {evaluation?.startDate
-                        ? formatDateTZ(
+                        ? formatWallClockWithZone(
                             evaluation.startDate,
                             "MMMM dd, yyyy hh:mm a",
                             evaluation?.timezone
                           )
-                        : "N/A"}{" "}
-                      {evaluation?.timezone}
+                        : "N/A"}
                     </p>
                   </div>
 
@@ -1045,13 +1017,12 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
                     </h3>
                     <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                       {evaluation?.endDate
-                        ? formatDateTZ(
+                        ? formatWallClockWithZone(
                             evaluation.endDate,
                             "MMMM dd, yyyy hh:mm a",
                             evaluation?.timezone
                           )
-                        : "N/A"}{" "}
-                      {evaluation?.timezone}
+                        : "N/A"}
                     </p>
                   </div>
 
@@ -1138,7 +1109,7 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
                   <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                     {group.groupName}
                   </h3>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {isOwner && (
                       <ConfirmAlert
                         type="delete"
@@ -1177,6 +1148,7 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
                         text={`This action will unseal the proposal documents, the evaluators will be notified to begin review and evaluation of the proposal.`}
                         primaryButtonText="Release"
                         secondaryButtonText="Cancel"
+                        showSecondaryButton
                         isLoading={releaseGroupMutation.isPending}
                         onPrimaryAction={handleReleaseGroup}
                         open={

@@ -52,6 +52,15 @@
   min-height: 0;
   overflow: hidden;
 }
+/* Tablet / small laptop (768-1279px): a 420px sidebar leaves the document pane
+ * too narrow for a full page width (it clipped at 1024px), so narrow the
+ * sidebar until there is room for both. */
+@media (min-width: 768px) and (max-width: 1279px) {
+  .ct-sidebar-panel {
+    min-width: 320px;
+    width: 320px;
+  }
+}
 /* ---- Mobile (< md) -------------------------------------------------------
  * The page toggles between the editor and this panel on small screens (see
  * CollaborationToolPage index.tsx), so the panel fills the width instead of the

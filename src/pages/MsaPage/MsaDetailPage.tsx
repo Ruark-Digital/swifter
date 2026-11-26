@@ -59,6 +59,7 @@ import ContractLifecycleDialog from "@/pages/ContractManagementPage/components/C
 import { resolvePendingPmTakeover } from "@/pages/ContractManagementPage/pmTakeover";
 import {
   availableLifecycleActions,
+  publishedDateOf,
   type LifecycleAction,
 } from "@/pages/ContractManagementPage/components/contractLifecycle";
 import { DateTimeZoneProvider } from "@/hooks/useDateTimeZone";
@@ -447,8 +448,11 @@ const MsaDetailPage: React.FC = () => {
     const raw = (linkedContractsResponse?.data as any)?.data;
     if (!raw) return [];
 
-    const relationshipLabel = (rel?: string) => {
-      if (rel === "msa_project") return "MSA + Project";
+    // `msa_project` is the API's only MSA-linked value (enum: standalone |
+    // project | msa_project), so it alone doesn't mean a project is linked
+    // too: say "+ Project" only when the contract carries a project ref.
+    const relationshipLabel = (rel?: string, project?: unknown) => {
+      if (rel === "msa_project") return project ? "MSA + Project" : "MSA";
       if (rel === "msa") return "MSA";
       if (rel === "project") return "Project";
       if (rel === "standalone") return "Stand-Alone";
@@ -473,9 +477,9 @@ const MsaDetailPage: React.FC = () => {
       id: String(it?._id ?? ""),
       company:
         String(it?.vendor?.name ?? it?.company?.name ?? "-"),
-      relationship: relationshipLabel(it?.contractRelationship),
+      relationship: relationshipLabel(it?.contractRelationship, it?.project),
       value: formatMoney(it?.contractValue, it?.currency),
-      published: it?.datePublished ? formatDate(it.datePublished, it?.timezone) : undefined,
+      published: publishedDateOf(it?.status, it?.datePublished) ? formatDate(it.datePublished, it?.timezone) : undefined,
       endDate: it?.endDate ? formatDateTime(it.endDate, it?.timezone, it?.createdAt, false, "MMMM d, yyyy") : undefined,
       createdAtRaw: it?.createdAt ?? it?.datePublished,
       status: statusLabel(it?.status),
@@ -809,14 +813,14 @@ const MsaDetailPage: React.FC = () => {
             className="bg-[#2A4467] hover:bg-[#2A4467]/90"
             onClick={() => handleApprovalAction("approved")}
           >
-            Approve Contract
+            Approve MSA
           </Button>
           <Button
             variant="outline"
             className="bg-[#F3F4F6] border-[#E5E7EB]"
             onClick={() => handleApprovalAction("rejected")}
           >
-            Reject Contract
+            Reject MSA
           </Button>
         </div>
       )}
@@ -945,7 +949,7 @@ const MsaDetailPage: React.FC = () => {
                   description: msa?.description,
                 }}
                 dates={{
-                  published: formatDate(toISO(msa?.datePublished), msa?.timezone),
+                  published: formatDate(toISO(publishedDateOf(msa?.status, msa?.datePublished)), msa?.timezone),
                   effective: formatDateTime(toISO(msa?.startDate), msa?.timezone, toISO(msa?.createdAt), true),
                   end: formatDateTime(toISO(msa?.endDate), msa?.timezone, toISO(msa?.createdAt), true),
                 }}
@@ -1109,13 +1113,13 @@ const MsaDetailPage: React.FC = () => {
           <DialogHeader>
             <DialogTitle>
               {approvalAction === "approved"
-                ? "Approve Contract"
-                : "Reject Contract"}
+                ? "Approve MSA"
+                : "Reject MSA"}
             </DialogTitle>
             <DialogDescription>
               {approvalAction === "approved"
-                ? "Are you sure you want to approve this contract? This action cannot be undone."
-                : "Please provide a reason for rejecting this contract."}
+                ? "Are you sure you want to approve this MSA? This action cannot be undone."
+                : "Please provide a reason for rejecting this MSA."}
             </DialogDescription>
           </DialogHeader>
 

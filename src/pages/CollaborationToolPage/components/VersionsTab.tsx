@@ -11,7 +11,8 @@ import {
   Check,
   X,
 } from "lucide-react";
-import { cn, formatDateTZ } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { formatZonedTimestamp } from "../collab/zonedTimestamp";
 import type { Version, VersionKind } from "./VersionHistoryModal";
 
 interface VersionsTabProps {
@@ -24,6 +25,8 @@ interface VersionsTabProps {
   activeVersionId?: string | null;
   /** Id of the version currently being restored (shows a pending state). */
   restoringVersionId?: string | null;
+  /** Zone to show times in: the contract's. */
+  timeZone?: string;
 }
 
 const KIND_META: Record<
@@ -72,35 +75,39 @@ const KIND_META: Record<
   },
 };
 
-const startOfDay = (d: Date): number =>
-  new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-
-/** Human day bucket for the sticky section headers. */
-const dayLabel = (iso: string): string => {
-  const then = new Date(iso);
-  const diffDays = Math.round((startOfDay(new Date()) - startOfDay(then)) / 86_400_000);
-  if (diffDays <= 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7) return formatDateTZ(iso, "EEEE"); // Monday, Tuesday…
-  return formatDateTZ(iso, "MMM d, yyyy");
+/** Calendar day (yyyy-MM-dd) of an instant in `tz`, as a UTC day number. */
+const dayNumber = (value: string | Date, tz?: string): number => {
+  const ymd = formatZonedTimestamp(value, tz, { pattern: "yyyy-MM-dd" });
+  return Date.parse(`${ymd}T00:00:00Z`) / 86_400_000;
 };
 
-/** Time within a day — relative for the last hour, clock time otherwise (the
- *  day is already carried by the section header, so no need to repeat it). */
-const timeLabel = (iso: string): string => {
+/** Human day bucket for the sticky section headers, in the contract's zone. */
+const dayLabel = (iso: string, tz?: string): string => {
+  const diffDays = Math.round(dayNumber(new Date(), tz) - dayNumber(iso, tz));
+  if (diffDays <= 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return formatZonedTimestamp(iso, tz, { pattern: "EEEE" }); // Monday, Tuesday…
+  return formatZonedTimestamp(iso, tz, { pattern: "MMM d, yyyy" });
+};
+
+/** Time within a day: always the clock time with the zone named (the day is
+ *  already carried by the section header), plus a relative hint for the last
+ *  hour. */
+const timeLabel = (iso: string, tz?: string): string => {
+  const clock = formatZonedTimestamp(iso, tz, { pattern: "h:mm a zzz" });
   const diff = Date.now() - new Date(iso).getTime();
-  if (diff < 60_000) return "just now";
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  return formatDateTZ(iso, "h:mm a");
+  if (diff < 60_000) return `${clock} · just now`;
+  if (diff < 3_600_000) return `${clock} · ${Math.floor(diff / 60_000)}m ago`;
+  return clock;
 };
 
 type DayGroup = { label: string; items: Version[] };
 
 /** Bucket the already-sorted (newest-first) versions into contiguous day groups. */
-const groupByDay = (versions: Version[]): DayGroup[] => {
+const groupByDay = (versions: Version[], tz?: string): DayGroup[] => {
   const groups: DayGroup[] = [];
   for (const v of versions) {
-    const label = dayLabel(v.timestamp);
+    const label = dayLabel(v.timestamp, tz);
     const last = groups[groups.length - 1];
     if (last && last.label === label) last.items.push(v);
     else groups.push({ label, items: [v] });
@@ -128,8 +135,9 @@ const VersionsTab: React.FC<VersionsTabProps> = ({
   isLoading = false,
   activeVersionId = null,
   restoringVersionId = null,
+  timeZone,
 }) => {
-  const groups = React.useMemo(() => groupByDay(versions), [versions]);
+  const groups = React.useMemo(() => groupByDay(versions, timeZone), [versions, timeZone]);
   // The version the live doc is based on; fall back to the newest snapshot so
   // there's always a clear "you are here" anchor.
   const currentId = activeVersionId ?? versions[0]?.id ?? null;
@@ -286,12 +294,13 @@ const VersionsTab: React.FC<VersionsTabProps> = ({
                                 </div>
                                 <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
                                   <span
-                                    title={formatDateTZ(
+                                    title={formatZonedTimestamp(
                                       version.timestamp,
-                                      "MMM d, yyyy h:mm a",
+                                      timeZone,
+                                      { pattern: "MMM d, yyyy, h:mm:ss a zzz" },
                                     )}
                                   >
-                                    {timeLabel(version.timestamp)}
+                                    {timeLabel(version.timestamp, timeZone)}
                                   </span>
                                   <span className="text-slate-300 dark:text-slate-600">
                                     ·
@@ -315,7 +324,7 @@ const VersionsTab: React.FC<VersionsTabProps> = ({
                                       onRestore(version.id);
                                     }}
                                     className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2 py-1 text-xs font-semibold text-white transition-colors hover:bg-blue-700"
-                                    aria-label={`Confirm restore of ${version.label ?? "version"} from ${timeLabel(version.timestamp)}`}
+                                    aria-label={`Confirm restore of ${version.label ?? "version"} from ${timeLabel(version.timestamp, timeZone)}`}
                                     title="Replace the current document with this snapshot"
                                   >
                                     <Check className="h-3 w-3" />
@@ -334,7 +343,7 @@ const VersionsTab: React.FC<VersionsTabProps> = ({
                                 <button
                                   onClick={() => setConfirmingId(version.id)}
                                   className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 opacity-0 transition-all hover:border-blue-300 hover:text-blue-600 focus-visible:opacity-100 group-hover:opacity-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-blue-500/50 dark:hover:text-blue-300"
-                                  aria-label={`Restore ${version.label ?? "version"} from ${timeLabel(version.timestamp)}`}
+                                  aria-label={`Restore ${version.label ?? "version"} from ${timeLabel(version.timestamp, timeZone)}`}
                                   title="Replace the current document with this snapshot"
                                 >
                                   <RotateCcw className="h-3 w-3" />

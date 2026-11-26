@@ -441,7 +441,7 @@ const UserManagementPage = () => {
         <div className="flex flex-col text-sm">
           <span className="text-gray-700 dark:text-gray-300">
             {row.original.lastActivity
-              ? formatDateTZ(row.original.lastActivity, "MMM dd, yyyy pppp")
+              ? formatDateTZ(row.original.lastActivity, "MMM d, yyyy h:mm a zzz")
               : "Never"}
           </span>
         </div>
@@ -576,7 +576,7 @@ const UserManagementPage = () => {
             Users
           </h1>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0 whitespace-nowrap">
           <CreateUserDialog />
         </div>
       </div>
