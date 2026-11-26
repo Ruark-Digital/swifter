@@ -74,7 +74,6 @@ const ResetPassword = () => {
         navigate("/");
       }
     } catch (error) {
-      console.log(error);
       const err = error as ApiResponseError;
       if (err.response?.status === 400) {
         handler.error("Invalid or expired reset token");

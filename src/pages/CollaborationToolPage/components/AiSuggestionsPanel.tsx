@@ -8,9 +8,11 @@ import {
   TooltipProvider,
 } from "@/components/ui/tooltip";
 import type { RedlineSpan } from "../collab/redlineScan";
+import { formatZonedTimestamp } from "../collab/zonedTimestamp";
 import {
   acceptanceActor,
   countBothAccepted,
+  deriveLocalAddressed,
   deriveProgressCounts,
   effectiveApprovalPhase,
   redlineHolderLabel,
@@ -38,17 +40,8 @@ type Item = {
 };
 
 /** Compact "12 Sep, 3:04pm" for the who/when line; empty when unparseable. */
-const formatAcceptedAt = (iso?: string): string => {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString(undefined, {
-    day: "numeric",
-    month: "short",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-};
+const formatAcceptedAt = (iso?: string, timeZone?: string): string =>
+  formatZonedTimestamp(iso, timeZone, { pattern: "d MMM, h:mm a zzz" });
 
 interface AiSuggestionsPanelProps {
   open: boolean;
@@ -86,18 +79,35 @@ interface AiSuggestionsPanelProps {
   mySide?: RedlineResolvedHolder | null;
   /** Server-side progress counts from GET .../ai/redline-suggestions. */
   progress?: SuggestionProgress;
+  /** AI request in flight while the document's tracked changes are listed. */
+  generating?: boolean;
+  /** Pending cards whose tracked change is not in this document any more. */
+  staleIds?: string[];
+  /** Cards whose approved text could not be applied to this document. */
+  notAppliedIds?: string[];
+  /** Friendly inline message when the AI request failed (the list stays usable). */
+  inlineError?: string;
+  /** The document's own zone for who/when times. */
+  timeZone?: string;
+  /** "MSA" / "contract", for the side label and tooltips. */
+  docType?: string;
 }
 
-const KindPill: React.FC<{ kind: RedlineSpan["kind"] }> = ({ kind }) => (
+const KindPill: React.FC<{ kind: RedlineSpan["kind"]; replacement?: boolean }> = ({
+  kind,
+  replacement,
+}) => (
   <span
     className={cn(
       "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-      kind === "insertion"
-        ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
-        : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+      replacement
+        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+        : kind === "insertion"
+          ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
+          : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
     )}
   >
-    {kind}
+    {replacement ? "replacement" : kind}
   </span>
 );
 
@@ -159,6 +169,12 @@ type SuggestionCardProps = {
   onFocus?: (item: Item) => void;
   isMyTurn: boolean;
   mySide?: RedlineResolvedHolder | null;
+  /** Warning about this card's relation to the document, when it has one. */
+  docNote?: string;
+  /** The document's own zone for who/when times (defaults to the viewer's). */
+  timeZone?: string;
+  /** "MSA" / "contract", for the side label. */
+  docType?: string;
 };
 
 const SuggestionCard: React.FC<SuggestionCardProps> = ({
@@ -169,6 +185,9 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
   onFocus,
   isMyTurn,
   mySide,
+  docNote,
+  timeZone,
+  docType,
 }) => {
   const { suggestion } = item;
   // Dual approval: a redline needs BOTH sides' approval. `phase` is a thin
@@ -194,6 +213,11 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
   const hasReplacement = Boolean(replacementPreview);
 
   const focusable = Boolean(onFocus);
+  // A delete + insert pair (e.g. Senior -> Principal) is ONE replacement card:
+  // Original is the removed text, New is the inserted text.
+  const isReplacement = Boolean(
+    item.redline.deletedText && item.redline.insertedText,
+  );
 
   return (
     <div
@@ -221,7 +245,7 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
       )}
     >
       <div className="mb-2 flex flex-wrap items-center gap-2">
-        <KindPill kind={item.redline.kind} />
+        <KindPill kind={item.redline.kind} replacement={isReplacement} />
         {suggestion && <RiskPill risk={suggestion.riskLevel} />}
         {suggestion?.acceptability && (
           <span
@@ -253,7 +277,9 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
               }
             >
               {phase === "both"
-                ? "Resolved"
+                ? docNote
+                  ? "Approved · not applied"
+                  : "Resolved"
                 : phase === "awaiting-me"
                   ? "Needs your approval"
                   : "Awaiting other side"}
@@ -325,11 +351,27 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
         )}
       </div>
 
+      {docNote && (
+        <div className="mb-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+          {docNote}
+        </div>
+      )}
+
       <div className="mb-2 rounded-md bg-slate-100 px-3 py-2 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-300">
         <div className="font-semibold text-slate-500 dark:text-slate-400">
           Original
         </div>
-        <div className="mt-1 line-clamp-3">{item.redline.text}</div>
+        <div className="mt-1 line-clamp-3">
+          {isReplacement ? item.redline.deletedText : item.redline.text}
+        </div>
+        {isReplacement && (
+          <>
+            <div className="mt-2 font-semibold text-slate-500 dark:text-slate-400">
+              New
+            </div>
+            <div className="mt-1 line-clamp-3">{item.redline.insertedText}</div>
+          </>
+        )}
       </div>
 
       {suggestion ? (
@@ -459,15 +501,25 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
             <div className="mt-3 rounded-md border border-indigo-200 bg-indigo-50 p-2 dark:border-indigo-900 dark:bg-indigo-950/40">
               <div className="text-[11px] text-indigo-800 dark:text-indigo-200">
                 <span className="font-semibold">
-                  {actor ? redlineHolderLabel(actor.holder) : "The other side"}
-                  {actor?.name ? ` (${actor.name})` : ""}
+                  {actor?.name
+                    ? actor.name
+                    : actor
+                      ? redlineHolderLabel(actor.holder, docType)
+                      : "The other side"}
+                  {actor?.name ? ` (${redlineHolderLabel(actor.holder, docType)})` : ""}
                 </span>{" "}
                 approved this recommendation
-                {actor?.at && formatAcceptedAt(actor.at)
-                  ? ` · ${formatAcceptedAt(actor.at)}`
+                {actor?.at && formatAcceptedAt(actor.at, timeZone)
+                  ? ` · ${formatAcceptedAt(actor.at, timeZone)}`
                   : ""}
                 . Approve to apply it to the document, or reject.
               </div>
+              {!isMyTurn && (
+                <div className="mt-1 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                  It is the other side&apos;s turn. You can approve or reject once
+                  they have finished their round.
+                </div>
+              )}
               <div className="mt-2 flex justify-end gap-2">
                 <button
                   type="button"
@@ -562,7 +614,7 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
         </>
       ) : (
         <div className="text-xs italic text-slate-500 dark:text-slate-400">
-          No suggestion returned for this redline.
+          No AI suggestion for this change yet.
         </div>
       )}
     </div>
@@ -585,21 +637,44 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
   isMyTurn = true,
   mySide,
   progress,
+  generating = false,
+  staleIds,
+  notAppliedIds,
+  inlineError,
+  timeZone,
+  docType,
 }) => {
   const [bulkTier, setBulkTier] = useState<AlternativeTier>("medium");
   if (!open) return null;
 
-  const remaining = items.filter((i) => i.state === "pending").length;
+  const stale = new Set(staleIds ?? []);
+  const notApplied = new Set(notAppliedIds ?? []);
+  // To review = pending AND still present in the document; a card whose change
+  // is gone is reported separately instead of inflating the count.
+  const remaining = items.filter(
+    (i) => i.state === "pending" && !stale.has(i.redline.redlineId),
+  ).length;
   // Per-side "addressed" — who has accepted a recommendation, shown for the
   // contract manager (CM) and the vendor PM independently — from the BE
   // progress. "Resolved" is counted from the cards' both-accepted state: the
   // BE total also counts one-sided actions still awaiting the other side
   // (QA #185), so it is only a fallback when there are no cards.
   const counts = deriveProgressCounts(progress);
-  const { cmAddressed, pmAddressed } = counts;
+  // Count only the live cards: the BE progress is cumulative across
+  // regenerations and includes suggestions whose change is gone, so with cards
+  // on screen the counts come from the cards (the same shared state both sides
+  // see). The BE numbers are only the fallback when there are no cards.
+  const liveItems = items.filter((i) => !stale.has(i.redline.redlineId));
+  const local = deriveLocalAddressed(liveItems);
+  const cmAddressed =
+    items.length > 0 ? local.cm : counts.cmAddressed;
+  const pmAddressed =
+    items.length > 0 ? local.pm : counts.pmAddressed;
+  const withoutAi = items.filter((i) => !i.suggestion).length;
+  const noAiYet = items.length > 0 && withoutAi === items.length;
   const resolved =
     items.length > 0
-      ? countBothAccepted(items.map((i) => i.accepted))
+      ? countBothAccepted(liveItems.map((i) => i.accepted))
       : counts.resolved;
   const hasProgress =
     typeof cmAddressed === "number" ||
@@ -638,12 +713,22 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
                       ? "Last request failed"
                       : "Professional rephrases for your redlines"}
             </div>
+            {status === "ready" && stale.size > 0 && (
+              <div className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                {stale.size} no longer in this document
+              </div>
+            )}
+            {status === "ready" && noAiYet && (
+              <div className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                {items.length} tracked change{items.length === 1 ? "" : "s"} in this document
+              </div>
+            )}
             {status === "ready" && hasProgress && (
               <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
                 {typeof cmAddressed === "number" && (
                   <span
                     className="text-amber-600 dark:text-amber-400"
-                    title="Recommendations addressed by the contract manager"
+                    title={`Recommendations addressed by the ${docType ?? "contract"} manager`}
                   >
                     CM addressed: {cmAddressed}
                   </span>
@@ -659,7 +744,7 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
                 {typeof resolved === "number" && (
                   <span
                     className="text-emerald-600 dark:text-emerald-400"
-                    title="Accepted by both the contract manager and the vendor PM"
+                    title={`Accepted by both the ${docType ?? "contract"} manager and the vendor PM`}
                   >
                     {resolved} resolved
                   </span>
@@ -780,6 +865,41 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
           </div>
         )}
 
+        {status === "ready" && generating && (
+          <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+            <RotateCw className="h-4 w-4 animate-spin" />
+            Asking AI for professional rephrases…
+          </div>
+        )}
+
+        {status === "ready" && !generating && inlineError && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+            <div className="font-semibold">AI suggestions unavailable</div>
+            <div className="mt-1 text-xs">{inlineError}</div>
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-2 inline-flex items-center gap-1 rounded-md bg-red-600 px-2 py-1 text-xs font-semibold text-white hover:bg-red-700"
+            >
+              <RotateCw className="h-3 w-3" /> Retry
+            </button>
+          </div>
+        )}
+
+        {status === "ready" && !generating && !inlineError && withoutAi > 0 && (
+          <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-300">
+            AI recommendations are optional. Generate them for the {withoutAi}{" "}
+            change{withoutAi === 1 ? "" : "s"} below.
+            <button
+              type="button"
+              onClick={onRetry}
+              className="ml-2 inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2 py-1 text-xs font-semibold text-white hover:bg-indigo-700"
+            >
+              <Play className="h-3 w-3" /> Generate suggestions
+            </button>
+          </div>
+        )}
+
         {status === "error" && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
             <div className="font-semibold">Suggestion request failed</div>
@@ -853,6 +973,15 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
               onFocus={onFocus}
               isMyTurn={isMyTurn}
               mySide={mySide}
+              timeZone={timeZone}
+              docType={docType}
+              docNote={
+                notApplied.has(item.redline.redlineId)
+                  ? "Approved, but the text could not be applied to this copy of the document."
+                  : stale.has(item.redline.redlineId)
+                    ? "This change is no longer in the document, so it cannot be applied."
+                    : undefined
+              }
             />
           ))}
       </div>

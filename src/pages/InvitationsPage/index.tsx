@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import SolicitationDetailsSheet from "./components/SolicitationDetailsSheet";
 import { DropdownFilters } from "@/components/layouts/SolicitationFilters";
 import { IconMap } from "@/components/layouts/RoleBasedDashboard/components/StatsCard";
-import { formatDateTZ } from "@/lib/utils";
+import { formatWallClockWithZone, zoneLabelAt } from "@/lib/utils";
 
 // API Types based on Swagger documentation
 export interface VendorSolicitation {
@@ -96,17 +96,20 @@ const transformSolicitationToInvitation = (
     solicitationName: solicitation.name,
     solicitationId: solicitation.solId,
     rfp: solicitation.typeId?.name || "RFP",
-    invitedDate: formatDateTZ(
+    invitedDate: formatWallClockWithZone(
       solicitation?.vendor?.invitedAt ?? solicitation.createdAt,
-      "MMM d, yyyy hh:mm a",
+      "MMM d, yyyy h:mm a",
       solicitation?.timezone,
     ),
-    deadline: formatDateTZ(
+    deadline: formatWallClockWithZone(
       solicitation.submissionDeadline as any,
-      "MMM d, yyyy hh:mm a",
+      "MMM d, yyyy h:mm a",
       solicitation?.timezone,
     ),
-    timezone: solicitation?.timezone || "UTC",
+    // Same seasonal label as the deadline (NZDT, not the stored NZST).
+    timezone: solicitation?.timezone
+      ? zoneLabelAt(solicitation.timezone, solicitation.submissionDeadline as any)
+      : "UTC",
     status: mapApiStatusToUIStatus(solicitation.vendor.status),
   };
 };

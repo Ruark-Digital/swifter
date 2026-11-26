@@ -17,7 +17,11 @@ import { ConfirmAlert } from "@/components/layouts/ConfirmAlert";
 import { useToastHandler } from "@/hooks/useToaster";
 // import { useUser } from "@/store/authSlice";
 
-import { formatQuestionDeadline, formatWallClockWithZone } from "@/lib/utils";
+import {
+  formatQuestionDeadline,
+  formatWallClockWithZone,
+  zoneLabelAt,
+} from "@/lib/utils";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { getFileExtension, getFileIcon } from "@/lib/fileUtils.tsx";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
@@ -512,7 +516,12 @@ const SolicitationDetailsSheet: React.FC<SolicitationDetailsSheetProps> = ({
                             Timezone
                           </h3>
                           <p className="text-sm text-gray-900 dark:text-gray-100">
-                            {details?.timezone || "Not specified"}
+                            {details?.timezone
+                              ? zoneLabelAt(
+                                  details.timezone,
+                                  details.submissionDeadline
+                                )
+                              : "Not specified"}
                           </p>
                         </div>
                       </div>

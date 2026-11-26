@@ -37,6 +37,7 @@ export type MsaRow = {
   value?: string;
   owner: string;
   published?: string;
+  createdAt?: string;
   endDate?: string;
   timezone?: string;
   status:
@@ -259,14 +260,20 @@ const columns: ColumnDef<MsaRow>[] = [
     header: "Date",
     cell: ({ row }) => (
       <div className="text-xs text-slate-500 dark:text-slate-400">
-        {row.original.published && (
+        {row.original.published ? (
           <div>
-            Published: {formatInTz(row.original.published, row.original.timezone, "yyyy MMM dd")}
+            Published: {formatInTz(row.original.published, row.original.timezone, "dd MMM yyyy")}
           </div>
+        ) : (
+          row.original.createdAt && (
+            <div>
+              Created: {formatInTz(row.original.createdAt, row.original.timezone, "dd MMM yyyy")}
+            </div>
+          )
         )}
         {row.original.endDate && (
           <div>
-            End Date: {formatContractDateTime(row.original.endDate, row.original.timezone, row.original.published, { pattern: "yyyy MMM dd" })}
+            End Date: {formatContractDateTime(row.original.endDate, row.original.timezone, row.original.published, { pattern: "dd MMM yyyy" })}
           </div>
         )}
       </div>
@@ -406,7 +413,9 @@ const MsaTable: React.FC<MsaTableProps> = ({
   );
 
   const normalizeStatus = React.useCallback((value?: string) => {
-    return (value ?? "").trim().toLowerCase().replace(/\s+/g, "_");
+    const v = (value ?? "").trim().toLowerCase().replace(/\s+/g, "_");
+    // The API counts/filters a published MSA as "active" (stats + list filter).
+    return v === "publish" ? "active" : v;
   }, []);
 
   const filteredRows = React.useMemo(() => {
@@ -437,8 +446,9 @@ const MsaTable: React.FC<MsaTableProps> = ({
     if (dateFilter && dateFilter !== "all" && dateFilter !== "custom") {
       const now = new Date();
       result = result.filter((row) => {
-        if (!row.published) return false;
-        const publishedDate = new Date(row.published);
+        const filterDate = row.published ?? row.createdAt;
+        if (!filterDate) return false;
+        const publishedDate = new Date(filterDate);
 
         if (dateFilter === "today") {
           return isWithinInterval(publishedDate, {

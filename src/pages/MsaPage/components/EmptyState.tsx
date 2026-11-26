@@ -6,9 +6,8 @@ import { useUserRole } from "@/hooks/useUserRole";
 import CreateMSADialog from "../layouts/CreateMSADialog";
 
 const EmptyState: React.FC = () => {
-  const { isManager, isVendor, isProjectManager } = useUserRole();
-  // QA #189 — Vendor and Vendor-PM (project_manager) don't create MSAs.
-  const isVendorSide = isVendor || isProjectManager;
+  // Only Contract Manager and Procurement Lead (`isManager`) can create MSAs.
+  const { isManager } = useUserRole();
 
   return (
     <div
@@ -21,10 +20,13 @@ const EmptyState: React.FC = () => {
         aria-hidden
       />
       <div className="text-center space-y-1">
-        <p className="text-2xl font-semibold text-slate-600 dark:text-slate-300">No MSA Yet</p>
+        <p className="text-2xl font-semibold text-slate-600 dark:text-slate-300">
+          {isManager ? "No MSA Yet" : "No MSAs available"}
+        </p>
         <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md">
-          You don’t have any Master Service Agreements at the moment.
-          {isVendorSide ? null : " Click the button below to create your first MSA."}
+          {isManager
+            ? "You don’t have any Master Service Agreements at the moment. Click the button below to create your first MSA."
+            : "There are no MSAs to show yet."}
         </p>
       </div>
       {isManager ? (

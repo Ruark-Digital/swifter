@@ -13,6 +13,8 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { getRequest } from "@/lib/axiosInstance";
 import { useUser } from "@/store/authSlice";
+import { resolveCurrency } from "@/lib/utils";
+import { publishedDateOf } from "@/pages/ContractManagementPage/components/contractLifecycle";
 import { useToastHandler } from "@/hooks/useToaster";
 import { vendorApi } from "@/pages/ContractManagementPage/api/vendorApi";
 import type { MsaRow } from "./components/MsaTable";
@@ -43,11 +45,13 @@ export interface Contract {
   title: string;
   msaContractId: string;
   contractValue: number;
+  currency?: string;
   startDate?: string;
   endDate?: string;
   timezone?: string;
   status: string;
   createdAt: string;
+  datePublished?: string;
   vendor: Vendor;
   category?: string;
   projectManager?: { name?: string } | string;
@@ -196,8 +200,13 @@ const MsaPage: React.FC = () => {
         typeof it?.vendor === "string"
           ? String(it.vendor || "-")
           : String((it?.vendor as { name?: string })?.name ?? "-"),
+      // Same formatting as the contracts list (CA$ etc., no decimals).
       value: Number.isFinite(it?.contractValue)
-        ? `$${it.contractValue.toLocaleString()}`
+        ? new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: resolveCurrency(it?.currency, user?.currency),
+            maximumFractionDigits: 0,
+          }).format(it.contractValue)
         : undefined,
       // Owner = the MSA creator, matching the detail page (which shows the
       // creator as the contract owner). Fall back to the project manager only
@@ -209,9 +218,14 @@ const MsaPage: React.FC = () => {
       ),
       ownerId: it?.creator?._id ? String(it.creator._id) : undefined,
       isOwner: typeof it?.owner === "boolean" ? it.owner : undefined,
-      published: it?.createdAt || undefined,
+      // Only set once the MSA is actually published (drafts have no
+      // datePublished); createdAt is kept separately for drafts and filters.
+      published: publishedDateOf(it?.status, it?.datePublished),
+      createdAt: it?.createdAt || undefined,
       endDate: it?.endDate || undefined,
-      timezone: it?.timezone || undefined,
+      // The list endpoint omits a per-MSA timezone; fall back to UTC so a
+      // date-only/UTC-midnight end date is not shifted by the browser zone.
+      timezone: it?.timezone || "UTC",
       status: String(it?.status ?? "Draft") as MsaRow["status"],
       category: it?.category,
     }));

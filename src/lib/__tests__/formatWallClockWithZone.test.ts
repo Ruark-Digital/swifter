@@ -11,7 +11,7 @@ describe("formatWallClockWithZone — instant shown in the solicitation zone", (
     // 21:00Z on Sep 24 is 5 PM EDT (UTC-4).
     expect(
       formatWallClockWithZone("2026-09-24T21:00:00.000Z", FMT, "EST")
-    ).toBe("September 24, 2026 05:00 PM EST");
+    ).toBe("September 24, 2026 05:00 PM EDT");
   });
 
   it("converts a winter instant into the zone's standard time", () => {

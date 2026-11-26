@@ -170,7 +170,7 @@ export const ConfirmAlert = (props: ConfirmAlertProps) => {
   const secondaryButtonText =
     props.secondaryButtonText || (props.type === "delete" ? "No" : "Cancel");
   const showSecondaryButton =
-    props.showSecondaryButton !== false &&
+    props.showSecondaryButton ??
     !["success", "error"].includes(props.type || "delete");
 
   const renderDialogContent = (

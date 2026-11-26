@@ -67,8 +67,14 @@ export const schema = yup.object({
   jobTitle: yup.string().optional(),
   msaId: yup.string().optional(),
   description: yup.string().trim().required("MSA description is required"),
-  rating: yup.number().min(1).max(10).required(),
-  businessDivision: yup.string().optional(),
+  rating: yup
+    .number()
+    .typeError("Complexity rating is required")
+    .min(1, "Complexity rating must be between 1 and 10")
+    .max(10, "Complexity rating must be between 1 and 10")
+    .required("Complexity rating is required"),
+  // Required by the API (MsaContractDTO.businessDivision).
+  businessDivision: yup.string().trim().required("Business division is required"),
   vendor: yup.string().optional(),
   personnel: yup.array().optional(),
   internalTeam: yup.array().optional(),
@@ -199,7 +205,7 @@ const defaultValues: CreateMsaFormData = {
 
 // Fields validated before Continue moves past a step (create and edit share it).
 export const MSA_STEP_VALIDATION_FIELDS: Record<number, string[]> = {
-  1: ["name", "type", "currency", "description", "rating"],
+  1: ["name", "type", "currency", "description", "rating", "businessDivision"],
   2: ["projectManager"],
 };
 
@@ -1023,7 +1029,7 @@ const CreateMSADialog: React.FC<Props> = ({
     data: CreateMsaFormData,
     status: "draft" | "publish",
   ) => {
-    if (!data.name || !data.type || !data.rating) {
+    if (!data.name || !data.type || !data.rating || !data.businessDivision) {
       toast.error(
         "Missing required fields",
         "Please complete required fields before submitting.",

@@ -3,7 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Question } from "./QuestionsTab";
 import { useUserRole } from "@/hooks/useUserRole";
-import { formatDateTZ } from "@/lib/utils";
+import { formatDateTZ, formatWallClockWithZone } from "@/lib/utils";
 
 type User = Question["user"];
 
@@ -27,17 +27,18 @@ interface MessageComponentProps {
   depth?: number;
   sendType: "reply" | "addendum" | null;
   solicitationStatus?: string;
+  /** The solicitation's timezone; message times render in it, labelled. */
+  timezone?: string;
 }
 
 // Helper function to format date and time
-const formatDateTime = (dateString: string) => {
-  // Render in the viewer's timezone with a 12-hour clock. The old version
-  // string-split the raw ISO value, so a reply stored as UTC (e.g.
-  // `…T02:58:00.000Z`) showed as "02:58" instead of the local "10:58 PM"
-  // (QA #54). formatDateTZ parses the instant and formats in local time.
+const formatDateTime = (dateString: string, timezone?: string) => {
+  // 12-hour clock in the solicitation's zone, with the zone label (S1-FE-04).
+  // The old version string-split the raw ISO value, so a UTC reply showed as
+  // "02:58" (QA #54); the instant is now converted, not echoed.
   return {
-    date: formatDateTZ(dateString, "MMM dd, yyyy"),
-    time: formatDateTZ(dateString, "h:mm a"),
+    date: formatDateTZ(dateString, "MMM dd, yyyy", timezone),
+    time: formatWallClockWithZone(dateString, "h:mm a", timezone),
   };
 };
 
@@ -63,9 +64,10 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
   depth = 0,
   sendType,
   solicitationStatus,
+  timezone,
 }) => {
   const [isClicked, setIsClicked] = useState<string | null>(null);
-  const { date, time } = formatDateTime(createdAt);
+  const { date, time } = formatDateTime(createdAt, timezone);
   const { isVendor } = useUserRole();
   const maxDepth = 3; // Limit nesting depth
 
@@ -150,6 +152,7 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
               onReply={depth < maxDepth ? onReply : undefined}
               showReplyButtons={depth < maxDepth && !!onReply}
               depth={depth + 1}
+              timezone={timezone}
             />
           ))}
         </div>

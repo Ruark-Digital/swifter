@@ -13,7 +13,12 @@ import { TextInput } from "@/components/layouts/FormInputs/TextInput";
 import { Link, useNavigate } from "react-router-dom";
 import { useSetToken, useSetUser } from "@/store/authSlice";
 import { SEOWrapper } from "@/components/SEO";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import {
+  SESSION_EXPIRED_MESSAGE,
+  clearSessionExpired,
+  isSessionExpiredFlagged,
+} from "@/lib/sessionExpiry";
 import { Eye, EyeOff } from "lucide-react";
 import { getFirstAccessibleRoute } from "@/lib/navigation";
 import { UserRole } from "@/types";
@@ -32,6 +37,9 @@ const Login = () => {
   const toast = useToastHandler();
   const formRef = useRef<FormPropsRef>(null)
   const [showPassword, setShowPassword] = useState(false);
+  // Set by the sign-out on an expired session; shown once, then cleared.
+  const [sessionExpired] = useState(isSessionExpiredFlagged);
+  useEffect(() => clearSessionExpired(), []);
   const navigate = useNavigate();
 
   const setToken = useSetToken();
@@ -70,7 +78,6 @@ const Login = () => {
         navigate(targetRoute);
       }
     } catch (error) {
-      console.log(error);
       const err = error as ApiResponseError;
       toast.error(
         "Login Failed",
@@ -106,6 +113,14 @@ const Login = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {sessionExpired && (
+            <p
+              role="status"
+              className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200"
+            >
+              {SESSION_EXPIRED_MESSAGE}
+            </p>
+          )}
           <div
             onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => {
               if (e.key === 'Enter' && !isPending) {
