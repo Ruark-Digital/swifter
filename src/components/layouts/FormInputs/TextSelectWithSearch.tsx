@@ -144,7 +144,8 @@ export const TextSelectWithSearch = (props: TextSelectWithSearchProps & Partial<
               <CommandGroup>
                 {options.map((option) => (
                   <CommandItem
-                    key={option.value}
+                    // Values can repeat (CST/AST timezones); label keeps keys unique.
+                    key={`${option.value}|${option.label}`}
                     value={option.label}
                     onSelect={() => handleSelect(option.value)}
                     className="dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:bg-gray-700"

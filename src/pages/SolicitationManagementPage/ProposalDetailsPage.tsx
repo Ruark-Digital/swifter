@@ -34,7 +34,6 @@ import { isAfter, parseISO, isValid } from "date-fns";
 import {
   formatCurrency,
   formatDateInZoneAbbrev,
-  formatDateTZ,
   formatWallClockWithZone,
 } from "@/lib/utils";
 import { DocumentViewer } from "@/components/ui/DocumentViewer";
@@ -760,7 +759,11 @@ const ProposalDetailsPage: React.FC = () => {
         return (
           <div className="text-sm text-gray-600 dark:text-gray-300">
             {amendment.createdAt
-              ? formatDateTZ(amendment.createdAt, "MMM d, yyyy h:mm a")
+              ? formatWallClockWithZone(
+                  amendment.createdAt,
+                  "MMM d, yyyy h:mm a",
+                  solicitation?.timezone
+                )
               : "N/A"}
           </div>
         );
@@ -1114,9 +1117,9 @@ const ProposalDetailsPage: React.FC = () => {
                 </label>
                 <p className="text-base text-gray-900 dark:text-white">
                   {proposal?.proposalDetails?.submissiion
-                    ? formatDateTZ(
+                    ? formatWallClockWithZone(
                         proposal.proposalDetails.submissiion,
-                        "MMMM d, yyyy KK:mm a",
+                        "MMMM d, yyyy h:mm a",
                         solicitation?.timezone
                       )
                     : "N/A"}

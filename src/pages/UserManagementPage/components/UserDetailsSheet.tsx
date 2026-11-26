@@ -283,10 +283,10 @@ const UserDetailsSheet: React.FC<UserDetailsSheetProps> = ({
   };
 
   const formatDate = (dateString: string) => {
-    return dateString ? formatDateTZ(dateString, "MMM d, yyyy, pppp") : "N/A";
+    return dateString ? formatDateTZ(dateString, "MMM d, yyyy h:mm a zzz") : "N/A";
   };
 
-  const formatDateTime = (dateString: string) => dateString ? formatDateTZ(dateString, "MMM d, yyyy, pppp") : "N/A";
+  const formatDateTime = (dateString: string) => dateString ? formatDateTZ(dateString, "MMM d, yyyy h:mm a zzz") : "N/A";
   
 
   return (

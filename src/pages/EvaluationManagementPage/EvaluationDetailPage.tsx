@@ -53,7 +53,7 @@ import {
   getEvaluationStatusLabel,
   getEvaluationStatusColorClass,
 } from "@/lib/evaluationStatusUtils";
-import { formatDateTZ } from "@/lib/utils";
+import { formatWallClockWithZone } from "@/lib/utils";
 import { truncate } from "lodash";
 
 // Component Types
@@ -491,7 +491,11 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
         vendorName: item.vendorName || "Unknown Vendor",
         totalPrice: item.total || 0,
         submissionDate: item.submission
-          ? new Date(item.submission).toLocaleDateString()
+          ? formatWallClockWithZone(
+              item.submission,
+              "MMM d, yyyy h:mm a",
+              evaluation?.timezone
+            )
           : "N/A",
         score: item.score || 0,
         rank: item.rank || index + 1,
@@ -507,7 +511,7 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
         companyCurrency: item.companyCurrency || item.currency || "USD",
       })
     );
-  }, [bidComparisonData]);
+  }, [bidComparisonData, evaluation?.timezone]);
 
   // Loading state
   if (evaluationLoading) {
@@ -969,13 +973,12 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
                     </h3>
                     <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                       {evaluation?.startDate
-                        ? formatDateTZ(
+                        ? formatWallClockWithZone(
                             evaluation.startDate,
                             "MMMM dd, yyyy hh:mm a",
                             evaluation?.timezone
                           )
-                        : "N/A"}{" "}
-                      {evaluation?.timezone}
+                        : "N/A"}
                     </p>
                   </div>
 
@@ -1045,13 +1048,12 @@ const EvaluationDetailPageContent: React.FC<{ id: string }> = ({ id }) => {
                     </h3>
                     <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                       {evaluation?.endDate
-                        ? formatDateTZ(
+                        ? formatWallClockWithZone(
                             evaluation.endDate,
                             "MMMM dd, yyyy hh:mm a",
                             evaluation?.timezone
                           )
-                        : "N/A"}{" "}
-                      {evaluation?.timezone}
+                        : "N/A"}
                     </p>
                   </div>
 

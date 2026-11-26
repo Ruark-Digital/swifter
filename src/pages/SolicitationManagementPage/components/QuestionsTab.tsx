@@ -345,6 +345,7 @@ const QuestionsTab: React.FC<QuestionsTabProps> = ({
             sendType={sendType}
             onReply={!question.isAnswered && !(isProcurement && !isOwner) ? handleReplyClick : undefined}
             solicitationStatus={solicitationStatus}
+            timezone={timezone}
           />
         ))}
       </div>
