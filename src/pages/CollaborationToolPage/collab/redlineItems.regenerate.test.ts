@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mergeRegenerated } from "./redlineItems";
+import { mergeRegenerated, planRegenerate } from "./redlineItems";
 import type { RedlineSpan } from "./redlineScan";
 
 // O6: the PM clicks Generate suggestions after case 1 was applied.
@@ -38,6 +38,20 @@ describe("mergeRegenerated (O6)", () => {
     expect(card?.state).toBe("pending");
     expect(card?.accepted).toEqual({ status: "cm" });
     expect(card?.suggestion).toEqual({ redlineId: "case2", tag: "new" });
+  });
+
+  it("keeps an applied card when the document has no tracked changes left (QA run 4)", () => {
+    // N9 case 1 applied -> zero tracked changes -> PM clicks Generate suggestions.
+    const plan = planRegenerate([applied], []);
+    expect(plan).toEqual({ items: [applied], noRedlines: false, askAi: false });
+  });
+
+  it("says No redlines only when there are no cards at all", () => {
+    expect(planRegenerate([], [])).toEqual({ items: [], noRedlines: true, askAi: false });
+  });
+
+  it("asks the AI when tracked changes exist", () => {
+    expect(planRegenerate([applied], live)).toMatchObject({ noRedlines: false, askAi: true });
   });
 
   it("adds a new tracked change as a pending card", () => {

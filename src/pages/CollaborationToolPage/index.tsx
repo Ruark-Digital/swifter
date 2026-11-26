@@ -32,7 +32,12 @@ import {
   useRestoreVersion,
 } from "./collab/useFileVersionsApi";
 import { getRequest } from "@/lib/axiosInstance";
-import { enrichWithLive, mergeRegenerated, stalePendingIds } from "./collab/redlineItems";
+import {
+  enrichWithLive,
+  mergeRegenerated,
+  planRegenerate,
+  stalePendingIds,
+} from "./collab/redlineItems";
 import { buildCommentThreads } from "./collab/commentThreads";
 import { formatZonedTimestamp } from "./collab/zonedTimestamp";
 import { useContractTimezone } from "./collab/useContractTimezone";
@@ -242,6 +247,9 @@ const CollaborationToolPage: React.FC = () => {
   // ("viewing") is forced when they can't act, regardless of this preference.
   const [editorMode, setEditorMode] = useState<EditableMode>("editing");
   const [aiItems, setAiItems] = useState<AiItem[]>([]);
+  // Latest cards for callbacks that must not re-create on every change.
+  const aiItemsRef = useRef(aiItems);
+  aiItemsRef.current = aiItems;
   const [aiHasRun, setAiHasRun] = useState(false);
   const [aiNoRedlines, setAiNoRedlines] = useState(false);
   // Tracked changes currently in the document, independent of the AI. Fed by the
@@ -761,12 +769,11 @@ const CollaborationToolPage: React.FC = () => {
     setAiHasRun(true);
     const redlines = adapter.extractRedlines();
     setDocRedlines(redlines);
-    if (redlines.length === 0) {
-      setAiItems([]);
-      setAiNoRedlines(true);
-      return;
-    }
-    setAiNoRedlines(false);
+    // No tracked changes left (e.g. right after an apply): keep the existing
+    // cards; "No redlines" only when there are none at all.
+    const plan = planRegenerate(aiItemsRef.current, redlines);
+    setAiNoRedlines(plan.noRedlines);
+    if (!plan.askAi) return;
     try {
       const analysis = await aiMutation.mutateAsync(redlines);
       const byId = new Map(analysis.suggestions.map((s) => [s.redlineId, s]));

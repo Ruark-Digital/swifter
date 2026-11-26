@@ -83,6 +83,20 @@ export const mergeRegenerated = <
 };
 
 /**
+ * What "Generate suggestions" should do before calling the AI. With no tracked
+ * changes left (typically right after an apply), there is nothing to ask the
+ * AI about, but the existing cards — applied / resolved ones included — stay.
+ * "No redlines" is only for a panel with no cards at all.
+ */
+export const planRegenerate = <T extends ItemLike>(
+  prev: T[],
+  live: RedlineSpan[],
+): { items: T[]; noRedlines: boolean; askAi: boolean } =>
+  live.length === 0
+    ? { items: prev, noRedlines: prev.length === 0, askAi: false }
+    : { items: prev, noRedlines: false, askAi: true };
+
+/**
  * Ids of still-pending cards whose tracked change is not in this document, i.e.
  * the suggestion no longer applies here (accepted or rejected elsewhere, edited
  * away, or this client's document diverged from the room). Empty until the
