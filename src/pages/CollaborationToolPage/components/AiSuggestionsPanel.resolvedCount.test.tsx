@@ -11,12 +11,13 @@ const item = (id: string, accepted: RedlineAcceptance) => ({
   accepted,
 });
 
-const renderPanel = (items: ReturnType<typeof item>[]) =>
+const renderPanel = (items: ReturnType<typeof item>[], staleIds?: string[]) =>
   render(
     <AiSuggestionsPanel
       open
       status="ready"
       items={items}
+      staleIds={staleIds}
       onApprove={noop}
       onDismiss={noop}
       onUndo={noop}
@@ -36,9 +37,24 @@ describe("AiSuggestionsPanel resolved count (QA #185)", () => {
       item("b", { status: "vendor_accepted", vendorAccepted: true }),
       item("c", { status: "both_accepted", cmAccepted: true, vendorAccepted: true }),
     ]);
-    expect(screen.getByText("CM addressed: 63")).toBeTruthy();
-    expect(screen.getByText("PM addressed: 7")).toBeTruthy();
+    // Counts come from the live cards, never the cumulative BE totals.
+    expect(screen.getByText("CM addressed: 2")).toBeTruthy();
+    expect(screen.getByText("PM addressed: 2")).toBeTruthy();
     expect(screen.getByText("1 resolved")).toBeTruthy();
     expect(screen.queryByText("70 resolved")).toBeNull();
+    expect(screen.queryByText("CM addressed: 63")).toBeNull();
+  });
+
+  it("leaves stale cards (change gone from the document) out of every count", () => {
+    renderPanel(
+      [
+        item("a", { status: "both_accepted", cmAccepted: true, vendorAccepted: true }),
+        item("gone", { status: "both_accepted", cmAccepted: true, vendorAccepted: true }),
+      ],
+      ["gone"],
+    );
+    expect(screen.getByText("CM addressed: 1")).toBeTruthy();
+    expect(screen.getByText("PM addressed: 1")).toBeTruthy();
+    expect(screen.getByText("1 resolved")).toBeTruthy();
   });
 });

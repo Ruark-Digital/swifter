@@ -48,7 +48,18 @@ import {
   toIdStringOrUndefined,
   toPersonnelOrUndefined,
 } from "@/lib/contractFormValues";
-import { toContractDateTimeISO, toZonedStartOfDayISO } from "@/lib/zonedDate";
+import {
+  browserTimeZone,
+  toContractDateTimeISO,
+  toZonedStartOfDayISO,
+} from "@/lib/zonedDate";
+import { defaultContractTimezone } from "../lib/contractTimezone";
+import {
+  isValidContactValue,
+  submitErrorMessage,
+  validateApprovalGroups,
+  validateLaterStep,
+} from "../lib/wizardValidation";
 
 type Props = {
   trigger: React.ReactNode;
@@ -77,6 +88,10 @@ export const schema = yup.object({
   msaContractId: yup.string().optional(),
   msaCategory: yup.string().optional(),
   description: yup.string().required("Description is required"),
+  // IANA name or the app's zone abbreviation; every contract date is read in it.
+  // Optional here because Edit shares this schema (it keeps the contract's own
+  // zone); the create wizard requires it in validateStep.
+  timezone: yup.string().optional(),
   vendor: yup
     .string()
     .optional()
@@ -183,7 +198,12 @@ export const schema = yup.object({
   securityAmount: yup.string().optional(),
   securityDueDate: yup.date().optional(),
   securityExpiryDate: yup.date().optional(),
-  rating: yup.number().min(1).max(10).required(),
+  rating: yup
+    .number()
+    .typeError("Select a complexity rating from 1 to 10")
+    .min(1, "Select a complexity rating from 1 to 10")
+    .max(10, "Select a complexity rating from 1 to 10")
+    .required("Select a complexity rating from 1 to 10"),
   insurancePolicies: yup
     .array(
       yup.object({
@@ -218,6 +238,7 @@ export const defaultValues = {
   projectManager: "",
   jobTitle: "",
   businessDivision: "",
+  timezone: "",
   contractId: "",
   msaContractId: "",
   msaCategory: "",
@@ -378,7 +399,7 @@ type SendForApprovalDialogProps = {
   onSendForApproval: (signatories: string[]) => void;
 };
 
-const SendForApprovalDialog = React.memo(
+export const SendForApprovalDialog = React.memo(
   ({
     control,
     open,
@@ -410,6 +431,20 @@ const SendForApprovalDialog = React.memo(
         })),
       [approvalGroups],
     );
+
+    // The user chooses which group to start with: nothing is pre-selected, and
+    // each time the dialog opens it starts from the "Select Group" placeholder.
+    React.useEffect(() => {
+      if (open) setSelectedApprovalGroup("");
+    }, [open]);
+
+    // Drop a selection whose group was removed while the dialog was open.
+    React.useEffect(() => {
+      if (selectedApprovalGroup === "") return;
+      if (Number(selectedApprovalGroup) >= (approvalGroups?.length ?? 0)) {
+        setSelectedApprovalGroup("");
+      }
+    }, [approvalGroups, selectedApprovalGroup]);
 
     const selectedGroupIndex =
       selectedApprovalGroup === "" ? -1 : Number(selectedApprovalGroup);
@@ -444,6 +479,9 @@ const SendForApprovalDialog = React.memo(
       [],
     );
 
+    const groupHasNoApprovers =
+      selectedApprovalGroup !== "" && selectedApprovers.length === 0;
+
     const allApprovers = React.useMemo(() => {
       const list = (approvalGroups ?? []).flatMap((group) =>
         (group?.approvers ?? []).map((approver, idx) => ({
@@ -474,9 +512,13 @@ const SendForApprovalDialog = React.memo(
           <div className=" space-y-6">
             <div className="flex items-center justify-between">
               <p className="text-xl font-semibold text-slate-900 dark:text-slate-100">
-                Send for Approval
+                Select Signatories
               </p>
             </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              The contract is created on the final step. Choose who should sign
+              it; approval is requested once it is created.
+            </p>
 
             <div className="space-y-3">
               <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
@@ -508,8 +550,18 @@ const SendForApprovalDialog = React.memo(
               </div>
               <div className="divide-y divide-gray-300 dark:divide-slate-700">
                 {selectedApprovers.length === 0 && (
-                  <div className="px-6 py-6 text-sm text-slate-500 dark:text-slate-400">
-                    No approvers added for this group
+                  <div
+                    role={groupHasNoApprovers ? "alert" : undefined}
+                    className={cn(
+                      "px-6 py-6 text-sm",
+                      groupHasNoApprovers
+                        ? "text-red-600 dark:text-red-400"
+                        : "text-slate-500 dark:text-slate-400",
+                    )}
+                  >
+                    {groupHasNoApprovers
+                      ? "This group has no approvers. Choose another group."
+                      : "Select a group to see its approvers"}
                   </div>
                 )}
                 {selectedApprovers.map((approver, index) => {
@@ -579,7 +631,7 @@ const SendForApprovalDialog = React.memo(
               </p>
               <div className="flex flex-wrap gap-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-4 py-4">
                 {assignedApprovers.length === 0 && (
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Search</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">No signatories selected</p>
                 )}
                 {assignedApprovers.map((approver, index) => {
                   const approverId = getApproverKey(approver, index);
@@ -629,6 +681,20 @@ const SendForApprovalDialog = React.memo(
               </Button>
               <Button
                 type="button"
+                disabled={
+                  selectedApprovalGroup === "" ||
+                  groupHasNoApprovers ||
+                  assignedApprovers.length === 0
+                }
+                title={
+                  selectedApprovalGroup === ""
+                    ? "Select a group first"
+                    : groupHasNoApprovers
+                      ? "This group has no approvers. Choose another group."
+                      : assignedApprovers.length === 0
+                        ? "Assign at least one signatory"
+                        : undefined
+                }
                 className="h-12 px-8 rounded-xl bg-[#2A4467] hover:bg-[#1e3252] text-white"
                 onClick={() => {
                   const sigs = assignedApprovers
@@ -645,7 +711,7 @@ const SendForApprovalDialog = React.memo(
                   onSendForApproval(sigs);
                 }}
               >
-                Send for Approval
+                Continue to Review
               </Button>
             </div>
           </div>
@@ -692,6 +758,14 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
   const clearSession = useClearSession();
   const { success, error } = useToastHandler();
   const currentUser = useUser();
+  const currentUserTimezone = defaultContractTimezone(currentUser?.timezone);
+  // Default the contract timezone to the creator's own; they can change it in
+  // step 3. Re-applied whenever the wizard opens with the field empty (reset).
+  React.useEffect(() => {
+    if (open && !getValues("timezone")) {
+      setValue("timezone", currentUserTimezone);
+    }
+  }, [open, currentUserTimezone, getValues, setValue]);
   // These endpoints are manager-only (x-roles: contract_manager, company_admin);
   // vendors/approvers get 403s if the queries run for them (QA-037).
   const { isManager, isCompanyAdmin } = useUserRole();
@@ -844,6 +918,10 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
     }));
   }, [msaQuery.data?.data?.contracts]);
 
+  // The backend's reason the last create / publish failed, shown on the step
+  // above the buttons as well as in a toast (a toast alone is easy to miss).
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
+
   const mutation = useMutation({
     mutationFn: async (payload: any) => {
       const res = await postRequest({
@@ -857,6 +935,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       };
     },
     onSuccess: (res) => {
+      setSubmitError(null);
       success("Contract Created", res.message);
       qc.invalidateQueries({ queryKey: ["contracts-all"] });
       qc.invalidateQueries({ queryKey: ["contracts-me"] });
@@ -870,7 +949,9 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       setOpen(false);
     },
     onError: (e: any) => {
-      error("Failed to create contract", e);
+      const message = submitErrorMessage(e);
+      setSubmitError(message);
+      error("Failed to create contract", message);
     },
   });
 
@@ -893,6 +974,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
     ],
     2: ["manager", "projectManager", "jobTitle", "vendor", "personnel", "internalTeam"],
     3: [
+      "timezone",
       "effectiveDate",
       "endDate",
       "duration",
@@ -952,8 +1034,40 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
           }
         }
       }
+      if (currentStep === 2) {
+        const pm = getValues().projectManager;
+        if (!isValidContactValue(pm)) {
+          setError("projectManager", {
+            type: "validate",
+            message: "Select a vendor contact or enter a valid email address",
+          });
+          return false;
+        }
+      }
+      if (currentStep === 3 && !getValues().timezone) {
+        setError("timezone", {
+          type: "required",
+          message: "Timezone is required",
+        });
+        return false;
+      }
+      if (currentStep >= 4 && currentStep <= 6) {
+        const issues = validateLaterStep(currentStep, getValues());
+        issues.forEach(({ field, message }) =>
+          setError(field as any, { type: "required", message }),
+        );
+        if (issues.length) return false;
+      }
       if (currentStep === 8) {
         const approvalGroups = getValues().approvalGroups ?? [];
+        const issues = validateApprovalGroups(approvalGroups);
+        issues.forEach(({ field, message }) =>
+          setError(field as any, { type: "required", message }),
+        );
+        // No row exists to show a field error under, so say it in a toast.
+        const noGroups = issues.find((i) => i.field === "approvalGroups");
+        if (noGroups) error("Approval Groups", noGroups.message);
+        if (issues.length) return false;
         const seenApprovers = new Set<string>();
         const hasDuplicateApprover = approvalGroups.some((group) =>
           (group.approvers ?? []).some((approver) => {
@@ -1007,7 +1121,8 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
 
   const buildPayload = React.useCallback(
     (data: CreateContractFormData, status: "draft" | "publish") => {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+      // Dates are interpreted in the contract's chosen timezone, never the browser's.
+      const tz = data.timezone || browserTimeZone();
 
       const relationship =
         data.relationship === "msa" || data.relationship === "msa_project"
@@ -1262,6 +1377,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
       status: "draft" | "publish" = "publish",
     ) => {
       const submitAsync = async () => {
+        setSubmitError(null);
         const payload = buildPayload(formData, status) as any;
 
         const baseCurrency = currentUser?.currency;
@@ -1279,10 +1395,10 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
               selectedCurrency,
             );
           } catch (err) {
-            error(
-              "Failed to create contract",
-              err instanceof Error ? err.message : "Unable to fetch currency rate",
-            );
+            const message =
+              err instanceof Error ? err.message : "Unable to fetch currency rate";
+            setSubmitError(message);
+            error("Failed to create contract", message);
             return;
           }
         }
@@ -1355,6 +1471,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
               {step === 1 && (
                 <Step1BasicInfo
                   typeOptions={typeOptions}
+                  typesLoading={typesQuery.isLoading}
                   projectOptions={projectOptions}
                   awardedOptions={awardedOptions}
                   msaOptions={msaOptions}
@@ -1374,6 +1491,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
               {step === 3 && (
                 <Step4Timeline
                   control={control}
+                  defaultTimezone={currentUserTimezone}
                   termTypeOptions={termTypeOptions}
                 />
               )}
@@ -1445,6 +1563,16 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
 
               {step === 9 && <Step8ReviewPublish control={control} />}
 
+              {submitError && (
+                <div
+                  role="alert"
+                  className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
+                >
+                  <p className="font-semibold">The contract was not saved</p>
+                  <p className="mt-0.5">{submitError}</p>
+                </div>
+              )}
+
               {step === 1 ? (
                 <div className="flex w-full gap-4 pt-4">
                   <Button
@@ -1509,6 +1637,7 @@ const CreateContractSheet: React.FC<Props> = ({ trigger }) => {
                       </Button>
                     ) : (
                       <Button
+                        type="button"
                         onClick={() => {
                           const vals = getValues();
                           submit(vals as CreateContractFormData, "publish");

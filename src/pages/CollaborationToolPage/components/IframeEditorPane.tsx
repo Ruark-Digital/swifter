@@ -322,6 +322,21 @@ const IframeEditorPane: React.FC<Props> = ({
           break;
         case "superdoc:redlines":
           redlinesRef.current = msg.payload.redlines;
+          // The ref is invisible to React; tell the host so the Redline tab can
+          // list the document's tracked changes without waiting on the AI.
+          window.dispatchEvent(new CustomEvent("ct-redlines-updated"));
+          break;
+        case "superdoc:collab-lost":
+          // The live connection will not come back; the page explains why.
+          window.dispatchEvent(
+            new CustomEvent("ct-collab-lost", { detail: msg.payload }),
+          );
+          break;
+        case "superdoc:redline-applied":
+          // Whether the swap really changed THIS client's document.
+          window.dispatchEvent(
+            new CustomEvent("ct-redline-applied", { detail: msg.payload }),
+          );
           break;
         case "superdoc:redline-clicked":
           window.dispatchEvent(

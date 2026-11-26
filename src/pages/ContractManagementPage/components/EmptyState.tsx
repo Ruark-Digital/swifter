@@ -40,7 +40,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({ isReadOnly }) => {
         <p className="text-sm text-slate-500 max-w-md">
           {isReadOnly
             ? "There are no contracts to show at the moment."
-            : "You don’t have any active contracts at the moment. Click the button below to create your first one and start receiving proposals."}
+            : "You don’t have any active contracts at the moment. Click the button below to create your first contract."}
         </p>
       </div>
       {!isReadOnly && (

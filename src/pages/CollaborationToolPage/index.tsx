@@ -15,7 +15,6 @@ import {
   type Mentionable,
 } from "./collab/useContractMentionables";
 import {
-  formatCommentTimestamp,
   useAddFileComment,
   useFileComments,
   type FileCommentRich,
@@ -32,12 +31,28 @@ import {
   useDownloadLatestCollab,
   useRestoreVersion,
 } from "./collab/useFileVersionsApi";
+import { getRequest } from "@/lib/axiosInstance";
+import {
+  enrichWithLive,
+  mergeRegenerated,
+  planRegenerate,
+  stalePendingIds,
+} from "./collab/redlineItems";
+import { buildCommentThreads } from "./collab/commentThreads";
+import { formatZonedTimestamp } from "./collab/zonedTimestamp";
+import { useContractTimezone } from "./collab/useContractTimezone";
+import {
+  classifyCollabLoss,
+  COLLAB_LOSS_MESSAGE,
+  type CollabLossKind,
+} from "./collab/collabLoss";
 import {
   useAiRedlineSuggestions,
   usePersistedSuggestions,
   getRedlineResolvedHolder,
   dualApprovalPhase,
   withLocalAcceptance,
+  friendlyAiError,
   mergeAcceptance,
   type AiRedlineSuggestion,
   type PersistedSuggestion,
@@ -116,11 +131,16 @@ const TipTapEditorPane = lazyWithRetry(() => import("./components/TipTapEditorPa
 // deployed at VITE_SUPERDOC_APP_URL).
 const IframeEditorPane = lazyWithRetry(() => import("./components/IframeEditorPane"));
 
-const mapLocalCommentsToFeed = (comments: LocalComment[]): SidebarFeed[] =>
+const mapLocalCommentsToFeed = (
+  comments: LocalComment[],
+  timeZone: string,
+): SidebarFeed[] =>
   comments.map((comment) => ({
     id: comment.id,
     name: comment.author || "Unknown User",
-    timestamp: formatCommentTimestamp(comment.createdAt, comment.wallClock),
+    timestamp: formatZonedTimestamp(comment.createdAt, timeZone, {
+      wallClock: comment.wallClock,
+    }),
     message: comment.content,
     redlineId: comment.redlineId ?? null,
     anchorCommentId: comment.anchorCommentId ?? null,
@@ -227,8 +247,23 @@ const CollaborationToolPage: React.FC = () => {
   // ("viewing") is forced when they can't act, regardless of this preference.
   const [editorMode, setEditorMode] = useState<EditableMode>("editing");
   const [aiItems, setAiItems] = useState<AiItem[]>([]);
+  // Latest cards for callbacks that must not re-create on every change.
+  const aiItemsRef = useRef(aiItems);
+  aiItemsRef.current = aiItems;
   const [aiHasRun, setAiHasRun] = useState(false);
   const [aiNoRedlines, setAiNoRedlines] = useState(false);
+  // Tracked changes currently in the document, independent of the AI. Fed by the
+  // editor's `ct-redlines-updated` event so manual suggestions are listed even
+  // when the AI is unavailable or has not been asked.
+  const [docRedlines, setDocRedlines] = useState<RedlineSpan[]>([]);
+  // True once the editor has reported its tracked changes at least once, so an
+  // empty list means none rather than not reported yet.
+  const [docRedlinesLoaded, setDocRedlinesLoaded] = useState(false);
+  // Cards whose swap could not be applied to this client's document.
+  const [notAppliedIds, setNotAppliedIds] = useState<string[]>([]);
+  // Set when the editor reports its live collaboration connection is gone for
+  // good (expired session, another tab took over, or repeated failures).
+  const [collabLost, setCollabLost] = useState<CollabLossKind | null>(null);
   const [aiProgress, setAiProgress] = useState<SuggestionProgress>({});
 
   // The stored document URL carries the API host baked in at upload time, so on
@@ -281,6 +316,10 @@ const CollaborationToolPage: React.FC = () => {
     setLocalComments(readLocalComments(commentsStorageKey));
   }, [commentsStorageKey]);
 
+  const contractTz = useContractTimezone(contractIdParam, msaContractIdParam);
+  const docType = msaContractIdParam ? "MSA" : "contract";
+  const myAuthorName = user?.name || "Unknown User";
+
   const combinedComments: LocalComment[] = useMemo(() => {
     if (fileId) {
       return (fileCommentsQuery.data ?? []).map((c: FileCommentRich) => ({
@@ -298,10 +337,81 @@ const CollaborationToolPage: React.FC = () => {
     return localComments;
   }, [fileCommentsQuery.data, fileId, localComments]);
 
-  const commentsFeed = useMemo(
-    () => mapLocalCommentsToFeed(combinedComments),
-    [combinedComments],
+  const commentsFeed = useMemo(() => {
+    if (!fileId) return mapLocalCommentsToFeed(combinedComments, contractTz);
+    const stamp = (c: FileCommentRich) =>
+      formatZonedTimestamp(c.createdAt, contractTz, { wallClock: c.wallClock });
+    return buildCommentThreads(fileCommentsQuery.data ?? []).map((t) => ({
+      id: t.root.id,
+      name: t.root.author || "Unknown User",
+      timestamp: stamp(t.root) + (t.root.edited ? " · edited" : ""),
+      timestampTitle: formatZonedTimestamp(t.root.createdAt, contractTz, {
+        wallClock: t.root.wallClock,
+        pattern: "MMM d, yyyy, h:mm:ss a zzz",
+      }),
+      message: t.root.content,
+      redlineId: t.root.redlineId ?? null,
+      anchorCommentId: t.root.anchorCommentId ?? null,
+      resolved: t.resolved,
+      canDelete: t.root.author === myAuthorName,
+      replies: t.replies.map((r) => ({
+        id: r.id,
+        name: r.author || "Unknown User",
+        timestamp: stamp(r) + (r.edited ? " · edited" : ""),
+        message: r.content,
+        canDelete: r.author === myAuthorName,
+      })),
+    }));
+  }, [fileId, fileCommentsQuery.data, combinedComments, contractTz, myAuthorName]);
+
+  // Thread actions on the append-only comment store (see collab/commentThreads).
+  const postThreadComment = useCallback(
+    (extra: Partial<FileCommentRich>, content = "") => {
+      addFileComment.mutate(
+        {
+          id: crypto.randomUUID(),
+          author: myAuthorName,
+          createdAt: new Date().toISOString(),
+          content,
+          ...extra,
+        },
+        {
+          onError: () =>
+            toast({
+              title: "Could not save",
+              description: "Your change to the comment thread was not saved. Try again.",
+              variant: "destructive",
+            }),
+        },
+      );
+    },
+    [addFileComment, myAuthorName, toast],
   );
+  const handleReplyComment = useCallback(
+    (rootId: string, text: string) => postThreadComment({ replyTo: rootId }, text),
+    [postThreadComment],
+  );
+  const handleResolveToggle = useCallback(
+    (rootId: string, resolve: boolean) =>
+      postThreadComment({ action: resolve ? "resolve" : "reopen", target: rootId }),
+    [postThreadComment],
+  );
+  const handleEditComment = useCallback(
+    (commentId: string, text: string) =>
+      postThreadComment({ action: "edit", target: commentId }, text),
+    [postThreadComment],
+  );
+  const handleDeleteComment = useCallback(
+    (commentId: string) => postThreadComment({ action: "delete", target: commentId }),
+    [postThreadComment],
+  );
+
+  // The other side's comments must appear when this tab is opened, not only on
+  // the next poll.
+  useEffect(() => {
+    if (activeTab === "comments" && fileId) void fileCommentsQuery.refetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, fileId]);
 
   useEffect(() => {
     const handleOffline = () => {
@@ -384,7 +494,27 @@ const CollaborationToolPage: React.FC = () => {
         ? superdocDocName(collabMeta.roomId)
         : collabMeta.roomId
       : undefined;
-  const fileVersionsQuery = useFileVersions(docName);
+  // The versions API returns only the updater's User id; resolve it against
+  // the contract's people (by personnel id and by User id) and the signed-in
+  // user, so history shows who made each snapshot.
+  const authorNames = useMemo(() => {
+    const names: Record<string, string> = {};
+    for (const m of mentionables) {
+      const label = m.name || m.email || "";
+      if (!label) continue;
+      names[m.id] = label;
+      if (m.userId) names[m.userId] = label;
+      if (m.email) names[m.email] = label;
+    }
+    const me = user as { _id?: string; name?: string; email?: string } | null;
+    const myLabel = me?.name || me?.email;
+    if (myLabel) {
+      if (me?._id) names[me._id] = myLabel;
+      if (me?.email) names[me.email] = myLabel;
+    }
+    return names;
+  }, [mentionables, user]);
+  const fileVersionsQuery = useFileVersions(docName, authorNames);
   const downloadLatestMutation = useDownloadLatestCollab();
   const restoreVersionMutation = useRestoreVersion();
   // Id of the BE version currently being restored (drives the row's pending
@@ -568,9 +698,13 @@ const CollaborationToolPage: React.FC = () => {
           { restorePath: version.restorePath, docName },
           {
             onSuccess: () => {
+              // The server restore writes a new active version but does not reset
+              // the live collaboration room, which keeps serving its current
+              // content while anyone is connected. Say so instead of promising a
+              // reload will show it.
               toastHandler.success(
-                "Version restored",
-                "This version is now the active document. Reload to view it in the editor.",
+                "Version restored on the server",
+                "It is saved as the new active version. The open editor keeps the current content until every collaborator closes the document; it then loads the restored version.",
               );
             },
             onError: (err) => {
@@ -609,27 +743,47 @@ const CollaborationToolPage: React.FC = () => {
     [versions, docName, restoreVersionMutation, getVersionSnapshot, toastHandler],
   );
 
+  useEffect(() => {
+    const sync = () => {
+      const next = editorAdapterRef.current?.extractRedlines() ?? [];
+      setDocRedlinesLoaded(true);
+      setDocRedlines((prev) =>
+        JSON.stringify(prev) === JSON.stringify(next) ? prev : next,
+      );
+    };
+    sync();
+    window.addEventListener("ct-redlines-updated", sync);
+    return () => window.removeEventListener("ct-redlines-updated", sync);
+  }, [editorReady]);
+
+  // Cards rehydrated from the persisted list may predate the editor's report:
+  // fill in the real kind / replacement parts once it arrives.
+  useEffect(() => {
+    setAiItems((prev) => enrichWithLive(prev, docRedlines));
+  }, [docRedlines]);
+
   // ── AI redline suggestion handlers ──────────────────────────────────
   const runAiSuggestions = useCallback(async () => {
     const adapter = editorAdapterRef.current;
     if (!adapter) return;
     setAiHasRun(true);
     const redlines = adapter.extractRedlines();
-    if (redlines.length === 0) {
-      setAiItems([]);
-      setAiNoRedlines(true);
-      return;
+    setDocRedlines(redlines);
+    // No tracked changes left (e.g. right after an apply): keep the existing
+    // cards; "No redlines" only when there are none at all.
+    const plan = planRegenerate(aiItemsRef.current, redlines);
+    setAiNoRedlines(plan.noRedlines);
+    if (!plan.askAi) return;
+    try {
+      const analysis = await aiMutation.mutateAsync(redlines);
+      const byId = new Map(analysis.suggestions.map((s) => [s.redlineId, s]));
+      // Merge, do not replace: keep approvals and applied cards (O6).
+      setAiItems((prev) => mergeRegenerated(prev, redlines, byId) as AiItem[]);
+    } catch {
+      // The failure surfaces inline via aiMutation.isError (with Retry); the
+      // tracked changes stay listed. Swallow so it is not an unhandled rejection.
+      setAiHasRun(false);
     }
-    setAiNoRedlines(false);
-    const analysis = await aiMutation.mutateAsync(redlines);
-    const byId = new Map(analysis.suggestions.map((s) => [s.redlineId, s]));
-    setAiItems(
-      redlines.map((r) => ({
-        redline: r,
-        suggestion: byId.get(r.redlineId),
-        state: "pending" as const,
-      })),
-    );
   }, [aiMutation]);
 
   // QA #232/#237: load persisted suggestions from GET before generating new
@@ -648,17 +802,20 @@ const CollaborationToolPage: React.FC = () => {
       // (keyed by redlineId) instead of labelling every suggestion an
       // insertion. Falls back to "insertion" only when the redline mark is
       // no longer present in the document.
-      const kindById = new Map(
+      const liveById = new Map(
         (editorAdapterRef.current?.extractRedlines() ?? []).map(
-          (r) => [r.redlineId, r.kind] as const,
+          (r) => [r.redlineId, r] as const,
         ),
       );
       setAiItems(
         persisted.suggestions.map((s) => ({
           redline: {
             redlineId: s.redlineId,
-            kind: kindById.get(s.redlineId) ?? ("insertion" as const),
+            kind: liveById.get(s.redlineId)?.kind ?? ("insertion" as const),
             text: s.sourceText ?? "",
+            // A replacement keeps its removed/inserted parts for Original / New.
+            deletedText: liveById.get(s.redlineId)?.deletedText,
+            insertedText: liveById.get(s.redlineId)?.insertedText,
           },
           suggestion: s,
           state: resolutionToState(s.resolution?.action),
@@ -671,14 +828,10 @@ const CollaborationToolPage: React.FC = () => {
       return;
     }
 
-    // Nothing persisted yet. Only the side whose turn it is generates (POST) —
-    // the waiting side (and observers) load whatever the other side has already
-    // generated above and view it read-only, rather than being shown an empty
-    // "Generate suggestions" prompt.
-    if (redlineTurn.canAct) {
-      void runAiSuggestions();
-    }
-  }, [activeTab, aiHasRun, runAiSuggestions, redlineTurn.canAct, persistedQuery.isLoading, persistedQuery.data]);
+    // Nothing persisted yet. The AI call is on demand ("Generate suggestions"),
+    // not fired on tab open: the document's own tracked changes are listed
+    // without it, and a failing AI service must not be hit on every visit.
+  }, [activeTab, aiHasRun, persistedQuery.isLoading, persistedQuery.data]);
 
   // Keep the header progress counts (CM/PM addressed, resolved) live. The
   // rehydrate above seeds them once; this syncs them on every subsequent
@@ -708,6 +861,31 @@ const CollaborationToolPage: React.FC = () => {
     const byId = new Map(persisted.map((s) => [s.redlineId, s] as const));
     setAiItems((prev) => {
       let changed = false;
+      // The persisted list is the shared source of truth: a suggestion another
+      // session generated after this client loaded must appear here too, or the
+      // two sessions list (and count) different cards.
+      const known = new Set(prev.map((p) => p.redline.redlineId));
+      const live = new Map(
+        (editorAdapterRef.current?.extractRedlines() ?? []).map(
+          (r) => [r.redlineId, r] as const,
+        ),
+      );
+      const added: AiItem[] = persisted
+        .filter((s) => !known.has(s.redlineId))
+        .map((s) => ({
+          redline: {
+            redlineId: s.redlineId,
+            kind: live.get(s.redlineId)?.kind ?? ("insertion" as const),
+            text: s.sourceText ?? "",
+            deletedText: live.get(s.redlineId)?.deletedText,
+            insertedText: live.get(s.redlineId)?.insertedText,
+          },
+          suggestion: s,
+          state: resolutionToState(s.resolution?.action),
+          resolvedByHolder: getRedlineResolvedHolder(s.resolution),
+          accepted: s.accepted,
+        }));
+      if (added.length > 0) changed = true;
       const next = prev.map((p) => {
         const s = byId.get(p.redline.redlineId);
         if (!s) return p;
@@ -740,9 +918,38 @@ const CollaborationToolPage: React.FC = () => {
           accepted: mergedAccepted,
         };
       });
-      return changed ? next : prev;
+      return changed ? [...next, ...added] : prev;
     });
   }, [persistedQuery.data, aiHasRun]);
+
+  // The swap reports whether it really changed this client's document. A card
+  // can read Resolved (shared backend state) while the text here is untouched,
+  // so never let that pass silently.
+  useEffect(() => {
+    const onApplied = (e: Event) => {
+      const d = (
+        e as CustomEvent<{ redlineId: string; ok: boolean; reason?: string }>
+      ).detail;
+      if (!d) return;
+      if (d.ok) {
+        setNotAppliedIds((prev) => prev.filter((id) => id !== d.redlineId));
+        return;
+      }
+      setNotAppliedIds((prev) =>
+        prev.includes(d.redlineId) ? prev : [...prev, d.redlineId],
+      );
+      toastHandler.error(
+        "Redline",
+        d.reason === "not-found" || d.reason === "no-target"
+          ? "That change is no longer in your copy of the document, so the approved text could not be applied here."
+          : d.reason === "no-text"
+            ? "The editor could not read what this replacement changed, so the approved text was not applied. Apply it by hand."
+            : "The approved text could not be applied to the document.",
+      );
+    };
+    window.addEventListener("ct-redline-applied", onApplied);
+    return () => window.removeEventListener("ct-redline-applied", onApplied);
+  }, [toastHandler]);
 
   // Push the current edit permission into the SuperDoc iframe. When the viewer
   // can act, honour their Suggesting/Editing choice; otherwise force read-only
@@ -753,8 +960,29 @@ const CollaborationToolPage: React.FC = () => {
     const adapter = editorAdapterRef.current;
     if (!adapter?.setMode) return;
     if (!redlineTurn.turnGateReady) return;
-    adapter.setMode(redlineTurn.canAct ? editorMode : "viewing");
-  }, [editorReady, redlineTurn.turnGateReady, redlineTurn.canAct, editorMode]);
+    // Read-only once live collaboration is lost: edits would no longer be saved
+    // or shared, and silently losing them is worse than blocking them.
+    adapter.setMode(redlineTurn.canAct && !collabLost ? editorMode : "viewing");
+  }, [editorReady, redlineTurn.turnGateReady, redlineTurn.canAct, editorMode, collabLost]);
+
+  useEffect(() => {
+    const onLost = async (e: Event) => {
+      const d = (e as CustomEvent<{ reason: string }>).detail;
+      let status: number | undefined;
+      try {
+        // A 401 here also trips the axios interceptor (setReset), which signs
+        // the user out so the app redirects to login like any other request.
+        await getRequest({ url: "/users/me" });
+      } catch (err) {
+        status = (err as { response?: { status?: number } })?.response?.status;
+      }
+      const kind = classifyCollabLoss(d?.reason ?? "", status);
+      setCollabLost(kind);
+      toastHandler.error("Editor", COLLAB_LOSS_MESSAGE[kind]);
+    };
+    window.addEventListener("ct-collab-lost", onLost);
+    return () => window.removeEventListener("ct-collab-lost", onLost);
+  }, [toastHandler]);
 
   // Apply accepted recommendations to the document, client-side.
   //
@@ -816,7 +1044,7 @@ const CollaborationToolPage: React.FC = () => {
           "Redline",
           redlineTurn.isParticipant
             ? "It's not your turn — wait for the other side to hand the document back."
-            : "Only the contract manager and vendor can modify redlines.",
+            : `Only the ${docType} manager and vendor can modify redlines.`,
         );
         return;
       }
@@ -954,6 +1182,8 @@ const CollaborationToolPage: React.FC = () => {
                   : p,
               ),
             );
+            // Refresh progress so the header counters drop back immediately.
+            persistedQuery.refetch();
             toastHandler.success("Redline", "Resolution undone.");
           },
           onError: (error) => {
@@ -967,7 +1197,13 @@ const CollaborationToolPage: React.FC = () => {
         },
       );
     },
-    [docName, fileVersionsQuery.data?.activeVersionId, redlineTurn, toastHandler],
+    [
+      docName,
+      fileVersionsQuery.data?.activeVersionId,
+      redlineTurn,
+      toastHandler,
+      persistedQuery,
+    ],
   );
 
   // Bulk "resolve all pending": apply one action/tier to every pending
@@ -982,7 +1218,7 @@ const CollaborationToolPage: React.FC = () => {
           "Redline",
           redlineTurn.isParticipant
             ? "It's not your turn — wait for the other side to hand the document back."
-            : "Only the contract manager and vendor can modify redlines.",
+            : `Only the ${docType} manager and vendor can modify redlines.`,
         );
         return;
       }
@@ -1104,16 +1340,37 @@ const CollaborationToolPage: React.FC = () => {
     );
   }, []);
 
+  // AI cards plus any tracked change in the document the AI has not covered
+  // (manual suggestions), so the list never depends on the AI being available.
+  const panelItems = useMemo<AiItem[]>(() => {
+    const known = new Set(aiItems.map((i) => i.redline.redlineId));
+    const extra = docRedlines
+      .filter((r) => !known.has(r.redlineId))
+      .map((r) => ({ redline: r, state: "pending" as const }));
+    return extra.length > 0 ? [...aiItems, ...extra] : aiItems;
+  }, [aiItems, docRedlines]);
+
+  const staleIds = useMemo(
+    () => stalePendingIds(panelItems, docRedlines, docRedlinesLoaded),
+    [panelItems, docRedlines, docRedlinesLoaded],
+  );
+
   const aiStatus: "idle" | "loading" | "ready" | "error" | "empty" =
-    aiMutation.isPending || (persistedQuery.isLoading && activeTab === "redline")
+    persistedQuery.isLoading && activeTab === "redline" && panelItems.length === 0
       ? "loading"
-      : aiMutation.isError
-        ? "error"
-        : aiNoRedlines
-          ? "empty"
-          : aiItems.length > 0 || aiMutation.isSuccess
-            ? "ready"
-            : "idle";
+      : panelItems.length > 0
+        ? "ready"
+        : aiMutation.isPending
+          ? "loading"
+          : aiMutation.isError
+            ? "error"
+            : aiNoRedlines || (aiHasRun && docRedlines.length === 0)
+              ? "empty"
+              : aiMutation.isSuccess
+                ? "ready"
+                : docRedlines.length === 0 && editorReady
+                  ? "empty"
+                  : "idle";
 
   // When fileId is supplied we can persist to the backend; otherwise we
   // require contractId (which gates the localStorage scope).
@@ -1229,11 +1486,11 @@ const CollaborationToolPage: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            aria-label="Close editor and return to contract"
+            aria-label={`Close editor and return to ${docType}`}
             className="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
           >
             <ArrowLeft className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">Back to contract</span>
+            <span className="hidden sm:inline">Back to {docType}</span>
           </button>
           <div className="h-5 w-px bg-slate-200 dark:bg-slate-800" />
           <h1 className="truncate text-sm font-semibold text-slate-900 dark:text-white">
@@ -1251,7 +1508,7 @@ const CollaborationToolPage: React.FC = () => {
             {/* Redline turn controls — compact, tooltip-driven, shown in the
                 header while reviewing redlines so the negotiation status/actions
                 stay visible without a full-width in-panel banner. */}
-            {activeTab === "redline" && (
+            {(activeTab === "redline" || redlineTurn.isParticipant) && (
               <>
                 <TurnControls
                   mySide={redlineTurn.mySide}
@@ -1350,6 +1607,27 @@ const CollaborationToolPage: React.FC = () => {
             Activity
           </button>
         </div>
+        {collabLost && (
+          <div
+            role="alert"
+            data-testid="collab-lost-banner"
+            className="flex shrink-0 flex-wrap items-center gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+          >
+            <span className="font-medium">{COLLAB_LOSS_MESSAGE[collabLost]}</span>
+            <span className="text-xs opacity-80">The document is read-only until then.</span>
+            <button
+              type="button"
+              onClick={() =>
+                collabLost === "session-expired"
+                  ? navigate("/")
+                  : window.location.reload()
+              }
+              className="ml-auto rounded-md bg-amber-600 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-700"
+            >
+              {collabLost === "session-expired" ? "Sign in" : "Reload"}
+            </button>
+          </div>
+        )}
         <div className="flex min-h-0 flex-1">
           <div
             className={cn(
@@ -1414,6 +1692,12 @@ const CollaborationToolPage: React.FC = () => {
           isSubmittingComment={addFileComment.isPending}
           anchorExcerpt={pendingAnchor?.excerpt ?? null}
           onDismissAnchor={() => setPendingAnchor(null)}
+          onCommentReply={fileId ? handleReplyComment : undefined}
+          onCommentResolveToggle={fileId ? handleResolveToggle : undefined}
+          onCommentDelete={fileId ? handleDeleteComment : undefined}
+          onCommentEdit={fileId ? handleEditComment : undefined}
+          timeZone={contractTz}
+          docType={docType}
           useFallbackFeed={false}
           mentionables={mentionables}
           versions={versions}
@@ -1422,9 +1706,13 @@ const CollaborationToolPage: React.FC = () => {
           activeVersionId={fileVersionsQuery.data?.activeVersionId ?? null}
           restoringVersionId={restoringVersionId}
           aiStatus={aiStatus}
-          aiItems={aiItems}
+          aiItems={panelItems}
+          aiStaleIds={staleIds}
+          aiNotAppliedIds={notAppliedIds}
           aiProgress={aiProgress}
-          aiErrorMessage={(aiMutation.error as Error | undefined)?.message}
+          aiErrorMessage={friendlyAiError(aiMutation.error)}
+          aiInlineError={friendlyAiError(aiMutation.error)}
+          aiGenerating={aiMutation.isPending}
           onAiApprove={handleApproveAi}
           onAiDismiss={handleDismissAi}
           onAiUndo={handleUndoAi}

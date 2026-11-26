@@ -7,6 +7,9 @@ export type Mentionable = {
   name: string;
   email?: string;
   role?: string;
+  /** The person's User id when `id` is a personnel/membership record id. The
+   *  versions API identifies its updater by User id. */
+  userId?: string;
 };
 
 type RawRole = string | { name?: string; _id?: string } | undefined | null;
@@ -37,6 +40,7 @@ const toMentionable = (m: RawMember): Mentionable | null => {
     name,
     email: m.email || m.user?.email,
     role: coerceRole(m.role),
+    ...(m.user?._id ? { userId: m.user._id } : {}),
   };
 };
 

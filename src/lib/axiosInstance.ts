@@ -1,6 +1,7 @@
 import axios, { AxiosError, AxiosRequestConfig } from "axios";
 import { storeFunctions } from "@/store/authSlice";
 import { config } from "@/config";
+import { markSessionExpired } from "@/lib/sessionExpiry";
 
 // Create a singleton axios instance
 const axiosInstance = axios.create({
@@ -32,7 +33,9 @@ axiosInstance.interceptors.response.use(
   async (error: AxiosError) => {
     const isUnauthorized = error.response && error.response.status === 401;
     if (isUnauthorized) {
-      const { setReset } = storeFunctions.getState();
+      const { setReset, token } = storeFunctions.getState();
+      // Only a signed-in user's 401 is an expired session (not a failed login).
+      if (token) markSessionExpired();
       // Redirect out to Login screen
       setReset();
     }
