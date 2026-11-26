@@ -220,7 +220,9 @@ export const routes = [
         path: "/dashboard/msa",
         element: (
           <ProtectedRoute>
-            <MsaPage />
+            <ContractsModuleGate>
+              <MsaPage />
+            </ContractsModuleGate>
           </ProtectedRoute>
         ),
       },
@@ -228,7 +230,9 @@ export const routes = [
         path: "/dashboard/msa/:id",
         element: (
           <ProtectedRoute>
-            <MsaDetailPage />
+            <ContractsModuleGate>
+              <MsaDetailPage />
+            </ContractsModuleGate>
           </ProtectedRoute>
         ),
       },
