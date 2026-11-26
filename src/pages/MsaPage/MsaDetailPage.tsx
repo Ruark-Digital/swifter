@@ -448,8 +448,11 @@ const MsaDetailPage: React.FC = () => {
     const raw = (linkedContractsResponse?.data as any)?.data;
     if (!raw) return [];
 
-    const relationshipLabel = (rel?: string) => {
-      if (rel === "msa_project") return "MSA + Project";
+    // `msa_project` is the API's only MSA-linked value (enum: standalone |
+    // project | msa_project), so it alone doesn't mean a project is linked
+    // too: say "+ Project" only when the contract carries a project ref.
+    const relationshipLabel = (rel?: string, project?: unknown) => {
+      if (rel === "msa_project") return project ? "MSA + Project" : "MSA";
       if (rel === "msa") return "MSA";
       if (rel === "project") return "Project";
       if (rel === "standalone") return "Stand-Alone";
@@ -474,7 +477,7 @@ const MsaDetailPage: React.FC = () => {
       id: String(it?._id ?? ""),
       company:
         String(it?.vendor?.name ?? it?.company?.name ?? "-"),
-      relationship: relationshipLabel(it?.contractRelationship),
+      relationship: relationshipLabel(it?.contractRelationship, it?.project),
       value: formatMoney(it?.contractValue, it?.currency),
       published: publishedDateOf(it?.status, it?.datePublished) ? formatDate(it.datePublished, it?.timezone) : undefined,
       endDate: it?.endDate ? formatDateTime(it.endDate, it?.timezone, it?.createdAt, false, "MMMM d, yyyy") : undefined,

@@ -2416,7 +2416,8 @@ export class DashboardDataTransformer {
           ? formatDateInZoneAbbrev(
               update.createdAt,
               "MMM d, yyyy h:mm a",
-              update.timezone || update?.solicitation?.timezone
+              // Entity zone first (product rule): the solicitation, then the actor.
+              update?.solicitation?.timezone || update.timezone
             )
           : undefined,
       };
@@ -2459,7 +2460,8 @@ export class DashboardDataTransformer {
               // only if the action-level fields are absent.
               action?.createdAt ?? solicitation?.createdAt,
               "MMM d, yyyy h:mm a",
-              action?.timezone ?? solicitation?.timezone
+              // Entity zone first (product rule); actor zone only as a fallback.
+              solicitation?.timezone ?? action?.timezone
             )
           : null,
       status: action.status || "active",
@@ -2549,11 +2551,9 @@ export class DashboardDataTransformer {
           ? formatDateInZoneAbbrev(
               update.createdAt,
               "MMM d, yyyy h:mm a",
-              // #194: render in the actor's zone. The item-level `timezone` is
-              // the actor's zone (correct — same field My Actions uses); the
-              // nested solicitation carries its own zone (e.g. "EST"), so only
-              // fall back to it when the item omits one.
-              update?.timezone ?? update?.solicitation?.timezone
+              // Entity zone first (product rule, supersedes #194): the
+              // solicitation's / evaluation's own zone, then the actor's.
+              sol?.timezone ?? evaluation?.timezone ?? update?.timezone
             )
           : undefined,
         status: update?.status || "active",
@@ -2773,11 +2773,10 @@ export class DashboardDataTransformer {
             ? formatDateInZoneAbbrev(
                 update.updatedAt || update.date || update.createdAt,
                 "MMM d, yyyy h:mm a",
-                // #194: prefer the actor's item-level zone over the
-                // solicitation's own zone (see transformProcurementGeneralUpdates).
-                update?.timezone ?? update.solicitation?.timezone
+                // Entity zone first (see transformProcurementGeneralUpdates).
+                sol?.timezone ?? evaluation?.timezone ?? update?.timezone
               )
-            : formatDateTZ(new Date(), "MMM d, yyyy h:mm a 'GMT'xxx", (update?.timezone ?? update.solicitation?.timezone) || ""),
+            : formatDateTZ(new Date(), "MMM d, yyyy h:mm a 'GMT'xxx", (sol?.timezone ?? evaluation?.timezone ?? update?.timezone) || ""),
         status: update?.status || "active",
       };
     });
