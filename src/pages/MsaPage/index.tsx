@@ -14,6 +14,7 @@ import { useUserQueryKey } from "@/hooks/useUserQueryKey";
 import { getRequest } from "@/lib/axiosInstance";
 import { useUser } from "@/store/authSlice";
 import { resolveCurrency } from "@/lib/utils";
+import { publishedDateOf } from "@/pages/ContractManagementPage/components/contractLifecycle";
 import { useToastHandler } from "@/hooks/useToaster";
 import { vendorApi } from "@/pages/ContractManagementPage/api/vendorApi";
 import type { MsaRow } from "./components/MsaTable";
@@ -219,7 +220,7 @@ const MsaPage: React.FC = () => {
       isOwner: typeof it?.owner === "boolean" ? it.owner : undefined,
       // Only set once the MSA is actually published (drafts have no
       // datePublished); createdAt is kept separately for drafts and filters.
-      published: it?.datePublished || undefined,
+      published: publishedDateOf(it?.status, it?.datePublished),
       createdAt: it?.createdAt || undefined,
       endDate: it?.endDate || undefined,
       // The list endpoint omits a per-MSA timezone; fall back to UTC so a

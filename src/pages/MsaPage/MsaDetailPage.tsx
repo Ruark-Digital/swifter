@@ -59,6 +59,7 @@ import ContractLifecycleDialog from "@/pages/ContractManagementPage/components/C
 import { resolvePendingPmTakeover } from "@/pages/ContractManagementPage/pmTakeover";
 import {
   availableLifecycleActions,
+  publishedDateOf,
   type LifecycleAction,
 } from "@/pages/ContractManagementPage/components/contractLifecycle";
 import { DateTimeZoneProvider } from "@/hooks/useDateTimeZone";
@@ -475,7 +476,7 @@ const MsaDetailPage: React.FC = () => {
         String(it?.vendor?.name ?? it?.company?.name ?? "-"),
       relationship: relationshipLabel(it?.contractRelationship),
       value: formatMoney(it?.contractValue, it?.currency),
-      published: it?.datePublished ? formatDate(it.datePublished, it?.timezone) : undefined,
+      published: publishedDateOf(it?.status, it?.datePublished) ? formatDate(it.datePublished, it?.timezone) : undefined,
       endDate: it?.endDate ? formatDateTime(it.endDate, it?.timezone, it?.createdAt, false, "MMMM d, yyyy") : undefined,
       createdAtRaw: it?.createdAt ?? it?.datePublished,
       status: statusLabel(it?.status),
@@ -945,7 +946,7 @@ const MsaDetailPage: React.FC = () => {
                   description: msa?.description,
                 }}
                 dates={{
-                  published: formatDate(toISO(msa?.datePublished), msa?.timezone),
+                  published: formatDate(toISO(publishedDateOf(msa?.status, msa?.datePublished)), msa?.timezone),
                   effective: formatDateTime(toISO(msa?.startDate), msa?.timezone, toISO(msa?.createdAt), true),
                   end: formatDateTime(toISO(msa?.endDate), msa?.timezone, toISO(msa?.createdAt), true),
                 }}
