@@ -155,7 +155,9 @@ const transformAssignedEvaluationData = (
     let status: "Active" | "Pending" | "Completed" = "Active";
     if (item.averageProgress === 100) {
       status = "Completed";
-    } else if (item.averageProgress === 0) {
+    } else if (item.startDate && new Date(item.startDate).getTime() > Date.now()) {
+      // Pending only until the evaluation starts; 0% progress on a started
+      // evaluation is still Active (matches the detail page).
       status = "Pending";
     }
 
