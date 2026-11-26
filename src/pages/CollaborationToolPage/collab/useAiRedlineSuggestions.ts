@@ -458,8 +458,13 @@ export const acceptanceActor = (
 };
 
 /** Human label for a negotiating side. */
-export const redlineHolderLabel = (holder: RedlineResolvedHolder): string =>
-  holder === "vendor" ? "Vendor PM" : "Contract manager";
+export const redlineHolderLabel = (
+  holder: RedlineResolvedHolder,
+  docType = "contract",
+): string =>
+  holder === "vendor"
+    ? "Vendor PM"
+    : `${docType.charAt(0).toUpperCase()}${docType.slice(1)} manager`;
 
 /** Optimistically fold this viewer's acceptance into the bilateral state so the
  *  card flips immediately, before the GET refetch confirms it. */

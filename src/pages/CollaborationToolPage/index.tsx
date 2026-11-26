@@ -308,10 +308,8 @@ const CollaborationToolPage: React.FC = () => {
     setLocalComments(readLocalComments(commentsStorageKey));
   }, [commentsStorageKey]);
 
-  const contractTz = useContractTimezone(
-    contractIdParam,
-    Boolean(msaContractIdParam),
-  );
+  const contractTz = useContractTimezone(contractIdParam, msaContractIdParam);
+  const docType = msaContractIdParam ? "MSA" : "contract";
   const myAuthorName = user?.name || "Unknown User";
 
   const combinedComments: LocalComment[] = useMemo(() => {
@@ -1030,7 +1028,7 @@ const CollaborationToolPage: React.FC = () => {
           "Redline",
           redlineTurn.isParticipant
             ? "It's not your turn — wait for the other side to hand the document back."
-            : "Only the contract manager and vendor can modify redlines.",
+            : `Only the ${docType} manager and vendor can modify redlines.`,
         );
         return;
       }
@@ -1204,7 +1202,7 @@ const CollaborationToolPage: React.FC = () => {
           "Redline",
           redlineTurn.isParticipant
             ? "It's not your turn — wait for the other side to hand the document back."
-            : "Only the contract manager and vendor can modify redlines.",
+            : `Only the ${docType} manager and vendor can modify redlines.`,
         );
         return;
       }
@@ -1472,11 +1470,11 @@ const CollaborationToolPage: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            aria-label="Close editor and return to contract"
+            aria-label={`Close editor and return to ${docType}`}
             className="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
           >
             <ArrowLeft className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">Back to contract</span>
+            <span className="hidden sm:inline">Back to {docType}</span>
           </button>
           <div className="h-5 w-px bg-slate-200 dark:bg-slate-800" />
           <h1 className="truncate text-sm font-semibold text-slate-900 dark:text-white">
@@ -1683,6 +1681,7 @@ const CollaborationToolPage: React.FC = () => {
           onCommentDelete={fileId ? handleDeleteComment : undefined}
           onCommentEdit={fileId ? handleEditComment : undefined}
           timeZone={contractTz}
+          docType={docType}
           useFallbackFeed={false}
           mentionables={mentionables}
           versions={versions}

@@ -8,6 +8,7 @@ import {
   TooltipProvider,
 } from "@/components/ui/tooltip";
 import type { RedlineSpan } from "../collab/redlineScan";
+import { formatZonedTimestamp } from "../collab/zonedTimestamp";
 import {
   acceptanceActor,
   countBothAccepted,
@@ -39,17 +40,8 @@ type Item = {
 };
 
 /** Compact "12 Sep, 3:04pm" for the who/when line; empty when unparseable. */
-const formatAcceptedAt = (iso?: string): string => {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString(undefined, {
-    day: "numeric",
-    month: "short",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-};
+const formatAcceptedAt = (iso?: string, timeZone?: string): string =>
+  formatZonedTimestamp(iso, timeZone, { pattern: "d MMM, h:mm a zzz" });
 
 interface AiSuggestionsPanelProps {
   open: boolean;
@@ -95,6 +87,10 @@ interface AiSuggestionsPanelProps {
   notAppliedIds?: string[];
   /** Friendly inline message when the AI request failed (the list stays usable). */
   inlineError?: string;
+  /** The document's own zone for who/when times. */
+  timeZone?: string;
+  /** "MSA" / "contract", for the side label and tooltips. */
+  docType?: string;
 }
 
 const KindPill: React.FC<{ kind: RedlineSpan["kind"]; replacement?: boolean }> = ({
@@ -175,6 +171,10 @@ type SuggestionCardProps = {
   mySide?: RedlineResolvedHolder | null;
   /** Warning about this card's relation to the document, when it has one. */
   docNote?: string;
+  /** The document's own zone for who/when times (defaults to the viewer's). */
+  timeZone?: string;
+  /** "MSA" / "contract", for the side label. */
+  docType?: string;
 };
 
 const SuggestionCard: React.FC<SuggestionCardProps> = ({
@@ -186,6 +186,8 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
   isMyTurn,
   mySide,
   docNote,
+  timeZone,
+  docType,
 }) => {
   const { suggestion } = item;
   // Dual approval: a redline needs BOTH sides' approval. `phase` is a thin
@@ -499,12 +501,16 @@ const SuggestionCard: React.FC<SuggestionCardProps> = ({
             <div className="mt-3 rounded-md border border-indigo-200 bg-indigo-50 p-2 dark:border-indigo-900 dark:bg-indigo-950/40">
               <div className="text-[11px] text-indigo-800 dark:text-indigo-200">
                 <span className="font-semibold">
-                  {actor ? redlineHolderLabel(actor.holder) : "The other side"}
-                  {actor?.name ? ` (${actor.name})` : ""}
+                  {actor?.name
+                    ? actor.name
+                    : actor
+                      ? redlineHolderLabel(actor.holder, docType)
+                      : "The other side"}
+                  {actor?.name ? ` (${redlineHolderLabel(actor.holder, docType)})` : ""}
                 </span>{" "}
                 approved this recommendation
-                {actor?.at && formatAcceptedAt(actor.at)
-                  ? ` · ${formatAcceptedAt(actor.at)}`
+                {actor?.at && formatAcceptedAt(actor.at, timeZone)
+                  ? ` · ${formatAcceptedAt(actor.at, timeZone)}`
                   : ""}
                 . Approve to apply it to the document, or reject.
               </div>
@@ -635,6 +641,8 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
   staleIds,
   notAppliedIds,
   inlineError,
+  timeZone,
+  docType,
 }) => {
   const [bulkTier, setBulkTier] = useState<AlternativeTier>("medium");
   if (!open) return null;
@@ -720,7 +728,7 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
                 {typeof cmAddressed === "number" && (
                   <span
                     className="text-amber-600 dark:text-amber-400"
-                    title="Recommendations addressed by the contract manager"
+                    title={`Recommendations addressed by the ${docType ?? "contract"} manager`}
                   >
                     CM addressed: {cmAddressed}
                   </span>
@@ -736,7 +744,7 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
                 {typeof resolved === "number" && (
                   <span
                     className="text-emerald-600 dark:text-emerald-400"
-                    title="Accepted by both the contract manager and the vendor PM"
+                    title={`Accepted by both the ${docType ?? "contract"} manager and the vendor PM`}
                   >
                     {resolved} resolved
                   </span>
@@ -965,6 +973,8 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
               onFocus={onFocus}
               isMyTurn={isMyTurn}
               mySide={mySide}
+              timeZone={timeZone}
+              docType={docType}
               docNote={
                 notApplied.has(item.redline.redlineId)
                   ? "Approved, but the text could not be applied to this copy of the document."

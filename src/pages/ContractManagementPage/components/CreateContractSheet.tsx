@@ -197,7 +197,12 @@ export const schema = yup.object({
   securityAmount: yup.string().optional(),
   securityDueDate: yup.date().optional(),
   securityExpiryDate: yup.date().optional(),
-  rating: yup.number().min(1).max(10).required(),
+  rating: yup
+    .number()
+    .typeError("Select a complexity rating from 1 to 10")
+    .min(1, "Select a complexity rating from 1 to 10")
+    .max(10, "Select a complexity rating from 1 to 10")
+    .required("Select a complexity rating from 1 to 10"),
   insurancePolicies: yup
     .array(
       yup.object({
@@ -473,6 +478,9 @@ export const SendForApprovalDialog = React.memo(
       [],
     );
 
+    const groupHasNoApprovers =
+      selectedApprovalGroup !== "" && selectedApprovers.length === 0;
+
     const allApprovers = React.useMemo(() => {
       const list = (approvalGroups ?? []).flatMap((group) =>
         (group?.approvers ?? []).map((approver, idx) => ({
@@ -541,8 +549,18 @@ export const SendForApprovalDialog = React.memo(
               </div>
               <div className="divide-y divide-gray-300 dark:divide-slate-700">
                 {selectedApprovers.length === 0 && (
-                  <div className="px-6 py-6 text-sm text-slate-500 dark:text-slate-400">
-                    No approvers added for this group
+                  <div
+                    role={groupHasNoApprovers ? "alert" : undefined}
+                    className={cn(
+                      "px-6 py-6 text-sm",
+                      groupHasNoApprovers
+                        ? "text-red-600 dark:text-red-400"
+                        : "text-slate-500 dark:text-slate-400",
+                    )}
+                  >
+                    {groupHasNoApprovers
+                      ? "This group has no approvers. Choose another group."
+                      : "Select a group to see its approvers"}
                   </div>
                 )}
                 {selectedApprovers.map((approver, index) => {
@@ -662,9 +680,19 @@ export const SendForApprovalDialog = React.memo(
               </Button>
               <Button
                 type="button"
-                disabled={selectedApprovalGroup === ""}
+                disabled={
+                  selectedApprovalGroup === "" ||
+                  groupHasNoApprovers ||
+                  assignedApprovers.length === 0
+                }
                 title={
-                  selectedApprovalGroup === "" ? "Select a group first" : undefined
+                  selectedApprovalGroup === ""
+                    ? "Select a group first"
+                    : groupHasNoApprovers
+                      ? "This group has no approvers. Choose another group."
+                      : assignedApprovers.length === 0
+                        ? "Assign at least one signatory"
+                        : undefined
                 }
                 className="h-12 px-8 rounded-xl bg-[#2A4467] hover:bg-[#1e3252] text-white"
                 onClick={() => {

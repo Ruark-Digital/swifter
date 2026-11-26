@@ -61,6 +61,8 @@ interface SidebarPanelProps {
   onCommentEdit?: (commentId: string, text: string) => void;
   /** Zone the Versions tab shows times in (the contract's). */
   timeZone?: string;
+  /** "MSA" or "contract": the copy names the document type. */
+  docType?: string;
   useFallbackFeed?: boolean;
   mentionables?: Mentionable[];
   // Versions — auto-saved; no manual save button anymore.
@@ -133,6 +135,7 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
   onCommentDelete,
   onCommentEdit,
   timeZone,
+  docType,
   useFallbackFeed = false,
   mentionables = [],
   versions,
@@ -249,6 +252,8 @@ const SidebarPanel: React.FC<SidebarPanelProps> = ({
                 generating={aiGenerating}
                 staleIds={aiStaleIds}
                 notAppliedIds={aiNotAppliedIds}
+                timeZone={timeZone}
+                docType={docType}
                 inlineError={aiInlineError}
                 items={aiItems}
                 onApprove={onAiApprove}

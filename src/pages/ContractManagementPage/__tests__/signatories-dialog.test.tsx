@@ -16,8 +16,16 @@ const groups = [
   },
 ];
 
-const Harness = ({ onSend }: { onSend: (s: string[]) => void }) => {
-  const { control } = useForm({ defaultValues: { approvalGroups: groups } });
+const Harness = ({
+  onSend,
+  groupsOverride,
+}: {
+  onSend: (s: string[]) => void;
+  groupsOverride?: unknown[];
+}) => {
+  const { control } = useForm({
+    defaultValues: { approvalGroups: (groupsOverride ?? groups) as typeof groups },
+  });
   return (
     <SendForApprovalDialog
       control={control}
@@ -34,18 +42,29 @@ describe("SendForApprovalDialog group selection", () => {
     const select = screen.getByRole("combobox") as HTMLSelectElement;
     expect(select.value).toBe("");
     expect(screen.getByRole("option", { name: "Select Group" })).toBeTruthy();
-    expect(screen.getByText("No approvers added for this group")).toBeTruthy();
+    expect(screen.getByText("Select a group to see its approvers")).toBeTruthy();
     expect(
       (screen.getByRole("button", { name: "Continue to Review" }) as HTMLButtonElement).disabled,
     ).toBe(true);
   });
 
-  it("enables continuing and lists the group's approvers once a group is chosen", () => {
+  it("lists the group's approvers and enables continuing only once one is assigned", () => {
     render(<Harness onSend={vi.fn()} />);
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "1" } });
     expect(screen.getByText("Bob")).toBeTruthy();
+    const next = () =>
+      screen.getByRole("button", { name: "Continue to Review" }) as HTMLButtonElement;
+    expect(next().disabled).toBe(true);
+    fireEvent.click(screen.getByRole("checkbox"));
+    expect(next().disabled).toBe(false);
+  });
+
+  it("blocks a group with no approvers with a clear message", () => {
+    render(<Harness onSend={vi.fn()} groupsOverride={[{ name: "Empty", approvalLevel: "3", approvers: [] }]} />);
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "0" } });
+    expect(screen.getByText("This group has no approvers. Choose another group.")).toBeTruthy();
     expect(
       (screen.getByRole("button", { name: "Continue to Review" }) as HTMLButtonElement).disabled,
-    ).toBe(false);
+    ).toBe(true);
   });
 });
