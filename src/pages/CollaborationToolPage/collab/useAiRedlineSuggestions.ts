@@ -680,7 +680,6 @@ export function usePersistedSuggestions({
   documentId,
   fileId,
   isMsa,
-  pollWhileWaiting = false,
 }: AiRedlineScope & { fileId?: string; pollWhileWaiting?: boolean }) {
   const role = useUserRole();
   // The GET list route requires both the contract id and the document (file) id.
@@ -707,9 +706,10 @@ export function usePersistedSuggestions({
     // load/poll and hammer the endpoint.
     retry: false,
     staleTime: 30000,
-    // Poll only while waiting on the other side, and only when the tab is
-    // focused (refetchIntervalInBackground defaults false), so the other
-    // side's edits/approvals surface without a manual refresh.
-    refetchInterval: pollWhileWaiting ? WAITING_POLL_MS : false,
+    // Always poll (only while the tab is focused: refetchIntervalInBackground
+    // defaults false) and refetch on focus, so suggestions generated or approved
+    // by the other side appear without a reload, whoever holds the turn.
+    refetchInterval: WAITING_POLL_MS,
+    refetchOnWindowFocus: true,
   });
 }

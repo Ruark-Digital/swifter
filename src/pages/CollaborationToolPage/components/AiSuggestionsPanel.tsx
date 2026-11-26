@@ -652,23 +652,21 @@ const AiSuggestionsPanel: React.FC<AiSuggestionsPanelProps> = ({
   // BE total also counts one-sided actions still awaiting the other side
   // (QA #185), so it is only a fallback when there are no cards.
   const counts = deriveProgressCounts(progress);
-  // Never lag behind what the cards already show: take the larger of the BE
-  // progress and the per-side count derived from the cards (the BE catches up
-  // after the post-resolve refetch).
-  const local = deriveLocalAddressed(items);
+  // Count only the live cards: the BE progress is cumulative across
+  // regenerations and includes suggestions whose change is gone, so with cards
+  // on screen the counts come from the cards (the same shared state both sides
+  // see). The BE numbers are only the fallback when there are no cards.
+  const liveItems = items.filter((i) => !stale.has(i.redline.redlineId));
+  const local = deriveLocalAddressed(liveItems);
   const cmAddressed =
-    items.length > 0 || typeof counts.cmAddressed === "number"
-      ? Math.max(counts.cmAddressed ?? 0, local.cm)
-      : undefined;
+    items.length > 0 ? local.cm : counts.cmAddressed;
   const pmAddressed =
-    items.length > 0 || typeof counts.pmAddressed === "number"
-      ? Math.max(counts.pmAddressed ?? 0, local.pm)
-      : undefined;
+    items.length > 0 ? local.pm : counts.pmAddressed;
   const withoutAi = items.filter((i) => !i.suggestion).length;
   const noAiYet = items.length > 0 && withoutAi === items.length;
   const resolved =
     items.length > 0
-      ? countBothAccepted(items.map((i) => i.accepted))
+      ? countBothAccepted(liveItems.map((i) => i.accepted))
       : counts.resolved;
   const hasProgress =
     typeof cmAddressed === "number" ||

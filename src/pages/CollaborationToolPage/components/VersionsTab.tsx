@@ -90,13 +90,15 @@ const dayLabel = (iso: string, tz?: string): string => {
   return formatZonedTimestamp(iso, tz, { pattern: "MMM d, yyyy" });
 };
 
-/** Time within a day: relative for the last hour, otherwise the clock time with
- *  the zone named (the day is already carried by the section header). */
+/** Time within a day: always the clock time with the zone named (the day is
+ *  already carried by the section header), plus a relative hint for the last
+ *  hour. */
 const timeLabel = (iso: string, tz?: string): string => {
+  const clock = formatZonedTimestamp(iso, tz, { pattern: "h:mm a zzz" });
   const diff = Date.now() - new Date(iso).getTime();
-  if (diff < 60_000) return "just now";
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  return formatZonedTimestamp(iso, tz, { pattern: "h:mm a zzz" });
+  if (diff < 60_000) return `${clock} · just now`;
+  if (diff < 3_600_000) return `${clock} · ${Math.floor(diff / 60_000)}m ago`;
+  return clock;
 };
 
 type DayGroup = { label: string; items: Version[] };
