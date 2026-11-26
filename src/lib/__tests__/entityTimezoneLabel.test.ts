@@ -62,3 +62,28 @@ describe("zoneLabelAt (Timezone column agrees with the dates)", () => {
     expect(zoneLabelAt(undefined)).toBe("");
   });
 });
+
+describe("evaluation list row (N5): Timezone column matches the deadline label", () => {
+  // Mirrors transformEvaluationData / transformAssignedEvaluationData in
+  // EvaluationManagementPage: deadline via formatWallClockWithZone, Timezone
+  // column via zoneLabelAt, both at the evaluation endDate.
+  const row = (endDate: string, timezone: string) => ({
+    deadline: formatWallClockWithZone(endDate, "MMM d, yyyy h:mm a", timezone),
+    timezone: zoneLabelAt(timezone, endDate),
+  });
+
+  it("shows NZDT in both the deadline and the Timezone column in November", () => {
+    const r = row("2026-11-30T10:00:00.000Z", "NZST");
+    expect(r.deadline).toBe("Nov 30, 2026 11:00 PM NZDT");
+    expect(r.timezone).toBe("NZDT");
+  });
+
+  it("agrees for every DST-observing zone in both seasons", () => {
+    for (const tz of ["NZST", "AEST", "ACST", "EST", "CST", "MST", "PST", "CET", "EET", "BST"]) {
+      for (const at of ["2026-01-15T12:00:00.000Z", "2026-07-15T12:00:00.000Z"]) {
+        const r = row(at, tz);
+        expect(r.deadline.endsWith(" " + r.timezone), tz + " @ " + at).toBe(true);
+      }
+    }
+  });
+});
