@@ -42,27 +42,14 @@ const reducer = combine(initialState, (set) => ({
   },
 }));
 
-const logger = (config: any) => (set: any, get: any, api: any) => {
-  return config(
-    (args: any) => {
-      if (import.meta.env.DEV) {
-        console.log("studio  applying", args);
-        // console.log("studio  new state", get());
-      }
-      set(args);
-    },
-    get,
-    api
-  );
-};
-
 type Selectors = InitialState & Actions;
 
 const persistConfig: PersistOptions<Selectors> = {
   name: "auth",
 };
 
-const baseReducer = create(logger(persist(reducer, persistConfig)));
+// No logging middleware here: this store holds the access/refresh tokens.
+const baseReducer = create(persist(reducer, persistConfig));
 
 export const {
   useUser,

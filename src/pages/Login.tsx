@@ -70,7 +70,6 @@ const Login = () => {
         navigate(targetRoute);
       }
     } catch (error) {
-      console.log(error);
       const err = error as ApiResponseError;
       toast.error(
         "Login Failed",
