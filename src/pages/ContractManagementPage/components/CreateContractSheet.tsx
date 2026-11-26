@@ -393,7 +393,7 @@ type SendForApprovalDialogProps = {
   onSendForApproval: (signatories: string[]) => void;
 };
 
-const SendForApprovalDialog = React.memo(
+export const SendForApprovalDialog = React.memo(
   ({
     control,
     open,
@@ -426,22 +426,19 @@ const SendForApprovalDialog = React.memo(
       [approvalGroups],
     );
 
-    // Pre-select a group when the dialog opens (the first one that has
-    // approvers), and drop a stale selection whose group no longer exists, so
-    // the approver table is populated instead of empty until re-selected.
+    // The user chooses which group to start with: nothing is pre-selected, and
+    // each time the dialog opens it starts from the "Select Group" placeholder.
     React.useEffect(() => {
-      if (!open) return;
-      const groups = approvalGroups ?? [];
-      const current =
-        selectedApprovalGroup === "" ? -1 : Number(selectedApprovalGroup);
-      if (current >= 0 && current < groups.length) return;
-      const firstWithApprovers = groups.findIndex(
-        (g) => (g?.approvers?.length ?? 0) > 0,
-      );
-      setSelectedApprovalGroup(
-        firstWithApprovers >= 0 ? String(firstWithApprovers) : "",
-      );
-    }, [open, approvalGroups, selectedApprovalGroup]);
+      if (open) setSelectedApprovalGroup("");
+    }, [open]);
+
+    // Drop a selection whose group was removed while the dialog was open.
+    React.useEffect(() => {
+      if (selectedApprovalGroup === "") return;
+      if (Number(selectedApprovalGroup) >= (approvalGroups?.length ?? 0)) {
+        setSelectedApprovalGroup("");
+      }
+    }, [approvalGroups, selectedApprovalGroup]);
 
     const selectedGroupIndex =
       selectedApprovalGroup === "" ? -1 : Number(selectedApprovalGroup);
@@ -665,6 +662,10 @@ const SendForApprovalDialog = React.memo(
               </Button>
               <Button
                 type="button"
+                disabled={selectedApprovalGroup === ""}
+                title={
+                  selectedApprovalGroup === "" ? "Select a group first" : undefined
+                }
                 className="h-12 px-8 rounded-xl bg-[#2A4467] hover:bg-[#1e3252] text-white"
                 onClick={() => {
                   const sigs = assignedApprovers
