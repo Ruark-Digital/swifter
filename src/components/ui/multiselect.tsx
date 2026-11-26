@@ -88,6 +88,28 @@ const MultipleSelector = React.forwardRef<
     value || defaultValue
   )
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false)
+  // The field itself, to take focus back after a chip control removes itself.
+  const triggerRef = React.useRef<HTMLDivElement | null>(null)
+  const setTriggerRef = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      triggerRef.current = node
+      if (typeof ref === "function") ref(node)
+      else if (ref) ref.current = node
+    },
+    [ref]
+  )
+  // Run a chip-level action from the keyboard, then put focus back on the field
+  // (the focused control is removed from the page by the action).
+  const runFromKeyboard = React.useCallback(
+    (e: React.KeyboardEvent, action: () => void) => {
+      if (e.key !== "Enter" && e.key !== " ") return
+      e.preventDefault()
+      e.stopPropagation()
+      action()
+      triggerRef.current?.focus()
+    },
+    []
+  )
   const [isAnimating, setIsAnimating] = React.useState(false)
   const [inputValue, setInputValue] = React.useState("")
 
@@ -277,7 +299,7 @@ const MultipleSelector = React.forwardRef<
         {/* A div, not a <button>: the chips' remove controls are buttons, and a
             button may not contain another button (invalid HTML, React warns). */}
         <div
-          ref={ref}
+          ref={setTriggerRef}
           {...props}
           role="combobox"
           tabIndex={0}
@@ -329,11 +351,9 @@ const MultipleSelector = React.forwardRef<
                           (option as any).fixed &&
                             "hidden"
                         )}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            handleUnselect(option)
-                          }
-                        }}
+                        onKeyDown={(e) =>
+                          runFromKeyboard(e, () => handleUnselect(option))
+                        }
                         onMouseDown={(e) => {
                           e.preventDefault()
                           e.stopPropagation()
@@ -358,17 +378,18 @@ const MultipleSelector = React.forwardRef<
                     {`+ ${selectedValues.length - maxCount} more`}
                     <button
                       type="button"
+                      aria-label={`Clear all (${selectedValues.length - maxCount} more)`}
                       className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          handleClearAll()
-                        }
-                      }}
+                      onKeyDown={(e) => runFromKeyboard(e, handleClearAll)}
                       onMouseDown={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
                       }}
-                      onClick={handleClearAll}
+                      onClick={(e) => {
+                        // Clearing must not also toggle the field open.
+                        e.stopPropagation()
+                        handleClearAll()
+                      }}
                     >
                       <X className="h-3 w-3 text-muted-foreground hover:text-foreground dark:text-gray-400 dark:hover:text-gray-200" />
                     </button>
@@ -380,16 +401,17 @@ const MultipleSelector = React.forwardRef<
                   <div>
                     <button
                       type="button"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          handleClearAll()
-                        }
-                      }}
+                      aria-label="Clear all"
+                      onKeyDown={(e) => runFromKeyboard(e, handleClearAll)}
                       onMouseDown={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
                       }}
-                      onClick={handleClearAll}
+                      onClick={(e) => {
+                        // Clearing must not also toggle the field open.
+                        e.stopPropagation()
+                        handleClearAll()
+                      }}
                     >
                       <X className="h-4 w-4 text-muted-foreground hover:text-foreground dark:text-gray-400 dark:hover:text-gray-200" />
                     </button>

@@ -42,6 +42,21 @@ describe("MultipleSelector with a selected value", () => {
     expect(screen.getByRole("combobox").getAttribute("aria-expanded")).toBe("false");
   });
 
+  it("returns focus to the field after removing a chip by keyboard", () => {
+    setup();
+    const remove = screen.getByRole("button", { name: "Remove Apple Approver" });
+    remove.focus();
+    fireEvent.keyDown(remove, { key: "Enter" });
+    expect(document.activeElement).toBe(screen.getByRole("combobox"));
+  });
+
+  it("clears all with a labelled control, without opening the field", () => {
+    const { onValueChange } = setup();
+    fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+    expect(onValueChange).toHaveBeenLastCalledWith([]);
+    expect(screen.getByRole("combobox").getAttribute("aria-expanded")).toBe("false");
+  });
+
   it("opens on click and on Enter, Space or ArrowDown", () => {
     setup();
     const field = screen.getByRole("combobox");
