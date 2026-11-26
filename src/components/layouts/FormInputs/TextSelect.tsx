@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -80,10 +81,35 @@ export const TextSelect = (
     ...selectProps
   } = props;
 
+  // Options may share a stored value (timezones.json: CST is both
+  // America/Chicago and Asia/Shanghai, AST both America/Halifax and
+  // Asia/Riyadh). Radix keys its items and hidden native <option>s by value,
+  // so repeated values get a unique select value here; onChange still emits
+  // the stored value, and a stored value pre-selects its first option
+  // (S1-FE-18).
+  const selectOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const o of options ?? []) counts.set(o.value, (counts.get(o.value) ?? 0) + 1);
+    return (options ?? []).map((o) => ({
+      ...o,
+      selectValue: (counts.get(o.value) ?? 0) > 1 ? `${o.value}|${o.label}` : o.value,
+    }));
+  }, [options]);
+  // Which of several same-valued options the user picked, so it stays shown.
+  const [picked, setPicked] = useState<string | undefined>();
+  const toSelectValue = (stored?: string) => {
+    if (stored === undefined || stored === "") return stored;
+    const matches = selectOptions.filter((o) => o.value === stored);
+    if (matches.length < 2) return stored;
+    return matches.find((o) => o.selectValue === picked)?.selectValue ?? matches[0].selectValue;
+  };
+
   const handleValueChange = (selectedValue: string) => {
     // The "Clear selection" row reports the sentinel; emit "" instead.
+    const option = selectOptions.find((o) => o.selectValue === selectedValue);
+    setPicked(option ? selectedValue : undefined);
     const nextValue =
-      selectedValue === CLEAR_SELECTION_VALUE ? "" : selectedValue;
+      selectedValue === CLEAR_SELECTION_VALUE ? "" : option?.value ?? selectedValue;
     // Callers (Forge slots, and RHF's field.onChange) accept the raw value.
     // The former event-style branch was unreachable — both members of the
     // onChange union are functions, so a runtime `typeof` check could never
@@ -103,7 +129,7 @@ export const TextSelect = (
       )}
 
       <Select
-        value={value}
+        value={toSelectValue(value)}
         onValueChange={handleValueChange}
         name={name}
         {...selectProps}
@@ -129,13 +155,12 @@ export const TextSelect = (
               Clear selection
             </SelectItem>
           ) : null}
-          {options
-            ?.filter((item) => item.value !== "")
+          {selectOptions
+            .filter((item) => item.value !== "")
             .map((item) => (
               <SelectItem
-                // Values can repeat (CST/AST timezones); label keeps keys unique.
-                key={`${item.value}|${item.label}`}
-                value={item.value}
+                key={item.selectValue}
+                value={item.selectValue}
                 disabled={item.disabled}
                 className={`py-3 dark:text-gray-200 dark:hover:bg-gray-700 dark:focus:bg-gray-700 ${
                   item.disabled ? "opacity-50 cursor-not-allowed" : ""
